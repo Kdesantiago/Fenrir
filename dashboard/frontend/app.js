@@ -597,17 +597,9 @@ function storyCard(s) {
   );
 
   const meta = el("div", { class: "card-meta" });
-  if (ep) {
-    meta.append(el("span", { class: "chip chip-epic", style: `color:${ep.color}`, text: ep.title }));
-    // board-derived cost badge for the epic this story rolls up to
-    const ec = costs && costs.epics && costs.epics[ep.id];
-    if (ec && ec.cost_usd > 0) meta.append(el("span", { class: "cost-badge", title: `Epic ${ep.title} total`, text: fmtUsd(ec.cost_usd) }));
-  }
-  const feat = featureById(s.feature_id);
-  if (feat) {
-    const fc = costs && costs.features && costs.features[feat.id];
-    if (fc && fc.cost_usd > 0) meta.append(el("span", { class: "cost-badge", title: `Feature ${feat.title} total`, text: fmtUsd(fc.cost_usd) }));
-  }
+  // Epic chip only. Epic/Feature cost ROLLUPS live in the story modal (labeled), not as
+  // unlabeled chips on every card (that read as the card's own price).
+  if (ep) meta.append(el("span", { class: "chip chip-epic", style: `color:${ep.color}`, text: ep.title }));
   if (s.points) meta.append(el("span", { class: "chip chip-points", text: s.points + " pts" }));
   if (s.assignee) meta.append(el("span", { class: "chip" }, [
     el("span", { class: "avatar", style: `background:${colorFor(s.assignee)}`, text: initials(s.assignee) }),
@@ -620,8 +612,9 @@ function storyCard(s) {
     const tok = wl.reduce((a, w) => a + (w.input_tokens || 0) + (w.output_tokens || 0), 0);
     const cost = wl.reduce((a, w) => a + (w.cost_usd || 0), 0);
     card.append(el("div", { class: "card-worklog" }, [
-      el("span", { text: `${fmtTok(tok)} tok` }),
+      el("span", { class: "muted", text: "US cost" }),
       el("span", { class: "cost", style: "color:var(--good)", text: fmtUsd4(cost) }),
+      el("span", { class: "muted", text: `· ${fmtTok(tok)} tok` }),
     ]));
   }
 
@@ -782,7 +775,21 @@ function openStoryDetail(s) {
   costSec.append(costBody);
   wrap.append(costSec);
   ensureCosts()
-    .then((c) => renderStoryCost(costBody, c && c.stories ? c.stories[s.id] : null))
+    .then((c) => {
+      renderStoryCost(costBody, c && c.stories ? c.stories[s.id] : null);
+      // labeled Epic/Feature rollups (what the old card badges hinted at, now explicit)
+      const ep = epicOfStory(s), feat = featureById(s.feature_id);
+      const fc = feat && c && c.features && c.features[feat.id];
+      const ec = ep && c && c.epics && c.epics[ep.id];
+      const roll = el("div", { class: "cost-rollup" });
+      const row = (label, r) => el("div", { class: "rollup-row" }, [
+        el("span", { class: "muted", text: label }),
+        el("span", { class: "cost", text: fmtUsd(r.cost_usd) }),
+      ]);
+      if (fc && fc.cost_usd) roll.append(row(`Feature · ${feat.title}`, fc));
+      if (ec && ec.cost_usd) roll.append(row(`Epic · ${ep.title}`, ec));
+      if (roll.children.length) costBody.append(roll);
+    })
     .catch(() => { costBody.innerHTML = ""; costBody.append(el("div", { class: "cost-empty", text: "Cost unavailable" })); });
 
   // work log

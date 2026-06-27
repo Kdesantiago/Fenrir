@@ -66,6 +66,12 @@ def _cmd_link(s: BoardStore, a) -> None:
     if a.session and s.has_session_for(a.kind, a.id, a.session):
         print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
         return
+    if a.session:  # exclusivity: don't lump a session that already has per-run attributions
+        runs = [e for e in s.entries_for_session(a.session) if e["source"] == "telemetry-run"]
+        if runs:
+            raise ValueError(
+                f"session {a.session} already has per-run attributions (e.g. {runs[0]['id']}); "
+                "use `attribute` per run, not whole-session `link`, for this session")
     cd = config.claude_dir()
     project = a.project or telemetry.current_project_slug(cd)  # default: current repo
     ev = telemetry.load_events(cd, project)
@@ -87,6 +93,32 @@ def _cmd_link(s: BoardStore, a) -> None:
             input_tokens=g["in"], output_tokens=g["out"], cost_usd=round(g["cost"], 4),
             note=a.note or f"linked {g['n']} {src} events", at=now))
     _emit(s.load())
+
+
+def _cmd_attribute(s: BoardStore, a) -> None:
+    """Attach ONE subagent run's REAL tokens/cost to a US (distinct per run, no lump)."""
+    cd = config.claude_dir()
+    project = a.project or telemetry.current_project_slug(cd)
+    runs = telemetry.subagent_runs(cd, project)["runs"]
+    run = next((r for r in runs if r["run_id"] == a.run), None)
+    if not run:
+        raise ValueError(f"no subagent run '{a.run}' (use a run_id from the Subagents view / "
+                         "/api/telemetry/subagents)")
+    if s.has_run_for(a.kind, a.id, a.run):
+        print(json.dumps({"skipped": f"run {a.run} already attributed to {a.id}"}))
+        return
+    sess = run["session_id"]
+    linked = [e for e in s.entries_for_session(sess) if e["source"] == "telemetry-link"]
+    if linked:
+        raise ValueError(f"session {sess} is already whole-session linked to {linked[0]['id']}; "
+                         "`link` and `attribute` are mutually exclusive for one session")
+    entry = WorkLogEntry(
+        agent=a.agent or run["agent_type"], subagent_type=run["agent_type"],
+        session_id=sess, run_id=a.run, source="telemetry-run",
+        input_tokens=run["input_tokens"], output_tokens=run["output_tokens"],
+        cost_usd=run["cost_usd"], note=a.note or (run["description"] or "")[:80],
+        at=datetime.now(UTC).isoformat())
+    _emit(s.log_work(a.kind, a.id, entry))
 
 
 def _cmd_trace(s: BoardStore, a) -> None:
@@ -173,6 +205,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("delete"); a.add_argument("--kind", required=True)
     a.add_argument("--id", required=True); a.set_defaults(fn=_cmd_delete)
+
+    a = sub.add_parser("attribute", help="attach ONE subagent run's real cost to a US (per-run)")
+    a.add_argument("--kind", required=True); a.add_argument("--id", required=True)
+    a.add_argument("--run", required=True, help="run_id (agent-<id>) from the Subagents view")
+    a.add_argument("--project", default=None); a.add_argument("--agent", default="")
+    a.add_argument("--note", default=""); a.set_defaults(fn=_cmd_attribute)
 
     a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
     a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)

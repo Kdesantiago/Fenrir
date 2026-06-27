@@ -15,9 +15,12 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ### Changed
 - **Kanban is now per-project** — the board store is `data/boards/<project-slug>.json`; the dashboard auto-detects the current repo's board and the header project selector re-scopes the kanban (board fetch + every mutation + costs + trace carry `?project=`). The single `data/board.json` was migrated to its project file.
+- **Higher-fidelity cost estimate** — the price book now stores a base `(input, output)` rate per family and **derives** cache rates from it (so a contract change is one number), and prices cache **writes by TTL** — 5-min (1.25× input) vs 1-hour (2× input) — from `usage.cache_creation`, instead of one flat cache-write rate. Extended-thinking tokens are documented as already counted (billed as output). Named, un-modeled gaps: web-search requests, batch/priority tiers, `[1m]` long-context premium. (`rates_for` now returns a rate dict.)
+- **Per-US cost is now meaningful, not a lump** — new `cli attribute --run <run_id>` charges ONE subagent run's real tokens/cost to a US (distinct per run), keyed on a stable `agent-<id>` (most runs have no `toolUseId`). `link` (whole-session) and `attribute` (per-run) are **mutually exclusive per session** (`board.entries_for_session`) so the same spend is never double-counted. Cleaned the dogfood board: the two identical `$450` whole-session/whole-repo lumps on us-13/us-15 are replaced by distinct real per-run attributions. 5 more tests (85 total).
 
 ### Fixed
 - **Dashboard "Usage over time" chart crash** (`Cannot read properties of null (reading 'getContext')`) — a chart's empty-state overwrote its `<canvas>`, so the next render hit a null canvas. Charts now recreate a fresh canvas in a `data-canvas`-anchored wrap each render; empty-states no longer destroy the canvas.
+- **Confusing kanban cost badges** — cards showed two unlabeled epic/feature rollup chips (e.g. `$900.06` on every card of an epic, read as the card's own price). Cards now show one labeled **US cost** line; the Epic/Feature rollups moved to the story modal, labeled.
 
 ## [1.2.0] — 2026-06-27
 

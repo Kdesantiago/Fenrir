@@ -12,6 +12,14 @@ from backend import pricing
 # --- rates_for: family resolution -----------------------------------------------------
 
 
+def _expected(fam):
+    """The derived rate dict for a base PRICES family (cache rates from input)."""
+    inp, out = pricing.PRICES[fam]
+    c = pricing.CACHE
+    return {"input": inp, "output": out, "w5m": inp * c["w5m"], "w1h": inp * c["w1h"],
+            "read": inp * c["read"]}
+
+
 @pytest.mark.parametrize(
     "model, expected_family",
     [
@@ -25,11 +33,13 @@ from backend import pricing
     ],
 )
 def test_rates_for_known_families(model, expected_family):
-    assert pricing.rates_for(model) == pricing.PRICES[expected_family]
+    assert pricing.rates_for(model) == _expected(expected_family)
 
 
-def test_rates_for_opus_exact_tuple():
-    assert pricing.rates_for("claude-opus-4") == (15.0, 75.0, 18.75, 1.50)
+def test_rates_for_opus_derived_rates():
+    # base (15, 75) + derived cache: 5m=18.75, 1h=30, read=1.5
+    assert pricing.rates_for("claude-opus-4") == {
+        "input": 15.0, "output": 75.0, "w5m": 18.75, "w1h": 30.0, "read": 1.5}
 
 
 def test_rates_for_fable_matches_opus_pricing():
@@ -38,8 +48,8 @@ def test_rates_for_fable_matches_opus_pricing():
 
 
 def test_rates_for_unknown_returns_default():
-    assert pricing.rates_for("gpt-4o") == pricing.DEFAULT
-    assert pricing.rates_for("some-mystery-model") == pricing.DEFAULT
+    assert pricing.rates_for("gpt-4o") == _expected("sonnet")
+    assert pricing.rates_for("some-mystery-model") == _expected("sonnet")
 
 
 def test_default_is_sonnet():
@@ -47,19 +57,19 @@ def test_default_is_sonnet():
 
 
 def test_rates_for_empty_string_returns_default():
-    assert pricing.rates_for("") == pricing.DEFAULT
+    assert pricing.rates_for("") == _expected("sonnet")
 
 
 def test_rates_for_none_returns_default():
     # rates_for guards with `(model or "")`, so None must not raise
-    assert pricing.rates_for(None) == pricing.DEFAULT  # type: ignore[arg-type]
+    assert pricing.rates_for(None) == _expected("sonnet")  # type: ignore[arg-type]
 
 
 def test_rates_for_resolution_order_first_match_wins():
     # PRICES iterates insertion order (opus, sonnet, haiku, fable); a string
     # containing two family names resolves to whichever appears first in PRICES.
     # "opus" precedes "sonnet" in the dict, so an opus+sonnet string -> opus.
-    assert pricing.rates_for("opus-sonnet-hybrid") == pricing.PRICES["opus"]
+    assert pricing.rates_for("opus-sonnet-hybrid") == _expected("opus")
 
 
 # --- cost_of: token math --------------------------------------------------------------
