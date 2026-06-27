@@ -1,0 +1,77 @@
+# Spectral ruleset for api-first — enforces the REST conventions the skill mandates.
+# Run: spectral lint api/openapi.yaml --ruleset api/.spectral.yaml
+# NOTE: Spectral's regex engine is JavaScript RegExp — NO inline flags like (?i).
+# Case-insensitivity is encoded in the alternations below.
+extends: ["spectral:oas"]
+
+rules:
+  # No verbs in path segments (resources are nouns). Catches camelCase (/getOrder),
+  # PascalCase (/GetOrder), and bare verbs (/get, /search). First-letter case handled
+  # by the (x|X) alternations. Limitation: all-lowercase concatenations like /getorders
+  # are NOT flagged (avoids false-positives on legit resources like /posts, /status).
+  org-no-verbs-in-paths:
+    description: "Path segments must be nouns, not verbs (e.g. /orders/{id}, not /getOrder)."
+    severity: error
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "/((g|G)et|(p|P)ost|(p|P)ut|(p|P)atch|(d|D)elete|(c|C)reate|(u|U)pdate|(f|F)etch|(l|L)ist|(f|F)ind|(m|M)ake|(r|R)emove|(s|S)earch|(l|L)ogin|(l|L)ogout)([A-Z][A-Za-z0-9]*)?(/|$)"
+
+  # Versioned paths: every path under a /vN prefix.
+  # ASSUMES path-prefix versioning (the org convention). Specs that version via the
+  # server URL (servers:[{url:.../v1}]) or a header must disable/override this rule.
+  org-versioned-paths:
+    description: "Paths must be versioned with a /vN prefix (org convention: path-prefix versioning; disable if you version via server URL or header)."
+    severity: error
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/v[0-9]+/"
+
+  # Error responses must DEFINE application/problem+json content (RFC 9457).
+  # given targets the 4xx/5xx response object, so a response missing `content`
+  # entirely also fails (the case a `.content`-anchored rule would miss).
+  org-problem-json-errors:
+    description: "4xx/5xx responses must define application/problem+json content (RFC 9457)."
+    severity: error
+    given: "$.paths[*][*].responses[?(@property.match(/^[45]/))]"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [content]
+          properties:
+            content:
+              type: object
+              required: ["application/problem+json"]
+
+  # Every operation needs a unique operationId (codegen depends on it).
+  org-operationid-required:
+    description: "Every operation needs a unique operationId."
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch]"
+    then:
+      field: operationId
+      function: truthy
+
+  # Collection (list) GET endpoints should declare a pagination parameter.
+  # given targets the GET operation, so a missing `parameters` array still fails.
+  # Heuristic: path ends in a plural noun (…s). May false-positive on /status etc → WARNING only.
+  org-list-pagination:
+    description: "Collection GET endpoints should declare a pagination parameter (page/size/limit/cursor/offset)."
+    severity: warn
+    given: "$.paths[?(@property.match(/[a-z]s$/))].get"
+    then:
+      field: parameters
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          contains:
+            type: object
+            required: [name]
+            properties:
+              name: { enum: [page, size, limit, cursor, offset, per_page, pageSize] }

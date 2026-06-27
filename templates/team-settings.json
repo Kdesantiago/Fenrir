@@ -1,0 +1,15 @@
+{
+  "//": "Org distribution — commit this as a repo's .claude/settings.json (merge into an existing one). When a teammate trusts the project folder, Claude Code reads these keys, discovers the marketplace, and auto-prompts them to install the pinned plugin. Closes the 'standardized cross-repo consumption' gap. Replace OWNER/repo with your marketplace repo.",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "fenrir-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "OWNER/fenrir"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "fenrir@fenrir-marketplace": true
+  }
+}

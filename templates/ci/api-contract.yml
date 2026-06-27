@@ -1,0 +1,43 @@
+# Optional CI gate for api-first repos — the spec IS the contract, enforced at merge.
+# Add `api-contract` to branch-protection required_checks only if you want it blocking.
+# GitHub Actions variant; mirror as an Azure stage where applicable.
+name: api-contract
+
+on:
+  pull_request:
+    paths: ["api/**", "src/**"]
+
+jobs:
+  api-contract:
+    name: api-contract          # match this in branch-protection.tf required_checks if blocking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Lint the spec against the REST-convention ruleset.
+      - name: Spectral lint
+        run: npx -y @stoplight/spectral-cli lint api/openapi.yaml --ruleset api/.spectral.yaml --fail-severity error
+
+      # 2. Contract-test the running app against the spec (catches spec↔impl drift,
+      #    including undocumented routes — this is the real "spec-first" enforcement).
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      # START-APP — FastAPI + uv defaults. Override START_CMD / HEALTH_URL for other
+      # stacks (express: `npm ci && npm start`; spring: `./mvnw spring-boot:run`; etc).
+      - name: start app
+        env:
+          START_CMD: "uv run uvicorn app.main:app --host 127.0.0.1 --port 8000"
+          HEALTH_URL: "http://127.0.0.1:8000/health"
+        run: |
+          pip install uv && uv sync --all-extras --dev
+          bash -c "$START_CMD" &
+          ok=0
+          for i in $(seq 1 30); do curl -sf "$HEALTH_URL" && { ok=1; break; }; sleep 1; done
+          [ "$ok" = 1 ] || { echo "app did not become healthy at $HEALTH_URL"; exit 1; }
+      # Schemathesis pinned to v3 (the --base-url / --hypothesis-max-examples flags below
+      # were renamed in v4). For v4: use --url and --max-examples, and pin "schemathesis>=4".
+      - name: Schemathesis contract test
+        run: |
+          pipx run "schemathesis<4" run api/openapi.yaml \
+            --base-url http://127.0.0.1:8000 \
+            --checks all --hypothesis-max-examples 50

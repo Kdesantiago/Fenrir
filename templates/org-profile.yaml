@@ -1,0 +1,16 @@
+# org-profile.yaml — declared stack. Generators READ this and REFUSE on mismatch.
+# Lives at repo root. Drives iac-gen / auth-gen / observability-gen / frontend-gen / llm-gen.
+
+platform: aks            # aks | webapp | k8s | serverless | vm | ecs  (aks=Azure K8s, webapp=Azure App Service)
+framework: fastapi       # fastapi | express | spring | streamlit | none
+auth_provider: entra     # entra | okta | keycloak | auth0 | none
+obs_backend: grafana     # grafana | prometheus | azure-monitor | datadog | cloudwatch | honeycomb | langfuse  (metrics source for SLO/analysis; langfuse = LLM tracing/evals)
+llm_provider: anthropic  # anthropic | openai | azure | bedrock | vertex | none  (azure = Azure OpenAI Service)
+front: streamlit         # react | vue | svelte | streamlit | html | none  (html = plain static HTML/CSS/JS)
+vector_store: pgvector   # pgvector | azure-ai-search | qdrant | weaviate | none  (used by the retriever skill; optional)
+container_registry: ""   # e.g. mycorp.azurecr.io — used by gitops/iac-gen image automation (optional; or declare in stack-interface.yaml)
+environments: [dev, hml, prod]   # ordered promotion path; used by feature-flags labels + env promotion (edit to your envs)
+
+# Consumer contract — assert the fenrir plugin/template version this repo targets.
+# delivery-gates fails loud if the installed plugin version is incompatible.
+template_version: "1.0.0"

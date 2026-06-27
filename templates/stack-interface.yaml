@@ -1,0 +1,88 @@
+# stack-interface.yaml — declares THIS enterprise's Azure wrapper toolchain.
+#
+# Purpose: many enterprises forbid calling raw `az` / `terraform` / `kubectl`
+# directly. Instead every cloud operation must go through a sanctioned wrapper
+# (it injects auth, tenant, policy, audit, network egress rules, etc.). This
+# manifest is the single declaration of those wrappers.
+#
+# ABSENT  → the plugin uses the STANDARD cloud CLIs (`az`, `terraform`/`bicep`,
+#           `docker`, `kubectl`, `helm`) directly. Nothing in here applies.
+# PRESENT → EVERY cloud op MUST go through the wrappers declared below. Emitting
+#           raw `az`/`kubectl`/`terraform` for an operation that has a declared
+#           wrapper is a defect. The `stack-adapter` agent is the single place
+#           that performs this translation; generators and /deliver consult it.
+#
+# Read model: a SessionStart hook reads the TOP-LEVEL `key: value` pairs of this file.
+# Keep it FLAT — no nested maps or lists (a nested key is skipped by the hook's fallback
+# parser). Commands use {placeholder} tokens the adapter fills in at call time.
+
+# --- identity -----------------------------------------------------------------
+name: mycorp-azure-interface     # human label for this wrapper stack
+version: "1.0.0"                  # bump when wrapper commands/contract change
+
+# --- cloud CLI (replaces raw `az`) -------------------------------------------
+cloud_cli: mycorp-az             # the binary that wraps `az`; NEVER call `az` directly when set
+login_cmd: mycorp-az login --tenant {tenant_id} --subscription {subscription_id}
+                                 # how to authenticate; non-interactive in CI (uses workload identity / OIDC)
+tenant_id: "00000000-0000-0000-0000-000000000000"     # Entra tenant the wrapper targets
+subscription_id: "11111111-1111-1111-1111-111111111111" # default subscription
+
+# --- infrastructure-as-code (replaces raw `terraform` / `bicep`) -------------
+iac_tool: mycorp-tf              # wrapper around terraform (or `mycorp-bicep` for Bicep shops)
+iac_backend: azurerm             # remote state backend type
+# where state lives (flat keys — the wrapper enforces locking + RBAC on this):
+iac_backend_resource_group: rg-tfstate-prod
+iac_backend_storage_account: mycorptfstate
+iac_backend_container: tfstate
+iac_plan_cmd: mycorp-tf plan -out {plan_file}
+iac_apply_cmd: mycorp-tf apply {plan_file}
+
+# --- container registry (replaces raw `docker login` / `az acr` ) ------------
+container_registry: mycorp.azurecr.io          # ACR login server
+acr_login_cmd: mycorp-az acr login --name mycorp   # authenticates docker to the ACR via the wrapper
+image_push_cmd: mycorp-az acr build --registry mycorp --image {image}:{tag} {context}
+                                               # build+push in one wrapped step; templated
+                                               # ({image}=repo path, {tag}=tag, {context}=build dir)
+
+# --- AKS / kubeconfig (replaces raw `az aks get-credentials` + `kubectl` ctx) -
+aks_get_credentials_cmd: mycorp-az aks get-credentials --cluster {cluster} --resource-group {resource_group} --admin
+                                               # writes a kubeconfig for the named AKS cluster
+k8s_context_cmd: mycorp-kubectl config use-context {cluster}
+                                               # selects the cluster context for subsequent kubectl/helm calls
+kubectl_cli: mycorp-kubectl      # wrapper around kubectl (policy-aware, scoped to allowed namespaces)
+helm_cli: mycorp-helm            # wrapper around helm (pulls charts only from the internal OCI registry)
+
+# --- deploy / rollback (templated, go through the wrappers above) ------------
+deploy_cmd: mycorp-helm upgrade --install {release} {chart} -f {values_file} --namespace {namespace}
+rollback_cmd: mycorp-helm rollback {release} {revision} --namespace {namespace}
+webapp_deploy_cmd: mycorp-az webapp deploy --name {app_name} --resource-group {resource_group} --type {deploy_type} --src-path {artifact}
+                                               # Azure Web App / App Service deploy via the wrapper
+webapp_slot_swap_cmd: mycorp-az webapp deployment slot swap --name {app_name} --resource-group {resource_group} --slot {from_slot} --target-slot {to_slot}
+# scheduled-job deploy (cronjob skill): Functions timer / Container Apps job (webapp/serverless),
+# and systemd (vm). Leave a key BLANK/absent if that platform isn't used — cronjob then emits the
+# op directly with a note instead of failing on a missing wrapper.
+func_deploy_cmd: mycorp-az functionapp deploy --name {app_name} --resource-group {resource_group} --src-path {artifact}
+vm_systemd_apply_cmd:            # e.g. mycorp-ssh {host} 'systemctl daemon-reload && systemctl enable --now {unit}'  (blank = emit systemd unit directly)
+
+# --- guardrails ---------------------------------------------------------------
+# allowed_commands: the binaries the adapter SHOULD emit. This is a best-effort
+# convention the adapter follows — NOT a hard sandbox (an LLM agent can be coaxed
+# off it). The real enforcement is the consuming repo's pre-commit/CI denylist of
+# raw cloud CLIs. Any concrete command the adapter returns should start with one
+# of these; empty/absent means "wrappers above only".
+allowed_commands:
+  - mycorp-az
+  - mycorp-tf
+  - mycorp-kubectl
+  - mycorp-helm
+  - docker            # local build only; registry auth/push still goes through mycorp-az
+
+# forbidden_commands: the adapter refuses to emit any command whose binary matches
+# one of these (best-effort, agent-side). For a HARD block, also add these binaries
+# to the repo's pre-commit/CI denylist — that's the deterministic enforcement.
+forbidden_commands:
+  - az               # raw Azure CLI — replaced by mycorp-az
+  - terraform        # raw terraform — replaced by mycorp-tf
+  - bicep            # raw bicep — replaced by mycorp-tf/mycorp-bicep
+  - kubectl          # raw kubectl — replaced by mycorp-kubectl
+  - helm             # raw helm — replaced by mycorp-helm

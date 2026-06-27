@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "azure": {
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"],
+      "env": {
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}"
+      },
+      "timeout": 60000
+    },
+    "langfuse": {
+      "command": "npx",
+      "args": ["-y", "langfuse-mcp"],
+      "env": {
+        "LANGFUSE_HOST": "${LANGFUSE_HOST:-https://cloud.langfuse.com}",
+        "LANGFUSE_PUBLIC_KEY": "${LANGFUSE_PUBLIC_KEY}",
+        "LANGFUSE_SECRET_KEY": "${LANGFUSE_SECRET_KEY}"
+      },
+      "timeout": 60000
+    }
+  }
+}

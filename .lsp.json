@@ -1,0 +1,15 @@
+{
+  "python": {
+    "command": "pyright-langserver",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".py": "python"
+    },
+    "diagnostics": true,
+    "env": {
+      "PYTHONPATH": "${CLAUDE_PROJECT_DIR}"
+    },
+    "startupTimeout": 5000,
+    "maxRestarts": 3
+  }
+}

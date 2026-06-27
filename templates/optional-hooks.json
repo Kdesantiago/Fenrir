@@ -1,0 +1,24 @@
+{
+  "//": "OPT-IN prompt/agent-type hooks (LLM-as-judge / guardrail). These cost an LLM call PER event, so they are NOT enabled by default. To use: merge into the plugin's hooks/hooks.json (plugin-level) or a consuming repo's .claude/settings.json. Pick the ones worth the cost on your project.",
+
+  "//prompt-judge": "prompt-type Stop hook — a cheap LLM-as-judge on the turn's outcome. $ARGUMENTS receives the hook stdin (assistant_message etc).",
+  "//agent-guardrail": "agent-type UserPromptSubmit hook — delegates to the security-guardrail agent for injection/safety judgement the regex prompt-guard.py can't do.",
+
+  "hooks": {
+    "Stop": [
+      {
+        "type": "prompt",
+        "prompt": "You are a delivery-quality judge. Given the turn: $ARGUMENTS\nIf the change touched code but skipped docs/tests, or looks risky, flag it. Reply with ONLY JSON: {\"quality\": \"good\"|\"needs-revision\", \"issues\": [\"...\"], \"reason\": \"<one sentence>\"}.",
+        "timeout": 30
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "agent",
+        "agent": "security-guardrail",
+        "tools": ["Read"],
+        "timeout": 25
+      }
+    ]
+  }
+}

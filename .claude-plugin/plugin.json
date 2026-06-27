@@ -1,0 +1,22 @@
+{
+  "name": "fenrir",
+  "version": "1.0.0",
+  "description": "Org-portable delivery standard for Claude Code: deterministic enforcement infra (hooks + CI + branch-protection), profile-driven generators, advisory gates, a reusable red-team destroyer agent, and delivery orchestration. Standardizes code delivery across all repos.",
+  "author": {
+    "name": "Kylliann De Santiago"
+  },
+  "keywords": [
+    "delivery",
+    "devex",
+    "scaffolding",
+    "ci",
+    "gates",
+    "red-team",
+    "iac",
+    "observability"
+  ],
+  "license": "MIT",
+  "experimental": {
+    "monitors": "./monitors/monitors.json"
+  }
+}

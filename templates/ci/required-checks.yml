@@ -1,0 +1,65 @@
+# Couche 0 — CI required status checks (GitHub Actions variant).
+# Job `name:` values MUST equal branch-protection.tf `required_checks` (test/sast/build).
+# `test` now runs coverage too (no separate coverage job — avoids re-running the suite).
+# MONOREPO: matrix per service under src/*. uv-aware: uses uv.lock if present, else pip.
+name: required-checks
+
+on:
+  pull_request:
+    branches: [main, dev, "release/**"]
+
+env:
+  PY: "3.12"   # services pin >=3.12,<3.13; do not bump to 3.13. Read from org-profile.yaml if you template this.
+
+jobs:
+  test:
+    name: test          # == required_checks context; runs tests + coverage gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ["src/rag_generation_api", "src/rag_ingest_api", "src/sharepoint_connector"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PY }}" }
+      - name: install (uv if uv.lock present, else pip)
+        working-directory: ${{ matrix.service }}
+        run: |
+          if [ -f uv.lock ]; then
+            pip install uv && uv sync --all-extras --dev
+          else
+            pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt
+          fi
+      - name: pytest + coverage (scoped to the service package)
+        working-directory: ${{ matrix.service }}
+        run: |
+          if [ -f uv.lock ]; then
+            uv run pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+          else
+            pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+          fi
+
+  sast:
+    name: sast          # == required_checks context; Semgrep + SBOM + dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep (ERROR only, curated local config)
+        run: pipx run semgrep scan --config .semgrep.yml --severity ERROR --error --baseline-commit "${{ github.event.pull_request.base.sha }}"
+      - name: SBOM
+        run: pipx run cyclonedx-bom -o sbom.json
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom.json }
+      - name: dependency audit (pip-audit per service; add ignores to .pip-audit.toml as needed)
+        run: |
+          for svc in src/rag_generation_api src/rag_ingest_api src/sharepoint_connector; do
+            [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
+          done
+
+  build:
+    name: build         # == required_checks context
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t app:ci .

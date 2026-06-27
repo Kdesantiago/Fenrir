@@ -1,0 +1,414 @@
+# Couche 0 — curated SAST ruleset. The MERGE-BLOCKING gate.
+# Invoked by CI exactly as (templates/ci/required-checks.yml + azure-pipelines.yml):
+#   semgrep scan --config .semgrep.yml --severity ERROR --error [--baseline-commit <base>]
+#
+# WHY A CURATED FILE INSTEAD OF `--config auto` OR raw registry packs:
+#   `--config p/python` etc. are pulled from the network at scan time, version-float on every run,
+#   and ship WARNING/INFO noise — `--config auto` is worse (blocks on the first low-confidence FP).
+#   The CI passes ONE local `--config FILE`, and Semgrep does NOT let a local YAML transitively
+#   `extends`/import registry `p/...` packs. So the BLOCKING set is pinned here: every ERROR rule is
+#   a high-signal, low-FP equivalent of a check in the registries it cites (p/python,
+#   p/security-audit, p/secrets as backstop). `--severity ERROR` keeps the gate to exactly the ERROR
+#   rules; `--baseline-commit` scopes a PR to newly introduced findings.
+#
+#   This file was tuned against the real services in this org (FastAPI / Streamlit RAG, ingest +
+#   generation + SharePoint connector). Two checks are intentionally `severity: WARNING`, NOT ERROR:
+#   they are useful signal but too low-confidence to BLOCK a merge on this stack, so `--severity
+#   ERROR` excludes them from the gate while they still surface in the advisory job below.
+#     - org-jinja2-env-no-explicit-autoescape : the bare-Environment() form false-positives on every
+#       LLM PROMPT template (FileSystemLoader over a templates/ dir of .j2 prompts, rendered into an
+#       LLM call, never into HTML). The ERROR variant (org-jinja2-autoescape-disabled) only fires when
+#       autoescape is EXPLICITLY turned off / an HTML string is rendered unescaped — the real XSS.
+#     - org-bind-all-interfaces : host="0.0.0.0" is the correct, deliberate container bind here
+#       (Dockerfiles + Helm all bind 0.0.0.0); blocking it would block every containerized service.
+#
+# BROADER, NON-BLOCKING COVERAGE (advisory) — run the full registries in a separate, soft job
+# (report-only; do NOT pass --error, do NOT gate the PR on it):
+#   semgrep scan --config p/python --config p/security-audit --config p/secrets
+# Secret scanning ALSO runs locally via gitleaks (templates/.pre-commit-config.yaml); the
+# hardcoded-secret rule here is defense-in-depth at the merge gate, not the primary scanner.
+#
+# STACK: Python 3.12 monorepo (services pin >=3.12,<3.13), services under src/* (FastAPI / Streamlit, RAG ingest+generation).
+# To extend: add a rule, keep `severity: ERROR`, prove it is low-FP on this repo before merging it.
+# Suppress a true non-issue inline with `# nosemgrep: <rule-id>` and a one-line justification.
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Custom org rules (explicitly required by the delivery standard)
+  # ---------------------------------------------------------------------------
+
+  - id: org-no-hardcoded-secret
+    languages: [python]
+    severity: ERROR
+    message: >
+      Hardcoded credential/secret assigned in source. Load secrets from the environment or the
+      configured secret store (Key Vault / env-injected config), never literal in code. Backstop to
+      gitleaks (pre-commit) — defense-in-depth at the merge gate.
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      references: ["p/secrets"]
+      confidence: HIGH
+    patterns:
+      # Bind the assigned string literal in $VALUE so the placeholder/length filter below applies to it.
+      - pattern: $VAR = "$VALUE"
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|client[_-]?secret|private[_-]?key|auth|credential|connection[_-]?string).*
+      # Exclude obvious non-secrets: empty/short values, format placeholders ({...}), env-var names,
+      # and template tokens — keeps this to literals that actually look like a baked-in credential.
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: ^(?!\s*$)(?!.*[{}<>$]).{8,}$
+      # Common false-positive variable names (column/field/header definitions, not assignments of a secret).
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ^(?!.*(_name|_field|_column|_header|_label|_type|_key_id|_id)$).*$
+
+  - id: org-requests-without-timeout
+    languages: [python]
+    severity: ERROR
+    message: >
+      Outbound HTTP call without an explicit timeout. A hung upstream (LLM API, SharePoint,
+      embedding/vector endpoint) will block the worker indefinitely and exhaust the pool. Pass
+      timeout=<seconds> (e.g. requests.get(url, timeout=10)) or set it on the httpx client.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      references: ["p/python"]
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: requests.get(...)
+          - pattern: requests.post(...)
+          - pattern: requests.put(...)
+          - pattern: requests.patch(...)
+          - pattern: requests.delete(...)
+          - pattern: requests.head(...)
+          - pattern: requests.options(...)
+          - pattern: requests.request(...)
+          - pattern: requests.Session(...).get(...)
+          - pattern: requests.Session(...).post(...)
+          - pattern: httpx.get(...)
+          - pattern: httpx.post(...)
+          - pattern: httpx.put(...)
+          - pattern: httpx.patch(...)
+          - pattern: httpx.delete(...)
+          - pattern: httpx.request(...)
+      - pattern-not: requests.$M(..., timeout=$T, ...)
+      - pattern-not: requests.Session(...).$M(..., timeout=$T, ...)
+      - pattern-not: httpx.$M(..., timeout=$T, ...)
+
+  - id: org-no-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: >
+      Use of eval()/exec()/compile() on dynamic input executes arbitrary code (RCE). Especially
+      dangerous in a RAG path where the argument may derive from retrieved/document/LLM content.
+      Use a real parser, ast.literal_eval for data literals, or an explicit dispatch table.
+    metadata:
+      category: security
+      cwe: "CWE-95: Eval Injection"
+      owasp: "A03:2021 - Injection"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile(...)
+
+  - id: org-no-disabled-tls-verify
+    languages: [python]
+    severity: ERROR
+    message: >
+      TLS certificate verification disabled (verify=False / ssl._create_unverified_context /
+      CERT_NONE / check_hostname=False). This silently accepts MITM'd connections to LLM, SharePoint,
+      and vector backends. Keep verification on; for a private CA pass verify="/path/to/ca-bundle.pem".
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    pattern-either:
+      - pattern: requests.$M(..., verify=False, ...)
+      - pattern: requests.Session(...).$M(..., verify=False, ...)
+      - pattern: httpx.$M(..., verify=False, ...)
+      - pattern: httpx.Client(..., verify=False, ...)
+      - pattern: httpx.AsyncClient(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+      - pattern: ssl._create_default_https_context = ssl._create_unverified_context
+      - pattern: $CTX.check_hostname = False
+      - pattern: $CTX.verify_mode = ssl.CERT_NONE
+
+  # ---------------------------------------------------------------------------
+  # Injection — curated from p/python + p/security-audit (RCE / SQLi / SSTI / SSRF surface)
+  # ---------------------------------------------------------------------------
+
+  - id: org-subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: >
+      subprocess/os call with shell=True (or os.system/os.popen) invokes a shell — any
+      attacker-influenced argument becomes command injection. Pass an argv list and shell=False
+      (the default), e.g. subprocess.run(["git", "clone", url]).
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    pattern-either:
+      - pattern: subprocess.run(..., shell=True, ...)
+      - pattern: subprocess.call(..., shell=True, ...)
+      - pattern: subprocess.check_call(..., shell=True, ...)
+      - pattern: subprocess.check_output(..., shell=True, ...)
+      - pattern: subprocess.Popen(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+
+  - id: org-sql-string-construction
+    languages: [python]
+    severity: ERROR
+    message: >
+      SQL query built with string formatting / concatenation / f-string. Untrusted input here is
+      SQL injection. Use parameterized queries (cursor.execute(sql, params)) or SQLAlchemy
+      text() with bound parameters — never interpolate values into the query string.
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      references: ["p/python", "p/security-audit"]
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: $CURSOR.execute("..." % ...)
+          - pattern: $CURSOR.execute("..." + $X)
+          - pattern: $CURSOR.execute("...".format(...))
+          - pattern: $CURSOR.execute(f"...{$X}...")
+          - pattern: $CURSOR.executemany("..." % ...)
+          - pattern: $CURSOR.executemany(f"...{$X}...")
+      - metavariable-regex:
+          metavariable: $CURSOR
+          regex: (?i).*(cur|cursor|conn|connection|db|session|engine).*
+
+  - id: org-jinja2-autoescape-disabled
+    languages: [python]
+    severity: ERROR
+    message: >
+      Jinja2 autoescape explicitly disabled (autoescape=False) or an HTML string rendered without
+      escaping. User/LLM/document content rendered into HTML this way is stored XSS / template
+      injection. Use autoescape=True or select_autoescape([...]). NOTE: this fires only on an
+      EXPLICIT disable — bare Environment() used for LLM prompt templates is covered (non-blocking)
+      by org-jinja2-env-no-explicit-autoescape below, which does NOT block.
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting (XSS)"
+      owasp: "A03:2021 - Injection"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    pattern-either:
+      - pattern: jinja2.Environment(..., autoescape=False, ...)
+      - pattern: Environment(..., autoescape=False, ...)
+      - pattern: jinja2.Template(..., autoescape=False, ...)
+      - pattern: Template(..., autoescape=False, ...)
+      - pattern: flask.render_template_string(...)
+      - pattern: render_template_string(...)
+
+  # ---------------------------------------------------------------------------
+  # Unsafe deserialization / data loading — high-risk in the RAG ingest path
+  # ---------------------------------------------------------------------------
+
+  - id: org-unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    message: >
+      Deserializing untrusted bytes with pickle / marshal / shelve / dill executes arbitrary code
+      on load. Document/embedding caches in the ingest path must use a data-only format (JSON, or a
+      vetted vector store), not pickle. If pickle is unavoidable, it must only load data the service
+      itself produced and signed.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: cPickle.load(...)
+      - pattern: cPickle.loads(...)
+      - pattern: _pickle.loads(...)
+      - pattern: marshal.load(...)
+      - pattern: marshal.loads(...)
+      - pattern: dill.load(...)
+      - pattern: dill.loads(...)
+      - pattern: shelve.open(...)
+
+  - id: org-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >
+      yaml.load without an explicit safe Loader can instantiate arbitrary Python objects (RCE).
+      Use yaml.safe_load(...) or yaml.load(s, Loader=yaml.SafeLoader).
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      references: ["p/python", "p/security-audit"]
+      confidence: HIGH
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader)
+      - pattern-not: yaml.load(..., Loader=$L)
+        # ^ allow any explicit Loader= ; bare yaml.load(s) is the dangerous form this flags.
+
+  - id: org-tarfile-extractall-untrusted
+    languages: [python]
+    severity: ERROR
+    message: >
+      tarfile.extractall()/extract() without a filter is vulnerable to path traversal (CVE-2007-4559)
+      — a crafted archive ingested from SharePoint/uploads can write outside the target dir. Pass
+      filter="data" (Python 3.12+) or validate every member path before extracting.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname (Path Traversal)"
+      references: ["p/python", "p/security-audit"]
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: $T.extractall(...)
+          - pattern: $T.extract(...)
+      - pattern-not: $T.extractall(..., filter=$F, ...)
+      - pattern-not: $T.extract(..., filter=$F, ...)
+
+  # ---------------------------------------------------------------------------
+  # Crypto / weak primitives
+  # ---------------------------------------------------------------------------
+
+  - id: org-weak-hash-for-security
+    languages: [python]
+    severity: ERROR
+    message: >
+      MD5/SHA1 are broken for any security purpose (passwords, signatures, tokens, integrity).
+      Use SHA-256+ (hashlib.sha256) and a real password KDF (bcrypt/argon2/scrypt) for secrets.
+      For a non-security checksum, set usedforsecurity=False to make intent explicit and silence this.
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      references: ["p/python", "p/security-audit"]
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - pattern: hashlib.new("md5", ...)
+          - pattern: hashlib.new("sha1", ...)
+      - pattern-not: hashlib.md5(..., usedforsecurity=False)
+      - pattern-not: hashlib.sha1(..., usedforsecurity=False)
+
+  # ---------------------------------------------------------------------------
+  # Web-framework misconfiguration — FastAPI / Starlette / Streamlit / Flask
+  # ---------------------------------------------------------------------------
+
+  - id: org-debug-server-in-prod
+    languages: [python]
+    severity: ERROR
+    message: >
+      Debug/reload server mode enabled. FastAPI/uvicorn reload, Flask debug=True, and the Werkzeug
+      debugger expose an interactive console (RCE) and leak stack traces. Debug must be driven by a
+      non-default env flag, never hardcoded True in committed code.
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      owasp: "A05:2021 - Security Misconfiguration"
+      references: ["p/python", "p/security-audit"]
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: flask.Flask(...).run(..., debug=True, ...)
+      - pattern: $APP.run(..., debug=True, ...)
+      - pattern: uvicorn.run(..., reload=True, ...)
+      - pattern: FastAPI(..., debug=True, ...)
+      - pattern: fastapi.FastAPI(..., debug=True, ...)
+
+  - id: org-fastapi-cors-allow-all-with-credentials
+    languages: [python]
+    severity: ERROR
+    message: >
+      CORS configured with wildcard origins AND allow_credentials=True. Browsers reject this combo,
+      but more importantly it signals an attempt to expose authenticated endpoints to any origin.
+      Pin allow_origins to an explicit allow-list when credentials are allowed.
+    metadata:
+      category: security
+      cwe: "CWE-942: Permissive Cross-domain Policy with Untrusted Domains"
+      owasp: "A05:2021 - Security Misconfiguration"
+      references: ["p/security-audit"]
+      confidence: MEDIUM
+    patterns:
+      - pattern: $APP.add_middleware(CORSMiddleware, ..., allow_origins=["*"], ..., allow_credentials=True, ...)
+
+  # ---------------------------------------------------------------------------
+  # Network / file hygiene
+  # ---------------------------------------------------------------------------
+
+  - id: org-insecure-temp-file
+    languages: [python]
+    severity: ERROR
+    message: >
+      tempfile.mktemp() is race-prone and predictable (symlink attacks). Use
+      tempfile.NamedTemporaryFile / mkstemp / TemporaryDirectory which create the file securely.
+    metadata:
+      category: security
+      cwe: "CWE-377: Insecure Temporary File"
+      references: ["p/python", "p/security-audit"]
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: tempfile.mktemp(...)
+
+  # ---------------------------------------------------------------------------
+  # ADVISORY (severity: WARNING) — surfaced but NON-BLOCKING under `--severity ERROR`.
+  # Kept here so a single `semgrep scan --config .semgrep.yml` (without the severity filter)
+  # reports them, while CI's `--severity ERROR` gate ignores them. Do not promote to ERROR
+  # without first proving zero false positives on the monorepo.
+  # ---------------------------------------------------------------------------
+
+  - id: org-jinja2-env-no-explicit-autoescape
+    languages: [python]
+    severity: WARNING
+    message: >
+      Jinja2 Environment created without an explicit autoescape= argument (defaults to OFF). If this
+      template is ever rendered into an HTML response, it is XSS. ADVISORY only: on this stack the
+      Environment is almost always an LLM PROMPT renderer (rendered into a model call, not HTML),
+      where autoescape would corrupt the prompt — so this does NOT block. If you render HTML, set
+      autoescape=select_autoescape([...]) and the explicit-disable case is caught (ERROR) by
+      org-jinja2-autoescape-disabled.
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting (XSS)"
+      references: ["p/python", "p/security-audit"]
+      confidence: LOW
+    patterns:
+      - pattern-either:
+          - pattern: jinja2.Environment(...)
+          - pattern: Environment(...)
+      - pattern-not: jinja2.Environment(..., autoescape=$X, ...)
+      - pattern-not: Environment(..., autoescape=$X, ...)
+
+  - id: org-bind-all-interfaces
+    languages: [python]
+    severity: WARNING
+    message: >
+      Server bound to 0.0.0.0 in source. ADVISORY only: in a container this is the correct, deliberate
+      bind (the orchestrator owns network exposure), which is why it does NOT block. Outside a
+      container, prefer 127.0.0.1 or an env/config-driven host so a service does not listen on every
+      interface by default.
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+      references: ["p/python", "p/security-audit"]
+      confidence: LOW
+    pattern-either:
+      - pattern: uvicorn.run(..., host="0.0.0.0", ...)
+      - pattern: $APP.run(..., host="0.0.0.0", ...)

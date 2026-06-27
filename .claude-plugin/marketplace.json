@@ -1,0 +1,16 @@
+{
+  "name": "fenrir-marketplace",
+  "owner": {
+    "name": "Kylliann De Santiago"
+  },
+  "metadata": {
+    "description": "Marketplace of record for the org delivery standard. Repos consume a PINNED version of the fenrir plugin — never copy individual files into per-repo ~/.claude (that guarantees drift)."
+  },
+  "plugins": [
+    {
+      "name": "fenrir",
+      "source": "./",
+      "description": "Org-portable delivery standard: enforcement infra (hooks + CI + branch-protection), profile-driven generators, advisory gates, red-team destroyer agent, and delivery orchestration."
+    }
+  ]
+}

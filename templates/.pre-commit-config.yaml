@@ -1,0 +1,51 @@
+# Couche 0 — local enforcement. Installed by repo-bootstrap.
+# `pre-commit install && pre-commit install --hook-type pre-push`
+# This is the LOCAL gate. The merge gate is CI required-checks + branch protection.
+minimum_pre_commit_version: "3.5.0"
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+
+  # Secret-scan lives HERE and only here (not in security-review skill).
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+
+  # Conventional commits enforcement (commit-msg stage).
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  # Tests on push (fast subset). Full suite + coverage runs in CI as required check.
+  - repo: local
+    hooks:
+      - id: pytest-fast
+        name: pytest-fast
+        entry: pytest -q -x --no-header
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

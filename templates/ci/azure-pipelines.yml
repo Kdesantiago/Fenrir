@@ -1,0 +1,65 @@
+# Couche 0 — Azure DevOps PR validation (the gate on an Azure repo).
+# Wire as a Build Validation branch policy (templates/azure-branch-policy.tf) so it is REQUIRED.
+# For Azure Repos the branch policy (build_definition_id) drives PR validation, NOT stage names.
+# `test` runs coverage too (no separate coverage stage). uv-aware. MONOREPO matrix over src/*.
+trigger:
+  branches:
+    include: [main, dev, "release/*"]
+pr:
+  branches:
+    include: [main, dev, "release/*"]
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  pyVersion: "3.12"   # services pin >=3.12,<3.13. Do not bump to 3.13.
+
+stages:
+  - stage: test
+    displayName: test
+    jobs:
+      - job: pytest_cov
+        strategy:
+          matrix:
+            rag_generation_api: { svc: "src/rag_generation_api" }
+            rag_ingest_api:     { svc: "src/rag_ingest_api" }
+            sharepoint:         { svc: "src/sharepoint_connector" }
+        steps:
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: "$(pyVersion)" }
+          - script: |
+              if [ -f uv.lock ]; then pip install uv && uv sync --all-extras --dev; else pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt; fi
+            workingDirectory: $(svc)
+            displayName: install (uv or pip)
+          - script: |
+              if [ -f uv.lock ]; then uv run pytest --cov=. --cov-report=term-missing --cov-fail-under=80; else pytest --cov=. --cov-report=term-missing --cov-fail-under=80; fi
+            workingDirectory: $(svc)
+            displayName: pytest + coverage
+
+  - stage: sast
+    displayName: sast
+    dependsOn: []
+    jobs:
+      - job: semgrep_sbom_audit
+        steps:
+          - script: pipx run semgrep scan --config .semgrep.yml --severity ERROR --error
+            displayName: Semgrep (ERROR only, curated config)
+          - script: pipx run cyclonedx-bom -o sbom.json
+            displayName: SBOM
+          - publish: sbom.json
+            artifact: sbom
+          - script: |
+              for svc in src/rag_generation_api src/rag_ingest_api src/sharepoint_connector; do
+                [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
+              done
+            displayName: dependency audit (pip-audit)
+
+  - stage: build
+    displayName: build
+    dependsOn: []
+    jobs:
+      - job: docker
+        steps:
+          - script: docker build -t app:ci .
+            displayName: docker build

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.claude/audit/
+.claude/settings.local.json
+.DS_Store
+*.backup-*
+sbom.json
+.semgrep.cache/

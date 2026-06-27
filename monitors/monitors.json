@@ -1,0 +1,14 @@
+[
+  {
+    "name": "aks-deploy-watch",
+    "command": "bash \"${CLAUDE_PLUGIN_ROOT}/monitors/aks-deploy-watch.sh\"",
+    "description": "Streams AKS rollout status + new error-log lines during a deploy",
+    "when": "on-skill-invoke:progressive-delivery"
+  },
+  {
+    "name": "incident-error-tail",
+    "command": "bash \"${CLAUDE_PLUGIN_ROOT}/monitors/aks-deploy-watch.sh\"",
+    "description": "Tails error logs while working an incident",
+    "when": "on-skill-invoke:incident-runbook"
+  }
+]
