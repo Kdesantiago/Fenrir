@@ -102,3 +102,21 @@ jobs:
         run: uv run mypy hooks scripts
       - name: pytest (hook + helper behavior)
         run: uv run pytest
+
+  dashboard:
+    name: dashboard (lint + type + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: install dashboard deps
+        run: uv sync --extra dev
+      - name: ruff
+        run: uv run ruff check backend
+      - name: mypy
+        run: uv run mypy backend
+      - name: pytest (board + telemetry + pricing + api)
+        run: uv run pytest

@@ -3,7 +3,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.venv/
 **/.claude/audit/
+**/.claude/launch.json
 .claude/settings.local.json
 .DS_Store
 *.backup-*

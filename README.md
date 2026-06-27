@@ -80,11 +80,16 @@ Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub),
 
 ---
 
+## Companion: monitoring dashboard
+
+A local web app under **[dashboard/](dashboard/README.md)** — real token/cost/agent telemetry parsed from `~/.claude` + an **agent-driven Agile board** (Epic → Feature → User Story → Task) with a kanban, charts, and a CLI the agents use to manage the board. Companion app, not a plugin component. `cd dashboard && uv sync --extra dev && uv run uvicorn backend.app:app`.
+
 ## Docs
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — solo, end-to-end (10 min).
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed, per release.
 - **[DELIVERY-SKILLSET.md](DELIVERY-SKILLSET.md)** — design rationale & architecture.
+- **[dashboard/README.md](dashboard/README.md)** — the monitoring dashboard (telemetry + Agile board).
 - Maintainers publishing/updating the plugin itself: **[PUBLISHING.md](PUBLISHING.md)**.
 
 ## License
