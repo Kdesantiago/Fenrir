@@ -4,10 +4,16 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-06-27
+
+### Changed
+- **README rewritten for end users** (what Fenrir is, why, install, quick start) — maintainer/internal detail moved to `GETTING-STARTED.md` / `PUBLISHING.md`.
+- Removed the last org-specific example references (SharePoint mentions in `.semgrep.yml` rule comments) — generic wording only; no rule behavior change.
+
 ## [1.0.1] — 2026-06-27
 
 ### Changed
-- Removed org-specific (Suez) references from the shipped templates and skills. Example service names are now generic (`src/service_a`/`service_b`/`service_c`) and the default `environments` is `[dev, staging, prod]`. Examples only — no behavioral change.
+- Removed org-specific references from the shipped templates and skills. Example service names are now generic (`src/service_a`/`service_b`/`service_c`) and the default `environments` is `[dev, staging, prod]`. Examples only — no behavioral change.
 
 ## [1.0.0] — 2026-06-27
 

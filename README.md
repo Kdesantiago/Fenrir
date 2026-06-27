@@ -1,144 +1,91 @@
 # 🐺 Fenrir
 
-> The wolf that guards your delivery — an org-portable Claude Code plugin (plugin id: `fenrir`) that **standardizes code delivery across all repos**: a coordinated pack of 26 skills, 8 subagents, and 9 hooks behind one deterministic gate.
+> **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-**New here? → [GETTING-STARTED.md](GETTING-STARTED.md) (solo, 10 min, end to end).**
+Fenrir gives Claude Code a coordinated **pack** of 26 skills, 8 subagents, 3 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
-Design rationale + red-team teardown: [DELIVERY-SKILLSET.md](DELIVERY-SKILLSET.md). Changes: [CHANGELOG.md](CHANGELOG.md).
+---
 
-## The one idea that makes it work
+## Why
 
-**A skill cannot enforce anything** — it is advisory text the model may skip. So the real gate is **deterministic infra** (git hooks + CI required-checks + branch-protection-as-code). Skills give fast feedback; infra blocks. Everything below respects that split.
+Most teams re-invent delivery in every repo: different CI, different review bar, secrets leaking into commits, docs going stale, no real gate before merge. Fenrir makes one **golden path** portable across all your repos, and — crucially — backs it with **real enforcement**, not just good intentions.
 
-## Layout
+> **The one idea:** *skills advise, infra enforces.* A skill is text the AI can skip. So the actual gate is deterministic infrastructure — git hooks + CI required-checks + branch-protection — which Fenrir installs for you. Advice gives fast feedback; infra blocks bad merges.
 
-```
-.claude-plugin/plugin.json   # manifest
-skills/                      # capabilities (advisory feedback + profile-driven generators)
-  repo-bootstrap/            # installs couche-0 infra (the real gate)
-  delivery-gates/            # advisory local runner of existing checks
-  security-review/           # wraps native /security-review (SAST/SBOM/threat)
-  doc-generator/             # aggregates existing docs (no ADR — that's architect)
-  iac-gen/ auth-gen/ observability-gen/ frontend-gen/ llm-gen/   # profile-driven generators (iac-gen: aks/webapp/k8s/…)
-  api-first/                # OpenAPI contract-first: REST conventions + codegen + contract tests
-  cronjob/                  # platform-correct scheduled jobs with reliability defaults
-  memory-keeper/            # in-repo delivery-memory (decisions, gate-exceptions, drift, lessons)
-  release/                  # semver bump + tag + CHANGELOG→release notes (GH/Azure)
-  db-migration/             # safe Alembic migrations (reversible, lock-free, tested up→down)
-  secrets/                  # manage secrets via Key Vault/SOPS (≠ scanning)
-  deps/                     # supply-chain: license policy + pinning + provenance + Renovate
-  quality-master/           # strict mypy + broad ruff + Hypothesis pytest (ratchets up)
-  langgraph-workflow/ retriever/ llm-cost-monitor/   # LLM-app-dev pack (product-building)
-  progressive-delivery/ gitops/ feature-flags/        # AKS delivery loop (Argo Rollouts/Flux/App Config)
-  incident-runbook/ error-budget/                     # ops: incident plan + SRE error-budget freeze
-  online-llm-eval/                                     # prod-traffic LLM-as-judge (Langfuse)
-agents/                     # personas (isolated context)
-  architect/ qa-tester/ reviewer/ red-team-destroyer/ stack-adapter/ doc-keeper/ context-engineering/
-  security-guardrail/        # LLM guardrail for the opt-in agent-type hook
-commands/                   # orchestration
-  challenge-me/             # idea → challenged+scoped spec → drives the build skills
-  deliver/ ship/            # ship/ runs the automated pre-PR LLM review
-hooks/                      # in-session enforcement + security (couche 0, agent-side; pure Python stdlib)
-  delivery-guard.py         # PreToolUse: deny --no-verify/secret-exfil/zero-access, ask on gate-file/branch-protected commits
-  prompt-guard.py           # UserPromptSubmit: prompt-injection scan
-  content-scanner.py        # PostToolUse(web): injection-in-fetched-content warning
-  config-audit.py           # PostToolUse: audit trail of .claude/settings.json changes
-  session-context.py        # SessionStart: inject active delivery contract + open gate-exceptions
-  doc-staleness.py          # Stop: nudge to sync CHANGELOG when code changed but docs didn't
-  tool-failure-triage.py    # PostToolUseFailure: failure trail + triage hint
-  session-end.py            # SessionEnd: finalize delivery-memory (counts open/expired waivers)
-  iac-watch.py              # FileChanged(*.tf): reactive terraform-fmt / YAML check
-.mcp.json                   # bundled MCP servers (Azure, Langfuse) — live deploy/trace/eval data
-.lsp.json                   # bundled LSP (pyright) — Python code intelligence
-monitors/                   # background Monitors (AKS rollout watch, error-log tail; start on skill-invoke)
-templates/                  # couche-0 infra the generators/bootstrap emit
-  org-profile.yaml  stack-interface.yaml  .pre-commit-config.yaml  .semgrep.yml
-  branch-protection.tf  azure-branch-policy.tf
-  ci/required-checks.yml  ci/azure-pipelines.yml  ci/api-contract.yml
-  api/.spectral.yaml        # api-first REST-convention lint ruleset
-  .claude/settings.json     # wires all 8 hook events into consuming repos
-  optional-hooks.json       # opt-in prompt/agent-type LLM-as-judge + guardrail (cost per event)
-  team-settings.json        # org distribution: extraKnownMarketplaces + enabledPlugins (auto-install)
-scripts/bootstrap-smoke-test.sh   # proves the gate is wired
-```
-
-## Three sub-products (different owners, different cadence)
-
-| Module | What | Primitive |
-|---|---|---|
-| **A. INFRA (couche 0)** | repo-template + hooks + CI + branch-protection. The real gate. | deterministic files |
-| **B. Generators** | profile-driven scaffolds, refuse on stack mismatch | skills reading `org-profile.yaml` |
-| **C. Orchestration** | subagents + `/deliver` + `/ship` | subagents + commands |
+---
 
 ## Install
 
-> Replace `OWNER` with your GitHub account/org and `fenrir` with the
-> repo name if you rename it. The marketplace name (`fenrir-marketplace`)
-> comes from `.claude-plugin/marketplace.json` and is what you install against.
+In any Claude Code session (CLI or app):
 
-```bash
-# 1. Add this repo as a marketplace, PINNED to a released tag (not a moving branch).
-/plugin marketplace add OWNER/fenrir@v1.0.0
-#    …or full git URL (GitLab/Bitbucket/self-hosted) — pin with #ref:
-#    /plugin marketplace add https://github.com/OWNER/fenrir.git#v1.0.0
-
-# 2. Install the plugin from that marketplace.
+```text
+/plugin marketplace add Kdesantiago/fenrir@v1.0.2
 /plugin install fenrir@fenrir-marketplace
-
-# 3. (later) Move to a new release: re-point the marketplace at the new tag, then update.
-#    /plugin marketplace add OWNER/fenrir@v0.2.0
-#    /plugin marketplace update fenrir-marketplace
-#    /plugin update fenrir@fenrir-marketplace
 ```
 
-Local dev (test uncommitted changes without publishing):
+> Pin to the latest release tag (check the repo's **Releases**). Private repo → you need access to it for the install to resolve.
 
-```bash
-claude --plugin-dir /absolute/path/to/fenrir   # then /reload-plugins after edits
-```
+**Team-wide auto-install:** commit a `.claude/settings.json` (see `templates/team-settings.json`) so teammates are auto-prompted to install when they open the repo — no manual step.
 
-Never copy individual files into per-repo `~/.claude` — that guarantees drift. Consume the **pinned plugin version**.
+---
 
-### Publishing this repo as the marketplace remote (one-time)
+## Quick start
 
-```bash
-git init && git add -A && git commit -m "fenrir plugin + marketplace v1.0.0"
-git branch -M main
-git remote add origin git@github.com:OWNER/fenrir.git
-git push -u origin main
-git tag -a v1.0.0 -m "fenrir v1.0.0"   # tag MUST match plugin.json "version"
-git push origin v1.0.0
-claude plugin validate .                           # checks marketplace.json + version match
-```
+1. **Open a repo** you want to standardize and ask Claude Code:
+   > "bootstrap this repo to the Fenrir standard"
 
-The git tag pins the *catalog*; `plugin.json`'s `version` pins the *plugin*. Bump `version` on every release, then tag `vX.Y.Z` to match — pushing commits without bumping does nothing for installed users.
+   This installs the gate (couche 0): pre-commit hooks, in-session safety hooks, the CI required-checks workflow, branch-protection-as-code, and an `org-profile.yaml`.
 
-### Org-wide auto-install (no manual `/plugin install` per dev)
+2. **Arm the gate** (the part that actually blocks bad merges):
+   ```bash
+   terraform apply                      # branch-protection
+   bash scripts/bootstrap-smoke-test.sh # prove the gate is wired
+   ```
 
-Commit `templates/team-settings.json` as a repo's `.claude/settings.json` (merge into an existing one). When a teammate trusts the project folder, Claude Code reads `extraKnownMarketplaces` + `enabledPlugins` and **auto-prompts them to install the pinned plugin** — the standardized cross-repo consumption model. Edit `OWNER/fenrir` to your marketplace repo.
+3. **Declare your stack** in `org-profile.yaml` (platform, framework, auth, observability, LLM provider…). Generators read it and refuse to emit wrong-stack code.
 
-## Stack note (read before bootstrapping)
+4. **Work, the standardized way:**
+   - `/challenge-me <idea>` — turns a fuzzy idea into a scoped, red-teamed spec, then drives the build.
+   - `/deliver <task>` — orchestrates architect → coder → tests → review → gates → PR.
+   - `/ship` — runs the automated pre-PR review and opens the PR.
+   - Or ask for any single capability by intent ("design the API for X", "add a safe migration", "set up canary on AKS", "cut a release"…).
 
-Couche-0 ships **both** GitHub (`templates/ci/required-checks.yml`, `templates/branch-protection.tf`) and **Azure DevOps** (`templates/ci/azure-pipelines.yml`, `templates/azure-branch-policy.tf`) variants. `repo-bootstrap` picks by your CI provider — install the one your repo actually uses, never the other. After bootstrap, run `scripts/bootstrap-smoke-test.sh` to prove the gate is wired (hooks installed, CI job names == required checks, terraform valid).
+New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end-to-end walkthrough.
 
-All agents use `model: inherit` for portability across plans; pin a model only if you have a hard requirement.
+---
 
-## Per-repo setup
+## What's inside
 
-1. Run `repo-bootstrap` → writes `org-profile.yaml`, installs hooks, CI workflow, branch-protection.
-2. `terraform apply` the branch-protection (this arms the real gate).
-3. Edit `org-profile.yaml` to declare your stack — generators refuse without it.
+| Layer | Examples |
+|---|---|
+| **Scaffold & gate** | `repo-bootstrap`, `delivery-gates`, `security-review`, `quality-master`, `deps`, `secrets` |
+| **Build (stack-aware)** | `api-first`, `iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `cronjob`, `db-migration` |
+| **Ship to production** | `progressive-delivery` (canary/blue-green on AKS), `gitops` (Flux/Argo CD), `feature-flags`, `release` |
+| **Operate** | `incident-runbook`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
+| **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow`, `context-engineering` |
+| **Agents** | `architect`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter` |
+| **Commands** | `/challenge-me`, `/deliver`, `/ship` |
+| **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 
-## Recommended rollout order
+Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.
 
-1. Couche 0 INFRA + `repo-bootstrap` (the mandate)
-2. `org-profile.yaml` + one pilot generator on your current stack
-3. `delivery-gates` + `security-review`
-4. `architect` + `qa-tester` subagents
-5. `/deliver` + `/ship`
-6. release / supply-chain / secrets primitives
+---
 
-## Reusable across projects
+## Requirements
 
-- `agents/red-team-destroyer` — drop into any repo to get a ruthless adversarial review of a design, PR, or codebase.
-- All generators are profile-driven, so the same plugin serves every future project once its `org-profile.yaml` is set.
+- **Claude Code** (CLI or app) — to install and use the plugin.
+- Per consuming repo, when you run the gate: `git`, `python3`, `pre-commit`, and (to arm branch-protection) `terraform`, plus `gh` or `az`.
+- Optional bundled extras activate when present: Azure/Langfuse **MCP** servers (need their env vars), a Python **LSP** (`pip install pyright`), and AKS deploy-watch **monitors**.
+
+---
+
+## Docs
+
+- **[GETTING-STARTED.md](GETTING-STARTED.md)** — solo, end-to-end (10 min).
+- **[CHANGELOG.md](CHANGELOG.md)** — what changed, per release.
+- **[DELIVERY-SKILLSET.md](DELIVERY-SKILLSET.md)** — design rationale & architecture.
+- Maintainers publishing/updating the plugin itself: **[PUBLISHING.md](PUBLISHING.md)**.
+
+## License
+
+MIT.

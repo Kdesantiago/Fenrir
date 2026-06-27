@@ -11,8 +11,8 @@
 #   p/security-audit, p/secrets as backstop). `--severity ERROR` keeps the gate to exactly the ERROR
 #   rules; `--baseline-commit` scopes a PR to newly introduced findings.
 #
-#   This file was tuned against the real services in this org (FastAPI / Streamlit RAG, ingest +
-#   generation + SharePoint connector). Two checks are intentionally `severity: WARNING`, NOT ERROR:
+#   This file was tuned against real-world Python services (FastAPI / Streamlit RAG, ingest +
+#   generation + connector services). Two checks are intentionally `severity: WARNING`, NOT ERROR:
 #   they are useful signal but too low-confidence to BLOCK a merge on this stack, so `--severity
 #   ERROR` excludes them from the gate while they still surface in the advisory job below.
 #     - org-jinja2-env-no-explicit-autoescape : the bare-Environment() form false-positives on every
@@ -70,7 +70,7 @@ rules:
     languages: [python]
     severity: ERROR
     message: >
-      Outbound HTTP call without an explicit timeout. A hung upstream (LLM API, SharePoint,
+      Outbound HTTP call without an explicit timeout. A hung upstream (LLM API, an external service,
       embedding/vector endpoint) will block the worker indefinitely and exhaust the pool. Pass
       timeout=<seconds> (e.g. requests.get(url, timeout=10)) or set it on the httpx client.
     metadata:
@@ -123,7 +123,7 @@ rules:
     severity: ERROR
     message: >
       TLS certificate verification disabled (verify=False / ssl._create_unverified_context /
-      CERT_NONE / check_hostname=False). This silently accepts MITM'd connections to LLM, SharePoint,
+      CERT_NONE / check_hostname=False). This silently accepts MITM'd connections to LLM, storage,
       and vector backends. Keep verification on; for a private CA pass verify="/path/to/ca-bundle.pem".
     metadata:
       category: security
@@ -269,7 +269,7 @@ rules:
     severity: ERROR
     message: >
       tarfile.extractall()/extract() without a filter is vulnerable to path traversal (CVE-2007-4559)
-      — a crafted archive ingested from SharePoint/uploads can write outside the target dir. Pass
+      — a crafted archive ingested from an untrusted upload can write outside the target dir. Pass
       filter="data" (Python 3.12+) or validate every member path before extracting.
     metadata:
       category: security
