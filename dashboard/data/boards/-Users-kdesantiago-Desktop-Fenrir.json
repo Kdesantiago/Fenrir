@@ -251,17 +251,7 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": [
-        {
-          "agent": "telemetry",
-          "session_id": "",
-          "input_tokens": 3005280,
-          "output_tokens": 936440,
-          "cost_usd": 450.0277,
-          "note": "all Fenrir telemetry",
-          "at": "2026-06-27T21:01:23.736208+00:00"
-        }
-      ]
+      "work_log": []
     },
     {
       "id": "us-14",
@@ -274,7 +264,20 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [
+        {
+          "agent": "general-purpose",
+          "subagent_type": "general-purpose",
+          "session_id": "5997e59a-7148-4bb9-b0a0-edc15190efcc",
+          "run_id": "agent-ae336adba8b687f1d",
+          "input_tokens": 61566,
+          "output_tokens": 12495,
+          "cost_usd": 13.0419,
+          "source": "telemetry-run",
+          "note": "project selector",
+          "at": "2026-06-27T21:59:13.483459+00:00"
+        }
+      ]
     },
     {
       "id": "us-15",
@@ -289,13 +292,16 @@
       "acceptance_criteria": [],
       "work_log": [
         {
-          "agent": "telemetry",
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
           "session_id": "5997e59a-7148-4bb9-b0a0-edc15190efcc",
-          "input_tokens": 3005280,
-          "output_tokens": 936440,
-          "cost_usd": 450.0277,
-          "note": "this session's spend",
-          "at": "2026-06-27T21:01:23.512939+00:00"
+          "run_id": "agent-ae6c0b3288c0bfcf1",
+          "input_tokens": 7684,
+          "output_tokens": 11847,
+          "cost_usd": 5.3526,
+          "source": "telemetry-run",
+          "note": "cost-accounting red-team",
+          "at": "2026-06-27T21:59:13.819322+00:00"
         }
       ]
     },
@@ -336,7 +342,20 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [
+        {
+          "agent": "general-purpose",
+          "subagent_type": "general-purpose",
+          "session_id": "5997e59a-7148-4bb9-b0a0-edc15190efcc",
+          "run_id": "agent-aa36ead35bf4f1fd9",
+          "input_tokens": 67238,
+          "output_tokens": 28407,
+          "cost_usd": 23.5201,
+          "source": "telemetry-run",
+          "note": "SPA subagents/cost/trace views",
+          "at": "2026-06-27T21:59:13.144433+00:00"
+        }
+      ]
     },
     {
       "id": "us-19",
