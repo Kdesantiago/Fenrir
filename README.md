@@ -19,7 +19,7 @@ Most teams re-invent delivery in every repo: different CI, different review bar,
 In any Claude Code session (CLI or app):
 
 ```text
-/plugin marketplace add Kdesantiago/Fenrir@v1.1.1
+/plugin marketplace add Kdesantiago/Fenrir@v1.2.0
 /plugin install fenrir@fenrir-marketplace
 ```
 
