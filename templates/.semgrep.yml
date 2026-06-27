@@ -11,8 +11,9 @@
 #   p/security-audit, p/secrets as backstop). `--severity ERROR` keeps the gate to exactly the ERROR
 #   rules; `--baseline-commit` scopes a PR to newly introduced findings.
 #
-#   This file was tuned against real-world Python services (FastAPI / Streamlit RAG, ingest +
-#   generation + connector services). Two checks are intentionally `severity: WARNING`, NOT ERROR:
+#   Tuned for Python web/service repos (FastAPI / Streamlit / CLI). Two checks are intentionally
+#   `severity: WARNING`, NOT ERROR — but those relaxations are STACK-CONDITIONAL (see below); if your
+#   repo renders Jinja2 into HTML or isn't containerized, promote them back to ERROR:
 #   they are useful signal but too low-confidence to BLOCK a merge on this stack, so `--severity
 #   ERROR` excludes them from the gate while they still surface in the advisory job below.
 #     - org-jinja2-env-no-explicit-autoescape : the bare-Environment() form false-positives on every
@@ -28,7 +29,7 @@
 # Secret scanning ALSO runs locally via gitleaks (templates/.pre-commit-config.yaml); the
 # hardcoded-secret rule here is defense-in-depth at the merge gate, not the primary scanner.
 #
-# STACK: Python 3.12 monorepo (services pin >=3.12,<3.13), services under src/* (FastAPI / Streamlit, RAG ingest+generation).
+# STACK: Python 3.12, services under src/* (uv workspace or single package).
 # To extend: add a rule, keep `severity: ERROR`, prove it is low-FP on this repo before merging it.
 # Suppress a true non-issue inline with `# nosemgrep: <rule-id>` and a one-line justification.
 

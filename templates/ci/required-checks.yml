@@ -1,7 +1,8 @@
-# Couche 0 — CI required status checks (GitHub Actions variant).
-# Job `name:` values MUST equal branch-protection.tf `required_checks` (test/sast/build).
-# `test` now runs coverage too (no separate coverage job — avoids re-running the suite).
-# MONOREPO: matrix per service under src/*. uv-aware: uses uv.lock if present, else pip.
+# Couche 0 — CI required status checks (GitHub Actions).
+# Job `name:` values MUST equal branch-protection.tf required_checks (test/sast/build).
+# WORKSPACE-CORRECT: a uv workspace has ONE root uv.lock, so install + test run ONCE at the
+# repo root (uv sync --all-packages installs every member editable). No per-service matrix.
+# Works for a uv workspace, a single-package uv repo, or a pip repo (fallback).
 name: required-checks
 
 on:
@@ -9,57 +10,64 @@ on:
     branches: [main, dev, "release/**"]
 
 env:
-  PY: "3.12"   # services pin >=3.12,<3.13; do not bump to 3.13. Read from org-profile.yaml if you template this.
+  PY: "3.12"   # the Fenrir baseline; align with your services' requires-python.
 
 jobs:
   test:
-    name: test          # == required_checks context; runs tests + coverage gate
+    name: test          # == required_checks context; tests + coverage gate
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ["src/service_a", "src/service_b", "src/service_c"]
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-python@v5
         with: { python-version: "${{ env.PY }}" }
-      - name: install (uv if uv.lock present, else pip)
-        working-directory: ${{ matrix.service }}
+      - name: install (uv workspace at root, else pip)
         run: |
           if [ -f uv.lock ]; then
-            pip install uv && uv sync --all-extras --dev
+            pip install uv && uv sync --all-packages --dev
           else
             pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt
           fi
-      - name: pytest + coverage (scoped to the service package)
-        working-directory: ${{ matrix.service }}
+      - name: pytest + coverage (whole workspace, scoped to src/)
         run: |
           if [ -f uv.lock ]; then
-            uv run pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+            uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
           else
-            pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+            pytest --cov=src --cov-report=term-missing --cov-fail-under=80
           fi
+      - name: type + lint (advisory in CI; the gate is the test/coverage above)
+        run: |
+          if [ -f uv.lock ]; then uv run ruff check src && uv run mypy src || true; fi
 
   sast:
     name: sast          # == required_checks context; Semgrep + SBOM + dependency audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # so --baseline-commit can resolve the PR base
       - name: Semgrep (ERROR only, curated local config)
         run: pipx run semgrep scan --config .semgrep.yml --severity ERROR --error --baseline-commit "${{ github.event.pull_request.base.sha }}"
       - name: SBOM
         run: pipx run cyclonedx-bom -o sbom.json
       - uses: actions/upload-artifact@v4
         with: { name: sbom, path: sbom.json }
-      - name: dependency audit (pip-audit per service; add ignores to .pip-audit.toml as needed)
+      - name: dependency audit (root uv.lock)
         run: |
-          for svc in src/service_a src/service_b src/service_c; do
-            [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
-          done
+          if [ -f uv.lock ]; then
+            pip install uv && uv export --format requirements-txt --no-emit-workspace --no-dev | pipx run pip-audit -r /dev/stdin
+          else
+            echo "no uv.lock — skipping uv dependency audit"
+          fi
 
   build:
     name: build         # == required_checks context
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t app:ci .
+      - name: docker build (only when containerized)
+        run: |
+          if [ -f Dockerfile ]; then
+            docker build -t app:ci .
+          else
+            echo "no Dockerfile — non-container repo; build check passes."
+          fi

@@ -1,7 +1,6 @@
-# Couche 0 — Azure DevOps PR validation (the gate on an Azure repo).
-# Wire as a Build Validation branch policy (templates/azure-branch-policy.tf) so it is REQUIRED.
-# For Azure Repos the branch policy (build_definition_id) drives PR validation, NOT stage names.
-# `test` runs coverage too (no separate coverage stage). uv-aware. MONOREPO matrix over src/*.
+# Couche 0 — Azure DevOps PR validation. Wire as a Build Validation branch policy
+# (templates/azure-branch-policy.tf) so it is REQUIRED. WORKSPACE-CORRECT: one root uv.lock,
+# so install + test run ONCE at the repo root (no per-service matrix).
 trigger:
   branches:
     include: [main, dev, "release/*"]
@@ -13,35 +12,31 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  pyVersion: "3.12"   # services pin >=3.12,<3.13. Do not bump to 3.13.
+  pyVersion: "3.12"
 
 stages:
   - stage: test
     displayName: test
     jobs:
-      - job: pytest_cov
-        strategy:
-          matrix:
-            service_a: { svc: "src/service_a" }
-            service_b:     { svc: "src/service_b" }
-            service_c:         { svc: "src/service_c" }
+      - job: test
         steps:
           - task: UsePythonVersion@0
             inputs: { versionSpec: "$(pyVersion)" }
           - script: |
-              if [ -f uv.lock ]; then pip install uv && uv sync --all-extras --dev; else pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt; fi
-            workingDirectory: $(svc)
-            displayName: install (uv or pip)
+              if [ -f uv.lock ]; then pip install uv && uv sync --all-packages --dev; else pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt; fi
+            displayName: install (uv workspace at root, else pip)
           - script: |
-              if [ -f uv.lock ]; then uv run pytest --cov=. --cov-report=term-missing --cov-fail-under=80; else pytest --cov=. --cov-report=term-missing --cov-fail-under=80; fi
-            workingDirectory: $(svc)
+              if [ -f uv.lock ]; then uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80; else pytest --cov=src --cov-report=term-missing --cov-fail-under=80; fi
             displayName: pytest + coverage
+          - script: |
+              if [ -f uv.lock ]; then uv run ruff check src && uv run mypy src || true; fi
+            displayName: type + lint (advisory)
 
   - stage: sast
     displayName: sast
     dependsOn: []
     jobs:
-      - job: semgrep_sbom_audit
+      - job: sast
         steps:
           - script: pipx run semgrep scan --config .semgrep.yml --severity ERROR --error
             displayName: Semgrep (ERROR only, curated config)
@@ -50,16 +45,15 @@ stages:
           - publish: sbom.json
             artifact: sbom
           - script: |
-              for svc in src/service_a src/service_b src/service_c; do
-                [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
-              done
-            displayName: dependency audit (pip-audit)
+              if [ -f uv.lock ]; then pip install uv && uv export --format requirements-txt --no-emit-workspace --no-dev | pipx run pip-audit -r /dev/stdin; else echo "no uv.lock — skipping"; fi
+            displayName: dependency audit (root uv.lock)
 
   - stage: build
     displayName: build
     dependsOn: []
     jobs:
-      - job: docker
+      - job: build
         steps:
-          - script: docker build -t app:ci .
-            displayName: docker build
+          - script: |
+              if [ -f Dockerfile ]; then docker build -t app:ci .; else echo "no Dockerfile — non-container repo; build passes."; fi
+            displayName: docker build (only when containerized)

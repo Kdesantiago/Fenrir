@@ -1,6 +1,6 @@
 ---
 name: repo-bootstrap
-description: Use when initializing a NEW repository to the org delivery standard — installs the enforcement infra (couche 0) that actually gates delivery. Generates pre-commit/pre-push hooks, CI required-checks workflow, branch-protection-as-code, org-profile.yaml, .gitignore, renovate, CODEOWNERS, conventional-commits config. Idempotent: skips files that already exist. NOT for running checks on an existing diff (use delivery-gates), NOT for app feature code.
+description: Use when adding the org delivery standard (couche-0 gate) to an EXISTING repository — installs the enforcement infra that actually gates delivery. Generates pre-commit/pre-push hooks, CI required-checks workflow, branch-protection-as-code, org-profile.yaml, .gitignore, renovate, CODEOWNERS, conventional-commits config. Idempotent: skips files that already exist. For a brand-NEW repo from scratch, prefer the `/fenrir:init` command (it scaffolds the uv-workspace structure THEN runs this). NOT for running checks on an existing diff (use delivery-gates), NOT for app feature code.
 ---
 
 # Repo Bootstrap — Couche 0 (the real gate)
@@ -8,10 +8,11 @@ description: Use when initializing a NEW repository to the org delivery standard
 This skill installs the **deterministic enforcement infrastructure**. A skill cannot block anything; these generated artifacts can, because git hooks, CI required-checks, and branch protection run outside the model's discretion.
 
 ## When to use
-- A brand-new repo, or an existing repo missing the org standard.
-- The user says: "bootstrap this repo", "set up the delivery standard", "init repo to org standard".
+- An **existing** repo missing the org standard ("bootstrap this repo", "add the gate", "set up the delivery standard").
+- Invoked **by `/fenrir:init`** as the gate step after it scaffolds a new uv-workspace.
 
 ## When NOT to use
+- A brand-new repo from scratch → use the `/fenrir:init` command (it builds the structure first, then calls this). Don't scaffold structure here.
 - Running lint/test on a diff → `delivery-gates`.
 - The repo already has all couche-0 files → report and stop (idempotent).
 
@@ -28,7 +29,7 @@ This skill installs the **deterministic enforcement infrastructure**. A skill ca
    - **Copy `templates/.semgrep.yml` → repo root.** The `sast` check hard-runs `semgrep --config .semgrep.yml`; without this file SAST is red forever.
    - Set PR triggers to the repo's real branches (e.g. `dev`, `main`, `release/*`), not main-only.
 5. **Branch-protection-as-code** — GitHub → `templates/branch-protection.tf`; Azure DevOps → `templates/azure-branch-policy.tf`. Fill repo/branch; `terraform apply` (this is the only thing that truly blocks a non-conforming merge). The required-check names MUST equal the CI job/stage names — verify the coupling.
-6. **Repo hygiene** — `.gitignore`, `renovate.json`, `CODEOWNERS`, conventional-commits (commitlint or pre-commit hook), `README.md` skeleton.
+6. **Repo hygiene** — `.gitignore` (skip if present, e.g. when `/fenrir:init` already wrote one), `renovate.json`, `CODEOWNERS`, conventional-commits, `README.md` skeleton (skip if present). Also copy `scripts/bootstrap-smoke-test.sh` into the repo so the gate can be verified locally.
 7. **Version assertion** — stamp the consumed plugin/template version in `org-profile.yaml` (`template_version:`) so `delivery-gates` can fail loud on mismatch.
 
 ## Idempotency

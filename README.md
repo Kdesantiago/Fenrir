@@ -31,10 +31,11 @@ In any Claude Code session (CLI or app):
 
 ## Quick start
 
-1. **Open a repo** you want to standardize and ask Claude Code:
-   > "bootstrap this repo to the Fenrir standard"
+1. **Start a repo:**
+   - **Brand-new project** → `/fenrir:init <project-name> [services…]` — scaffolds a clean **uv-workspace monorepo** (one `uv.lock` at the root, services as members under `src/`) and then installs the gate.
+   - **Existing repo** → ask "bootstrap this repo to the Fenrir standard".
 
-   This installs the gate (couche 0): pre-commit hooks, in-session safety hooks, the CI required-checks workflow, branch-protection-as-code, and an `org-profile.yaml`.
+   The gate (couche 0) = pre-commit hooks, in-session safety hooks, the CI required-checks workflow, branch-protection-as-code, and an `org-profile.yaml`.
 
 2. **Arm the gate** (the part that actually blocks bad merges):
    ```bash
@@ -64,7 +65,7 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Operate** | `incident-runbook`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
 | **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow`, `context-engineering` |
 | **Agents** | `architect`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter` |
-| **Commands** | `/challenge-me`, `/deliver`, `/ship` |
+| **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/challenge-me`, `/deliver`, `/ship` |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.

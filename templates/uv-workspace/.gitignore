@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# uv / venv  (NB: commit uv.lock — it is the lockfile, not ignored)
+.venv/
+
+# tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# artifacts
+sbom.json
+.DS_Store

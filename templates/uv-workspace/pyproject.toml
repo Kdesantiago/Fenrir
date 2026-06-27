@@ -1,0 +1,40 @@
+# uv-workspace ROOT — the monorepo coordinator (virtual: not an installable package).
+# ONE lockfile at the root (uv.lock) covers every member under src/*. Shared dev tooling here.
+# /fenrir:init renames "workspace-root" and adds/renames the members.
+[project]
+name = "workspace-root"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+
+[tool.uv]
+package = false   # the root is a virtual workspace coordinator, not shipped
+
+[tool.uv.workspace]
+members = ["src/*"]   # each src/<service> is a workspace member with its own pyproject
+
+[dependency-groups]
+dev = [
+  "ruff>=0.15",
+  "mypy>=1.14",
+  "pytest>=8",
+  "pytest-cov>=5",
+  "hypothesis>=6",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["src"]
+
+[tool.coverage.run]
+source = ["src"]

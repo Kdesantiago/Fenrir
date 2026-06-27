@@ -4,6 +4,17 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-27
+
+### Added
+- **`/fenrir:init <project> [services…]` command** — the front door for a brand-NEW repo: scaffolds a clean **uv-workspace monorepo** (one root `uv.lock`, services as members under `src/`), substitutes the project name, writes a partial `org-profile.yaml`, then runs `repo-bootstrap` for the gate. `repo-bootstrap` is now scoped to adding the gate to an *existing* repo.
+- **`templates/uv-workspace/`** — a uv-workspace template (virtual root with `[tool.uv] package = false`, `[dependency-groups] dev`, strict ruff/mypy/pytest, `.gitignore`, an example member with a smoke test). Empirically validated: `uv lock` + `uv sync --all-packages --dev` + `pytest --cov=src` (100%) + `ruff` + `mypy --strict` all green.
+
+### Changed (workspace-correct CI — fixes a red-team REDESIGN verdict on `/fenrir:init`)
+- **CI templates rewritten to run once at the repo root** (`uv sync --all-packages --dev` + `pytest --cov=src`) instead of a hardcoded `service_a/b/c` per-service matrix that pointed at directories a fresh repo doesn't have — the old matrix (plus per-service `uv.lock` detection and `--all-extras`) made every newly-init'd repo's first CI run red and blocked all merges. `build` is now conditional on a `Dockerfile` (passes for non-container repos); `pip-audit` audits the root `uv.lock`; `checkout` uses `fetch-depth: 0` so the Semgrep baseline resolves.
+- **`repo-bootstrap`**: boundary clarified (existing repos; new repos use `/fenrir:init`), now copies `bootstrap-smoke-test.sh` into the repo and skips files `/fenrir:init` already wrote.
+- **`.semgrep.yml`** header genericized — no RAG/LLM-specific assumptions; the two `WARNING` relaxations are flagged stack-conditional (promote to `ERROR` if your repo renders Jinja2 to HTML / isn't containerized).
+
 ## [1.0.2] — 2026-06-27
 
 ### Changed
