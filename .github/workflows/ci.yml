@@ -1,0 +1,104 @@
+# Fenrir's OWN couche-0 gate. The plugin ships a CI gate to every consumer repo
+# (templates/ci/*.yml); this is the one that runs on Fenrir itself — the tool that
+# sells couche-0 must be gated by couche-0. Required check on PRs to main.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    name: validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JSON parses (plugin/marketplace/monitors/lsp/mcp + templates/*.json)
+        run: |
+          python3 - <<'PY'
+          import json, glob, sys
+          files = [
+              ".claude-plugin/plugin.json",
+              ".claude-plugin/marketplace.json",
+              "monitors/monitors.json",
+              ".lsp.json",
+              ".mcp.json",
+              *glob.glob("templates/**/*.json", recursive=True),
+          ]
+          bad = []
+          for f in files:
+              try:
+                  with open(f) as fh:
+                      json.load(fh)
+              except FileNotFoundError:
+                  pass
+              except Exception as e:
+                  bad.append(f"{f}: {e}")
+          if bad:
+              print("INVALID JSON:")
+              print("\n".join(bad))
+              sys.exit(1)
+          print("all JSON manifests parse OK")
+          PY
+      - name: YAML parses (templates + workflows)
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 - <<'PY'
+          import glob, sys
+          import yaml
+          bad = []
+          for f in glob.glob("templates/**/*.y*ml", recursive=True) + glob.glob(".github/workflows/*.y*ml"):
+              try:
+                  with open(f) as fh:
+                      list(yaml.safe_load_all(fh))
+              except Exception as e:
+                  bad.append(f"{f}: {e}")
+          if bad:
+              print("INVALID YAML:")
+              print("\n".join(bad))
+              sys.exit(1)
+          print("all YAML parses OK")
+          PY
+      - name: every skill has SKILL.md + VERIFY.md; every agent has frontmatter
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          fail = []
+          for d in sorted(os.listdir("skills")):
+              p = os.path.join("skills", d)
+              if not os.path.isdir(p):
+                  continue
+              for req in ("SKILL.md", "VERIFY.md"):
+                  if not os.path.exists(os.path.join(p, req)):
+                      fail.append(f"skills/{d} missing {req}")
+          for f in sorted(os.listdir("agents")):
+              if f.endswith(".md"):
+                  head = open(os.path.join("agents", f)).read(3)
+                  if head != "---":
+                      fail.append(f"agents/{f} missing frontmatter")
+          if fail:
+              print("\n".join(fail)); sys.exit(1)
+          print("skills + agents structure OK")
+          PY
+
+  hooks:
+    name: lint + type + test hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: install dev tooling
+        run: uv sync --extra dev
+      - name: py_compile all hooks
+        run: python3 -m py_compile hooks/*.py
+      - name: ruff
+        run: uv run ruff check hooks
+      - name: mypy
+        run: uv run mypy hooks
+      - name: pytest (hook behavior)
+        run: uv run pytest

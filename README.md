@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 26 skills, 8 subagents, 3 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 29 skills, 8 subagents, 4 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -59,12 +59,12 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 
 | Layer | Examples |
 |---|---|
-| **Scaffold & gate** | `repo-bootstrap`, `delivery-gates`, `security-review`, `quality-master`, `deps`, `secrets` |
+| **Scaffold & gate** | `repo-bootstrap`, `delivery-gates`, `security-review`, `quality-master`, `deps`, `secrets`, `image-scan` |
 | **Build (stack-aware)** | `api-first`, `iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `cronjob`, `db-migration` |
-| **Ship to production** | `progressive-delivery` (canary/blue-green on AKS), `gitops` (Flux/Argo CD), `feature-flags`, `release` |
-| **Operate** | `incident-runbook`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
-| **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow`, `context-engineering` |
-| **Agents** | `architect`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter` |
+| **Ship to production** | `progressive-delivery` (canary/blue-green on AKS), `gitops` (Flux/Argo CD), `feature-flags`, `load-test`, `release` |
+| **Operate** | `incident-runbook`, `alert-delivery`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
+| **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow` |
+| **Agents** | `architect`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail` |
 | **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship` |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 

@@ -15,7 +15,7 @@ import os
 import re
 import sys
 import unicodedata
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 I = re.IGNORECASE
 
@@ -44,7 +44,7 @@ def _audit(kind, reason):
         root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
         d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "security-events.jsonl"), "a") as f:
-            f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
+            f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
                     "hook": "prompt-guard", "decision": kind, "reason": reason}) + "\n")
     except Exception:
         pass

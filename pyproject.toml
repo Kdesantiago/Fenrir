@@ -1,0 +1,48 @@
+# Tooling config for Fenrir's OWN first-party Python (the hooks/ couche-0 layer).
+# Fenrir preaches deterministic pinning + strict lint/type to consumer repos;
+# this file makes it hold itself to the same bar. Not a distributable package —
+# the hooks run as standalone scripts (stdin JSON -> exit code).
+
+[project]
+name = "fenrir-hooks"
+version = "0"
+description = "First-party Claude Code hooks shipped by the Fenrir plugin (couche-0 in-session gate)."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+
+# Tooling-only: do NOT build/install this as a package (hooks run as scripts).
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["hooks"]
+
+[tool.ruff.lint]
+# High-signal bug-catching rules the security-critical hooks pass clean.
+# Style-only families (E501 line-length on long regex lines, PTH pathlib rewrites,
+# SIM I/O rewrites) are intentionally OFF on this legacy layer — ratchet up later
+# (quality-master philosophy: raise the bar over time, never block on style noise).
+select = ["F", "B", "C4", "I", "UP"]
+# tests may shadow builtins / use asserts freely
+[tool.ruff.lint.per-file-ignores]
+"hooks/tests/*" = ["S101", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["hooks"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+exclude = "hooks/tests/"
+
+[tool.pytest.ini_options]
+testpaths = ["hooks/tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

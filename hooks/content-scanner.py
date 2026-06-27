@@ -14,7 +14,7 @@ import os
 import re
 import sys
 import unicodedata
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 I = re.IGNORECASE
 WEB_TOOL = re.compile(r"(webfetch|websearch|fetch|browser|navigate|web_|get_page|http)", I)
@@ -35,6 +35,8 @@ def main():
         data = json.load(sys.stdin)
     except Exception:
         sys.exit(0)
+    if not isinstance(data, dict):  # valid-but-non-object JSON (null/list/scalar) -> no-op
+        sys.exit(0)
     if not WEB_TOOL.search(data.get("tool_name", "")):
         sys.exit(0)
     resp = data.get("tool_response", data.get("tool_result", "")) or ""
@@ -48,7 +50,7 @@ def main():
             root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
             d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
             with open(os.path.join(d, "security-events.jsonl"), "a") as f:
-                f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
+                f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
                         "hook": "content-scanner", "decision": "warn", "reason": hits[:3]}) + "\n")
         except Exception:
             pass

@@ -5,14 +5,27 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 ## [Unreleased]
 
 ### Added
+- **Fenrir now dogfoods its own couche-0** (it shipped a CI gate to consumers but ran none on itself):
+  - **`.github/workflows/ci.yml`** — required-check CI on the plugin's own artifacts: JSON manifests + templates parse, YAML parses, every skill has `SKILL.md` + `VERIFY.md` and every agent has frontmatter, plus `py_compile` / `ruff` / `mypy` / `pytest` on `hooks/`.
+  - **`hooks/tests/`** — 209 passing pytest cases (subprocess-based, side-effects sandboxed) covering all 9 hooks' deny/ask/allow + malformed-input paths; each case validated against the real hook.
+  - **`pyproject.toml`** — governs the first-party `hooks/` Python (ruff high-signal set + mypy + pytest config; `[tool.uv] package = false`).
+  - **root `.pre-commit-config.yaml`** — local gate (ruff, gitleaks, conventional-commit, hygiene, pytest-on-push) mirroring what the plugin installs into consumers.
+- **Three new skills** (26 → 29): **`alert-delivery`** (wire alert rules → Azure Monitor action groups / Alertmanager receivers / PagerDuty so a page reaches a human), **`load-test`** (k6/Locust/Azure Load Testing scenarios with SLO-aligned thresholds to exercise canary gates pre-prod), **`image-scan`** (Trivy/Grype/Defender base-image CVE scan as a CI required-check failing on HIGH/CRITICAL). Each with `SKILL.md` + `VERIFY.md`, adversarially verified.
+- **`LICENSE`** (MIT) — the license was declared in `plugin.json`/README but the file was missing.
+- **`CONTRIBUTING.md`** + **`SECURITY.md`** — contribution/gate workflow and a private vulnerability-disclosure policy for a security-focused plugin.
 - **`templates/renovate.json`** + **`templates/CODEOWNERS`** — `repo-bootstrap` now copies both from templates instead of hand-generating them (every other couche-0 artifact already had a template; these two were the gap). Renovate policy: patch/minor auto-merge after green required CI, major stays manual; CODEOWNERS ships risk-path owners (`auth/`, `iac/`, `migrations/`, `**/security/`, gate config) with `@your-org/*` placeholders to fill.
 
 ### Changed
+- **`DELIVERY-SKILLSET.md` translated to English** (was French while every other doc is English; the README links it as the architecture reference). Structure, the couche-0 model, and all identifiers preserved verbatim.
+- **Doc counts + agent inventory corrected** — README/PUBLISHING now say **29 skills, 4 commands** (were 26/3); the README Agents row and GETTING-STARTED now list all **8** agents (`context-engineering` was miscategorized as a skill; `security-guardrail` was missing).
 - **All 8 agents compressed (~17% fewer characters per body, paid on every invocation)** — terse imperative bullets, dropped prose/repetition. Adversarially verified (8/8 PASS): YAML frontmatter byte-identical and every machine-parseable contract preserved verbatim (`VERDICT:` line, guardrail JSON, `MISSING-MAPPING`/`REFUSED` blocks, `MERGE-READY VERDICT`, the ADR + Context-Plan templates). Zero operating rule dropped.
 - **Skill descriptions rebalanced** — thin ones gained concrete trigger phrases (`auth-gen`, `frontend-gen`, `doc-generator`, `security-review`); verbose ones trimmed (`progressive-delivery`, `gitops`, `feature-flags`) by moving mechanism detail into the body. All now in a consistent ~350–580 char band for more even skill routing.
 - **`repo-bootstrap`** step 6 now references `templates/renovate.json` and `templates/CODEOWNERS` explicitly.
 
 ### Fixed
+- **`config-audit` + `content-scanner` hooks** — valid-but-non-object JSON on stdin (`null`/scalar/list) raised an uncaught `AttributeError` and exited non-zero instead of a graceful fail-open no-op; added an `isinstance(data, dict)` guard. Found by the new hook tests.
+- **`hooks/.claude/audit/security-events.jsonl`** — a git-tracked runtime audit artifact that shipped to every consumer; removed from tracking and `.gitignore` broadened to `**/.claude/audit/`.
+- **`tool-failure-triage`** — corrected a stale docstring claiming `PostToolUseFailure` is "officially undocumented"; it is a documented, supported hook event (wiring unchanged, confirmed correct).
 - **`langgraph-workflow`** — a botched global replace from the v1.1.1 namespacing pass had corrupted a sentence to `verify exact class/fenrir:init`; restored to `verify exact class/init`.
 
 ## [1.1.1] — 2026-06-27

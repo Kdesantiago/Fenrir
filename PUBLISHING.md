@@ -2,7 +2,7 @@
 
 Self-contained guide: how to put this plugin on a Claude Code marketplace, distribute it across your org, and use it. No other file required to follow this.
 
-> **What this is.** `fenrir` is a Claude Code **plugin** (26 skills, 8 subagents, 3 commands, 9 hooks, bundled MCP/LSP/Monitors) that standardizes the whole delivery lifecycle — from `/fenrir:challenge-me <idea>` through scaffolding, gates, progressive delivery on AKS, and LLM-app evals. **This repository is itself the marketplace** (it ships `.claude-plugin/marketplace.json`), so publishing = pushing this repo to git and tagging a release.
+> **What this is.** `fenrir` is a Claude Code **plugin** (29 skills, 8 subagents, 4 commands, 9 hooks, bundled MCP/LSP/Monitors) that standardizes the whole delivery lifecycle — from `/fenrir:challenge-me <idea>` through scaffolding, gates, progressive delivery on AKS, and LLM-app evals. **This repository is itself the marketplace** (it ships `.claude-plugin/marketplace.json`), so publishing = pushing this repo to git and tagging a release.
 
 ---
 
