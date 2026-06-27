@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
-.claude/audit/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.claude/audit/
 .claude/settings.local.json
 .DS_Store
 *.backup-*

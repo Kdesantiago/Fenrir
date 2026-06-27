@@ -9,9 +9,8 @@ Pure stdlib.
 """
 import json
 import os
-import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 
 def main():
@@ -49,7 +48,7 @@ def main():
     try:
         d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "sessions.jsonl"), "a") as f:
-            f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
+            f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
                     "open_gate_exceptions": open_n,
                     "expired_gate_exceptions_pending_close": expired_n}) + "\n")
     except Exception:

@@ -20,7 +20,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 I = re.IGNORECASE
 
@@ -81,7 +81,7 @@ def _audit(kind, tool, reason):
         root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
         d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "security-events.jsonl"), "a") as f:
-            f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
+            f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
                     "hook": "delivery-guard", "decision": kind, "tool": tool, "reason": reason}) + "\n")
     except Exception:
         sys.stderr.write("delivery-guard: WARNING audit write failed (event not recorded)\n")

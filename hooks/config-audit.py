@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 SENSITIVE = {"permissions", "hooks", "env", "mcpServers", "allowedHttpHookUrls"}
 
@@ -18,6 +18,8 @@ def main():
     try:
         data = json.load(sys.stdin)
     except Exception:
+        sys.exit(0)
+    if not isinstance(data, dict):  # valid-but-non-object JSON (null/list/scalar) -> no-op
         sys.exit(0)
     if data.get("tool_name", "") not in ("Write", "Edit", "MultiEdit"):
         sys.exit(0)
@@ -35,7 +37,7 @@ def main():
         if changed:
             with open(os.path.join(audit, "config-changes.jsonl"), "a") as f:
                 f.write(json.dumps({
-                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "ts": datetime.now(UTC).isoformat(),
                     "session": data.get("session_id", ""),
                     "file": fp, "changed_keys": changed,
                     "sensitive": sorted(set(changed) & SENSITIVE),

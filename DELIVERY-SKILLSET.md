@@ -1,44 +1,44 @@
-# Delivery Skillset — Standard de livraison org-portable (v2)
+# Delivery Skillset — Org-portable delivery standard (v2)
 
-> v2 = v1 corrigée après red-team. 5 kill shots traités. Lire `## Kill shots → fixes` d'abord.
+> v2 = v1 corrected after red-team. 5 kill shots addressed. Read `## Kill shots → fixes` first.
 
-## Principe central (le fix #1, le plus important)
+## Core principle (fix #1, the most important one)
 
-**Une skill ne peut PAS enforcer.** C'est du texte advisory que le modèle *choisit* de suivre. Le vrai gate vit dans l'INFRA déterministe: git hooks + CI required-checks + branch-protection-as-code. Les skills = **feedback rapide local**, pas la barrière.
+**A skill CANNOT enforce.** It is advisory text that the model *chooses* to follow. The real gate lives in deterministic INFRA: git hooks + CI required-checks + branch-protection-as-code. Skills = **fast local feedback**, not the barrier.
 
-Donc le standard de livraison = **3 produits distincts**, pas 1 skillset:
+So the delivery standard = **3 distinct products**, not 1 skillset:
 
-| Module | Quoi | Primitive | Owner |
+| Module | What | Primitive | Owner |
 |---|---|---|---|
-| **A. INFRA (couche 0)** | repo-template + hooks + CI + branch-protection. **Le vrai gate.** | Fichiers déterministes, pas modèle | Platform team |
-| **B. GENERATORS** | scaffold profile-driven (iac/auth/obs/front/llm) | Skills lisant `org-profile.yaml` | Platform team |
+| **A. INFRA (couche 0)** | repo-template + hooks + CI + branch-protection. **The real gate.** | Deterministic files, not a model | Platform team |
+| **B. GENERATORS** | profile-driven scaffolding (iac/auth/obs/front/llm) | Skills reading `org-profile.yaml` | Platform team |
 | **C. ORCHESTRATION** | subagents + `/fenrir:deliver` + `/fenrir:ship` | Subagents + commands | DevEx |
 
-Tout livré en **1 plugin Claude Code versionné (semver)**, pas de copie `~/.claude` par repo (= drift garanti).
+All shipped as **1 versioned (semver) Claude Code plugin**, no per-repo `~/.claude` copy (= guaranteed drift).
 
 ---
 
-## Couche 0 — INFRA (le vrai standard, surtout PAS des skills)
+## Couche 0 — INFRA (the real standard, definitely NOT skills)
 
-C'est ici que "standardiser la livraison" a des dents. Déterministe, hors discrétion du modèle.
+This is where "standardize delivery" has teeth. Deterministic, outside the model's discretion.
 
-| Composant | Mécanisme | Enforce quoi |
+| Component | Mechanism | Enforces what |
 |---|---|---|
-| `pre-commit` / `pre-push` hooks | git hooks (installés par `repo-bootstrap`) | lint, type, secret-scan, format — local, avant push |
-| CI required status checks | pipeline (Azure/GH Actions) | test, coverage, SAST, build — bloque merge |
-| branch-protection-as-code | Terraform/GH API/Azure policy | PR obligatoire, checks requis, CODEOWNERS review |
-| repo-template versionné | template repo / cookiecutter | structure org, assertion version |
+| `pre-commit` / `pre-push` hooks | git hooks (installed by `repo-bootstrap`) | lint, type, secret-scan, format — local, before push |
+| CI required status checks | pipeline (Azure/GH Actions) | test, coverage, SAST, build — blocks merge |
+| branch-protection-as-code | Terraform/GH API/Azure policy | PR required, required checks, CODEOWNERS review |
+| versioned repo-template | template repo / cookiecutter | org structure, version assertion |
 
-**Protocole**: `repo-bootstrap` génère ces fichiers + applique branch-protection via IaC. La skill installe; l'INFRA enforce.
+**Protocol**: `repo-bootstrap` generates these files + applies branch-protection via IaC. The skill installs; the INFRA enforces.
 
 ---
 
-## org-profile.yaml (le fix #2 — sans ça, les generators crachent du code hors-stack)
+## org-profile.yaml (fix #2 — without it, generators spit out off-stack code)
 
-Les generators ne sont PAS portables nus (OIDC≠SAML, k8s≠serverless, React≠Streamlit). Ils lisent un profil et **refusent si mismatch**.
+Generators are NOT portable naked (OIDC≠SAML, k8s≠serverless, React≠Streamlit). They read a profile and **refuse on mismatch**.
 
 ```yaml
-# org-profile.yaml — racine du repo
+# org-profile.yaml — repo root
 platform: aks          # aks | webapp | k8s | serverless | vm | ecs
 framework: fastapi     # fastapi | express | spring | streamlit
 auth_provider: entra   # entra | okta | keycloak | auth0
@@ -47,91 +47,91 @@ llm_provider: anthropic # anthropic | openai | azure | bedrock | vertex
 front: streamlit       # react | vue | svelte | streamlit | html | none
 ```
 
-Generator sans profil correspondant → **hard stop, message clair**. Pas de scaffold deviné.
+Generator with no matching profile → **hard stop, clear message**. No guessed scaffold.
 
 ---
 
-## Couche 1 — SKILLS (`~/.claude/skills/<nom>/SKILL.md` via plugin)
+## Couche 1 — SKILLS (`~/.claude/skills/<name>/SKILL.md` via plugin)
 
-Trimmées vs v1: overlaps tués, secret-scan retiré (→ hook), ADR retiré de doc (→ architect).
+Trimmed vs v1: overlaps killed, secret-scan removed (→ hook), ADR removed from doc (→ architect).
 
-| Skill | Job | Trigger (description front-loadée) | Note fix |
+| Skill | Job | Trigger (front-loaded description) | Fix note |
 |---|---|---|---|
-| `repo-bootstrap` | Init repo NEUF: structure, hooks, CI skeleton, branch-protection IaC, renovate, CODEOWNERS. **Idempotent, skip si existe.** | "initialize a NEW repo tooling — NOT for running checks" | Seul propriétaire du CI skeleton (fix collision §1) |
-| `delivery-gates` | Lance lint+type+test+coverage **localement** = feedback rapide. **Advisory.** Vrai gate = couche 0. | "run existing checks on a diff for fast local feedback" | N'enforce pas; le dit explicitement (fix #1) |
-| `security-review` | Wrap `/security-review` natif: SAST + SBOM + threat-check sur diff. **Pas de secret-scan** (→ hook). | "SAST/SBOM/threat on a diff" | Secret-scan = 1 seul endroit (fix §1) |
-| `doc-generator` | Agrège/formate docs existantes: README, API docs, changelog. **Pas d'ADR.** | "aggregate & format existing docs" | ADR appartient à `architect` (fix §1) |
-| `iac-gen` | Generator profile-driven: Helm/ArgoCD si `platform=k8s`, sinon refuse | "generate IaC for the declared platform" | Lit profil, refuse mismatch (fix #2) |
-| `auth-gen` | Generator: OIDC/OAuth2 selon `auth_provider`. **Jamais d'auth auto non-revue.** | "generate auth glue for declared provider" | Refuse sans profil; auth = revue humaine obligatoire (fix #2, sécu) |
-| `observability-gen` | OTel SDK init + semantic conventions; backend via env, jamais hardcodé | "generate vendor-neutral OTel init" | Backend = config (fix #2) |
-| `frontend-gen` | Generator OU convention-checker selon `front`; a11y rules framework-aware | "scaffold/check front for declared framework" | Refuse si framework inconnu (fix #2) |
-| `llm-gen` | Wrapper typé pour `llm_provider`; golden-set eval, cost tracking | "generate LLM wrapper for declared provider" | 1 provider/profil; SDK à vérifier docs (fix #2) |
+| `repo-bootstrap` | Init a NEW repo: structure, hooks, CI skeleton, branch-protection IaC, renovate, CODEOWNERS. **Idempotent, skip if exists.** | "initialize a NEW repo tooling — NOT for running checks" | Sole owner of the CI skeleton (collision fix §1) |
+| `delivery-gates` | Runs lint+type+test+coverage **locally** = fast feedback. **Advisory.** Real gate = couche 0. | "run existing checks on a diff for fast local feedback" | Does not enforce; says so explicitly (fix #1) |
+| `security-review` | Wraps native `/security-review`: SAST + SBOM + threat-check on a diff. **No secret-scan** (→ hook). | "SAST/SBOM/threat on a diff" | Secret-scan = single location (fix §1) |
+| `doc-generator` | Aggregates/formats existing docs: README, API docs, changelog. **No ADR.** | "aggregate & format existing docs" | ADR belongs to `architect` (fix §1) |
+| `iac-gen` | Profile-driven generator: Helm/ArgoCD if `platform=k8s`, otherwise refuse | "generate IaC for the declared platform" | Reads profile, refuses mismatch (fix #2) |
+| `auth-gen` | Generator: OIDC/OAuth2 per `auth_provider`. **Never unreviewed auto-auth.** | "generate auth glue for declared provider" | Refuses without profile; auth = mandatory human review (fix #2, security) |
+| `observability-gen` | OTel SDK init + semantic conventions; backend via env, never hardcoded | "generate vendor-neutral OTel init" | Backend = config (fix #2) |
+| `frontend-gen` | Generator OR convention-checker per `front`; framework-aware a11y rules | "scaffold/check front for declared framework" | Refuses if framework unknown (fix #2) |
+| `llm-gen` | Typed wrapper for `llm_provider`; golden-set eval, cost tracking | "generate LLM wrapper for declared provider" | 1 provider/profile; SDK to be verified against docs (fix #2) |
 
 ---
 
-## Couche 2 — SUBAGENTS (`~/.claude/agents/<nom>.md`)
+## Couche 2 — SUBAGENTS (`~/.claude/agents/<name>.md`)
 
-Trimmés vs v1 (fix §7 — overlap natif).
+Trimmed vs v1 (fix §7 — native overlap).
 
 | Subagent | Verdict | Job |
 |---|---|---|
-| `architect` | **GARDE** — distinct, read+plan, tools restreints | Design, **ADR (décide+écrit)**, trade-offs |
-| `qa-tester` | **GARDE** — tool-profile distinct | Écrit NOUVEAUX tests + reproduit bugs (≠ gates qui exécutent l'existant) |
-| `reviewer` | **WRAP natif** — pas de persona custom | Appelle `/code-review` natif + règles PR-hygiene org-spécifiques uniquement |
-| `coder` | **KILL** sauf besoin toolset restreint | Sinon = comportement par défaut du main thread |
+| `architect` | **KEEP** — distinct, read+plan, restricted tools | Design, **ADR (decides+writes)**, trade-offs |
+| `qa-tester` | **KEEP** — distinct tool-profile | Writes NEW tests + reproduces bugs (≠ gates, which run existing ones) |
+| `reviewer` | **WRAP native** — no custom persona | Calls native `/code-review` + org-specific PR-hygiene rules only |
+| `coder` | **KILL** unless a restricted toolset is needed | Otherwise = main thread's default behavior |
 
 ---
 
-## Couche 3 — ORCHESTRATION (le "Chef de projet", fix §4)
+## Couche 3 — ORCHESTRATION (the "Project Manager", fix §4)
 
-| Command | Job | Fixes appliqués |
+| Command | Job | Fixes applied |
 |---|---|---|
-| `/fenrir:deliver` | Pipeline: architect→coder→qa→reviewer→gates→PR | (a) **spec-artifact sur disque** = source de vérité que chaque subagent relit (anti context-loss). (b) **routing déterministe par script** (LOC, fichiers risque via globs), pas jugement LLM. (c) **checkpoint git par stage** + resume. (d) gates réels = CI, pas la command. |
-| `/fenrir:ship` | Ouvre PR + affiche statut CI | **Ne prétend PAS enforcer** — branch-protection (infra) bloque le merge, pas `/fenrir:ship` (fix #1) |
+| `/fenrir:deliver` | Pipeline: architect→coder→qa→reviewer→gates→PR | (a) **on-disk spec-artifact** = source of truth that each subagent re-reads (anti context-loss). (b) **deterministic routing by script** (LOC, risk files via globs), not LLM judgment. (c) **git checkpoint per stage** + resume. (d) real gates = CI, not the command. |
+| `/fenrir:ship` | Opens PR + shows CI status | **Does NOT claim to enforce** — branch-protection (infra) blocks the merge, not `/fenrir:ship` (fix #1) |
 
-**Adaptatif résolu**: script calcule taille/risque → route `light` (hotfix) vs `full` (feature). Déterministe, reproductible.
+**Adaptive resolved**: script computes size/risk → routes `light` (hotfix) vs `full` (feature). Deterministic, reproducible.
 
 ---
 
 ## Distribution (fix #4 — anti-drift)
 
-- **1 plugin Claude Code, semver, 1 repo of record, changelog, owning team.**
-- Repos consomment une **version pinnée**. Update = bump du pin. Copie `~/.claude` interdite.
-- `delivery-gates` **assert la version du repo-template**, fail loud si mismatch.
+- **1 Claude Code plugin, semver, 1 repo of record, changelog, owning team.**
+- Repos consume a **pinned version**. Update = bump the pin. `~/.claude` copy forbidden.
+- `delivery-gates` **asserts the repo-template version**, fails loud on mismatch.
 
 ---
 
-## Primitives ajoutées (fix §6 — manquaient)
+## Added primitives (fix §6 — were missing)
 
-Rangées par priorité:
+Ordered by priority:
 
-1. **Enforcement infra** (hooks + CI required-checks + branch-protection-as-code) — *déjà couche 0*
-2. **Release mgmt**: semver, tags, changelog auto, release notes
-3. **Supply-chain**: SLSA/provenance, artifact signing, deps pinnées, license-policy enforce
+1. **Enforcement infra** (hooks + CI required-checks + branch-protection-as-code) — *already couche 0*
+2. **Release mgmt**: semver, tags, auto changelog, release notes
+3. **Supply-chain**: SLSA/provenance, artifact signing, pinned deps, license-policy enforce
 4. **Secrets mgmt** (vault/SOPS) — ≠ secret *scanning*
-5. **Env promotion + rollback + data-migrations** — la livraison ne s'arrête pas à la PR
-6. **Dependency policy**: règles merge/pin Renovate, pas juste le fichier
-7. **ADR-required CI check** sur diffs architecturaux (≠ générer un ADR)
+5. **Env promotion + rollback + data-migrations** — delivery does not stop at the PR
+6. **Dependency policy**: Renovate merge/pin rules, not just the file
+7. **ADR-required CI check** on architectural diffs (≠ generating an ADR)
 
 ---
 
-## Kill shots → fixes (résumé)
+## Kill shots → fixes (summary)
 
 | # | Kill shot v1 | Fix v2 |
 |---|---|---|
-| 1 | Skill ne peut pas enforcer le gate | Gate → couche 0 INFRA (hooks+CI+branch-protection). Skill = advisory |
-| 2 | 5 scaffolds non-portables | `org-profile.yaml` + generators qui refusent sur mismatch |
-| 3 | `/fenrir:deliver` multi-agent fragile | spec-artifact disque + routing script déterministe + checkpoints |
-| 4 | Distribution = drift | 1 plugin semver pinné, owning team |
-| 5 | 3 produits en 1 | Split A(infra)/B(generators)/C(orchestration). **Ship A en premier** |
+| 1 | A skill cannot enforce the gate | Gate → couche 0 INFRA (hooks+CI+branch-protection). Skill = advisory |
+| 2 | 5 non-portable scaffolds | `org-profile.yaml` + generators that refuse on mismatch |
+| 3 | `/fenrir:deliver` multi-agent fragile | on-disk spec-artifact + deterministic routing script + checkpoints |
+| 4 | Distribution = drift | 1 pinned semver plugin, owning team |
+| 5 | 3 products in 1 | Split A(infra)/B(generators)/C(orchestration). **Ship A first** |
 
 ---
 
-## Ordre de mise en place (recommandé)
+## Setup order (recommended)
 
-1. **Couche 0 INFRA** + `repo-bootstrap` — sans ça, rien n'enforce. C'est le mandat réel.
-2. `org-profile.yaml` + 1 generator pilote (`iac-gen` sur stack k8s actuelle)
-3. `delivery-gates` + `security-review` (wrap natif)
+1. **Couche 0 INFRA** + `repo-bootstrap` — without it, nothing enforces. This is the real mandate.
+2. `org-profile.yaml` + 1 pilot generator (`iac-gen` on the current k8s stack)
+3. `delivery-gates` + `security-review` (native wrap)
 4. Subagents `architect` + `qa-tester`
 5. `/fenrir:deliver` + `/fenrir:ship`
-6. Release + supply-chain + secrets (primitives ajoutées)
+6. Release + supply-chain + secrets (added primitives)

@@ -22,7 +22,7 @@ TESTISH = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)(test_|conftest)|(_tes
 
 
 def _changed(root):
-    files = set()
+    files: set[str] = set()
     for args in (["git", "diff", "--name-only"], ["git", "diff", "--cached", "--name-only"]):
         try:
             r = subprocess.run(args, cwd=root, capture_output=True, text=True, timeout=3)
