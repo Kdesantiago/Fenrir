@@ -4,6 +4,8 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-27
+
 ### Added
 - **`/fenrir:status` — a Tech Lead Report** (new command, 4 → 5): a deterministic helper (`scripts/techlead_report.py`, stdlib) emits one honest markdown report for a repo — gate health (pre-commit, CI, **branch-protection ARMED/NOT-ARMED verified via `gh api`** with an `--offline` declared-only fallback, `template_version` drift), open gate-exceptions with **self-granted / lapsed flagging**, and an onboarding "how we deliver here". No DORA proxies (a red-team on the spec showed local tags ≠ deploys and `fix:`-ratio ≠ change-failure — those are deferred until a real deploy/incident source exists). 24 tests; helper covered by CI ruff/mypy/pytest (CI + pyproject + pre-commit extended to `scripts/`). Spec at `docs/specs/techlead-status-report.md`.
 - **`memory-keeper`: optional `approved_by` on gate-exceptions** — a waiver is *approved* only when `approved_by` is set and `!= granted_by`; otherwise *self-granted* (recorded but flagged unverified by `/fenrir:status`). Additive schema change (the `session-context` SessionStart hook ignores unknown keys); `waive`/`expire` steps and the schema/refusal clauses amended to keep the skill self-consistent.
