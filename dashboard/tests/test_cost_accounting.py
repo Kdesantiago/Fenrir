@@ -21,8 +21,24 @@ def _ev(session: str, inp: int = 1000, out: int = 500, sidechain: bool = False,
 
 # --- pricing tier suffix ---
 def test_pricing_strips_tier_suffix():
-    assert pricing.rates_for("claude-opus-4-8[1m]") == pricing.PRICES["opus"]
-    assert pricing.rates_for("claude-sonnet-4-6[1m]") == pricing.PRICES["sonnet"]
+    # the [1m] tier suffix is stripped before family matching
+    assert pricing.rates_for("claude-opus-4-8[1m]") == pricing.rates_for("claude-opus-4-8")
+    assert pricing.rates_for("claude-opus-4-8[1m]")["input"] == 15.0
+    assert pricing.rates_for("claude-sonnet-4-6[1m]")["input"] == 3.0
+
+
+def test_cost_1h_cache_write_dearer_than_5m():
+    # equal cache-write tokens cost MORE at the 1h TTL (2x input) than 5m (1.25x input)
+    n = 1_000_000
+    c5 = pricing.cost_of({"cache_creation": {"ephemeral_5m_input_tokens": n}}, "claude-opus-4")
+    c1 = pricing.cost_of({"cache_creation": {"ephemeral_1h_input_tokens": n}}, "claude-opus-4")
+    assert c1 > c5
+    assert c5 == 18.75 and c1 == 30.0  # opus: 15×1.25 vs 15×2.0
+
+
+def test_thinking_counted_as_output():
+    # extended-thinking tokens are billed as output (no separate field), so output covers them
+    assert pricing.cost_of({"output_tokens": 1_000_000}, "claude-opus-4") == 75.0
 
 
 # --- subagent_runs: identity from meta, tokens from .jsonl, reconciled ---

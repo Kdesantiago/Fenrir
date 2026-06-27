@@ -135,6 +135,27 @@ class BoardStore:
         item = self._find(b, kind, item_id)
         return any(w.session_id == session_id and session_id for w in item.work_log)
 
+    def has_run_for(self, kind: str, item_id: str, run_id: str) -> bool:
+        """True if this item already has the given subagent run attributed (idempotency)."""
+        b = self.load()
+        item = self._find(b, kind, item_id)
+        return any(w.run_id == run_id and run_id for w in item.work_log)
+
+    def entries_for_session(self, session_id: str) -> list[dict]:
+        """Board-wide: every work_log entry (across all stories+tasks) for a session_id.
+        Used to keep `link` (whole-session) and `attribute` (per-run) mutually exclusive so
+        the same spend is never counted twice. Blind to session_id=='' manual entries."""
+        if not session_id:
+            return []
+        b = self.load()
+        out: list[dict] = []
+        for kind, items in (("story", b.stories), ("task", b.tasks)):
+            for it in items:
+                for w in it.work_log:
+                    if w.session_id == session_id:
+                        out.append({"kind": kind, "id": it.id, "source": w.source})
+        return out
+
     def costs(self) -> dict:
         """Per Epic/Feature/US cost rollup from work_log (tasks roll up into their story)."""
         b = self.load()

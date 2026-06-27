@@ -323,3 +323,8 @@ textarea { resize: vertical; min-height: 64px; }
   .main { padding: 20px 16px 40px; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+/* story-modal Epic/Feature cost rollup (replaces the unlabeled card cost badges) */
+.cost-rollup { margin-top: 10px; border-top: 1px solid var(--border, #1e2636); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.cost-rollup .rollup-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.cost-rollup .rollup-row .cost { color: var(--good, #34d399); font-variant-numeric: tabular-nums; }

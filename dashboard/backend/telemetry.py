@@ -196,8 +196,8 @@ def _run_tokens(path: Path) -> dict:
     first = last = ""
     if not path.exists():
         return {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "model": "",
-                "when": "", "duration_ms": 0, "found": False}
-    model = ""
+                "when": "", "duration_ms": 0, "session_id": "", "found": False}
+    model = session = ""
     for line in path.read_text().splitlines():
         line = line.strip()
         if not line:
@@ -213,6 +213,7 @@ def _run_tokens(path: Path) -> dict:
         out += ev["output_tokens"]
         cost += ev["cost"]
         model = model or ev["model"]
+        session = session or ev["session_id"]
         ts = ev["ts"]
         if ts:
             first = first or ts
@@ -222,7 +223,8 @@ def _run_tokens(path: Path) -> dict:
     if a is not None and b is not None:
         dur = int(b - a)
     return {"input_tokens": inp, "output_tokens": out, "cost_usd": round(cost, 4),
-            "model": model, "when": first, "duration_ms": dur, "found": True}
+            "model": model, "when": first, "duration_ms": dur, "session_id": session,
+            "found": True}
 
 
 def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
@@ -241,9 +243,11 @@ def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
                 continue
             tok = _run_tokens(meta_path.with_suffix("").with_suffix(".jsonl"))
             runs.append({
+                "run_id": meta_path.name.replace(".meta.json", ""),  # stable: "agent-<id>"
                 "agent_type": meta.get("agentType", "?"),
                 "description": meta.get("description", ""),
                 "tool_use_id": meta.get("toolUseId", ""),
+                "session_id": tok["session_id"],
                 "when": tok["when"],
                 "model": tok["model"],
                 "status": "completed" if tok["found"] else "no-transcript",

@@ -37,10 +37,11 @@ class WorkLogEntry(BaseModel):
     agent: str = ""
     subagent_type: str = ""  # named subagent (e.g. fenrir:reviewer) when known
     session_id: str = ""
+    run_id: str = ""  # subagent run id (agent-<id>) for per-run attribution + idempotency
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
-    source: str = ""  # manual | telemetry-link | telemetry-subagent
+    source: str = ""  # manual | telemetry-link | telemetry-run
     note: str = ""
     at: str = ""  # ISO timestamp, supplied by caller (no clock in pure model)
 

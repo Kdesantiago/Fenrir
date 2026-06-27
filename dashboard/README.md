@@ -114,8 +114,15 @@ python -m backend.cli delete --kind feature --id feat-1
 - `move` — `--kind` (required), `--id` (required), `--status` (required: `backlog`, `todo`, `in_progress`, `review`, `done`, `blocked`)
 - `assign` — `--kind` (required), `--id` (required), `--agent` (required) — stories/tasks only
 - `log` — `--kind` (required), `--id` (required), `--agent`, `--session`, `--in-tokens` (int), `--out-tokens` (int), `--cost` (float), `--note`, `--at` (ISO timestamp; defaults to now) — stories/tasks only
-- `link` — `--kind` (required), `--id` (required), `--session`, `--skill`, `--project` (default: current repo; use `--project=<slug>`), `--agent`, `--note` — sums REAL telemetry matching the filters into work_log entries (**one per source**: main vs subagent). **Idempotent** per `(session, item)` — re-running is a no-op. Stories/tasks only.
+- `link` — `--kind` (required), `--id` (required), `--session`, `--skill`, `--project` (default: current repo; use `--project=<slug>`), `--agent`, `--note` — **whole-session** attribution: sums REAL telemetry matching the filters into work_log entries (**one per source**: main vs subagent). **Idempotent** per `(session, item)`. Stories/tasks only.
+- `attribute` — `--kind` (required), `--id` (required), `--run <run_id>` (required; `agent-<id>` from the Subagents view / `/api/telemetry/subagents`), `--project`, `--agent`, `--note` — **per-run** attribution: attaches ONE subagent run's real tokens/cost to a US (distinct per run). Idempotent per `(run_id, US)`. Stories/tasks only.
 - `trace` — `--us` (optional, filter to one story) — print the chronological cost trace (flattened work_log) with a total
+
+> **`link` vs `attribute`:** `link` charges a *whole session* to one US (coarse — don't link the
+> same session to two US, or both get the same lump). `attribute` charges *one subagent run*
+> (precise — different runs give different US different real costs). They are **mutually
+> exclusive per session**: once a session has per-run attributions, `link` on it is refused,
+> and vice-versa, so the same spend is never counted twice.
 - `delete` — `--kind` (required), `--id` (required) — cascades to children
 - `list` — no flags
 
@@ -165,4 +172,19 @@ Telemetry events are normalized from each assistant message line in `~/.claude` 
 
 ## Cost is an estimate
 
-Claude Code logs **tokens, not dollars** — so cost is **derived**. The price book lives in `backend/pricing.py` (per-1M-token rates for input / output / cache-write / cache-read, resolved by model family). The defaults are public list-price ballparks; **adjust them to your contract**. Unknown models fall back to the Sonnet rate. Treat the reported cost as an estimate, not an invoice.
+Claude Code logs **tokens, not dollars** — so cost is **derived** (`backend/pricing.py`). The
+price book stores a base `(input, output)` rate per model family; cache rates are **derived**
+from the input rate via shared multipliers, so a contract change is one number:
+
+| Component | Source field | Rate |
+| --- | --- | --- |
+| fresh input | `input_tokens` | input |
+| output **(incl. extended-thinking tokens — billed as output, no separate field)** | `output_tokens` | output |
+| cache **write 5-min** | `cache_creation.ephemeral_5m_input_tokens` | 1.25× input |
+| cache **write 1-hour** | `cache_creation.ephemeral_1h_input_tokens` | 2.0× input |
+| cache **read** | `cache_read_input_tokens` | 0.1× input |
+
+Defaults are public list-price ballparks — **adjust `PRICES` to your contract**. Unknown models
+fall back to the Sonnet rate. **Not modeled** (documented gaps): web-search `server_tool_use`
+requests, batch/priority `service_tier` discounts, and the `[1m]` long-context premium (the
+suffix is stripped to match the family). Treat the reported cost as an estimate, not an invoice.
