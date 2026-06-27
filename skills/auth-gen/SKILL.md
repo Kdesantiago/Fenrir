@@ -1,6 +1,6 @@
 ---
 name: auth-gen
-description: Use when you need OIDC/OAuth2 middleware glue for the org's DECLARED auth provider (entra/okta/keycloak/auth0) in the declared framework. NOT for SSO product features unrelated to delivery. Reads org-profile.yaml auth_provider + framework and refuses without both.
+description: Use when you need OIDC/OAuth2 middleware glue for the org's DECLARED auth provider (entra/okta/keycloak/auth0) in the declared framework — login redirect, callback handler, token/JWT validation, session wiring. Triggers — "wire up OIDC/login", "add OAuth2 / token validation", "protect these endpoints with auth". NOT for end-user SSO product features unrelated to delivery. Reads org-profile.yaml auth_provider + framework and refuses without both.
 ---
 
 # Auth Generator

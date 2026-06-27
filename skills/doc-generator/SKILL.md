@@ -1,6 +1,6 @@
 ---
 name: doc-generator
-description: Use when you want to aggregate and format EXISTING docs — README, API reference from code, changelog from conventional commits. NOT for writing ADRs or design decisions (the architect subagent owns those). Assembles and formats documentation that already exists in the code and git history.
+description: Use when you want to aggregate and format EXISTING docs — README, API reference from code, changelog from conventional commits. Triggers — "regenerate the README/API docs/changelog", "build the changelog from commits", "format the docs from code". NOT for writing ADRs or design decisions (the architect subagent owns those). Assembles and formats documentation already present in the code and git history.
 ---
 
 # Doc Generator

@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: Use when you want SAST + dependency/SBOM + threat-check on a git diff via the native /security-review command. NOT for lint/type/test (delivery-gates), NOT for secret scanning (the pre-commit gitleaks hook owns that). Wraps the native security-review command over the diff.
+description: Use when you want SAST + dependency/SBOM + threat-check on a git diff via the native /security-review command. Triggers — "security review my changes", "run SAST on this diff", "check dependencies/SBOM", "threat-check these code paths". NOT for lint/type/test (delivery-gates), NOT for secret scanning (the pre-commit gitleaks hook owns that). Wraps the native security-review command over the diff.
 ---
 
 # Security Review

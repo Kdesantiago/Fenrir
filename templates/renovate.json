@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies"],
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": { "enabled": true, "automerge": true },
+  "packageRules": [
+    {
+      "description": "Patch + minor: auto-merge ONLY after the required CI checks are green.",
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Major upgrades: never auto-merge — a human reviews the breaking change.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "addLabels": ["major-review"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": false
+  }
+}
