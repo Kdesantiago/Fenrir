@@ -17,7 +17,9 @@ DEFAULT = PRICES["sonnet"]  # conservative fallback for unknown models
 
 
 def rates_for(model: str) -> tuple[float, float, float, float]:
-    m = (model or "").lower()
+    # Strip a context-tier suffix like "claude-opus-4-8[1m]" before family matching.
+    # NOTE: the long-context (e.g. 1M) premium is NOT modeled — this is a base-tier estimate.
+    m = (model or "").lower().split("[", 1)[0]
     for family, rates in PRICES.items():
         if family in m:
             return rates

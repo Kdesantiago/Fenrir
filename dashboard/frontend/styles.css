@@ -84,6 +84,10 @@ select:focus-visible, input:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent-2); outline-offset: 2px;
 }
 
+.project-picker { display: flex; flex-direction: column; gap: 6px; padding: 0 4px; }
+.project-label { font-size: 10.5px; font-weight: 600; color: var(--txt-3); text-transform: uppercase; letter-spacing: .06em; }
+.project-picker select { background: var(--panel); border-color: var(--line-soft); font-size: 12.5px; }
+
 .sidebar-foot { margin-top: auto; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--txt-3); flex: none; }
 .status-dot.ok  { background: var(--good); box-shadow: 0 0 8px var(--good); }
@@ -150,6 +154,8 @@ textarea { resize: vertical; min-height: 64px; }
 .kpi-label { font-size: 11.5px; color: var(--txt-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 .kpi-value { font-size: 27px; font-weight: 700; margin-top: 7px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .kpi-sub { font-size: 12px; color: var(--txt-2); margin-top: 3px; }
+.scope-caption { font-size: 12px; color: var(--txt-3); margin: -10px 0 22px; }
+.scope-caption b { color: var(--txt-2); font-weight: 600; }
 
 /* ---------- Panels / charts ---------- */
 .panel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -174,6 +180,36 @@ textarea { resize: vertical; min-height: 64px; }
 .data-table tbody tr:hover { background: var(--panel-2); }
 .data-table .k { font-family: var(--mono); font-size: 12px; color: var(--txt); }
 .data-table .cost { color: var(--good); font-weight: 600; }
+
+/* ---------- Subagents / reconciliation ---------- */
+.subhead { font-size: 11.5px; font-weight: 600; color: var(--txt-3); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; }
+.subhead:first-of-type { margin-top: 0; }
+.subagent-runs-head { margin: 4px 0 0; }
+.subagent-recon { margin: 0; font-size: 12.5px; color: var(--txt-2); font-variant-numeric: tabular-nums; }
+.subagent-recon b { color: var(--txt); font-weight: 600; }
+.subagent-recon .recon-ok  { color: var(--good); font-weight: 600; }
+.subagent-recon .recon-gap { color: var(--warn); font-weight: 600; }
+
+/* status pills in subagent run rows */
+.pill { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: .02em; }
+.pill-ok   { background: rgba(52,211,153,.16); color: var(--good); }
+.pill-warn { background: rgba(251,191,36,.16); color: var(--warn); }
+.data-table td .when { font-family: var(--mono); font-size: 11px; color: var(--txt-2); white-space: nowrap; }
+.data-table tfoot td { border-top: 1px solid var(--line); border-bottom: 0; font-weight: 700; color: var(--txt); background: var(--panel-2); }
+.data-table tfoot .cost { color: var(--good); }
+
+/* per-US cost breakdown in story modal */
+.cost-total { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.cost-total .big { font-size: 20px; font-weight: 700; color: var(--good); font-variant-numeric: tabular-nums; }
+.cost-total .sub { font-size: 12px; color: var(--txt-3); }
+.cost-empty { font-size: 13px; color: var(--txt-3); }
+
+/* epic/feature cost badges on the kanban */
+.cost-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--good);
+  background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.22);
+  padding: 1px 7px; border-radius: 20px; white-space: nowrap;
+}
 
 /* ---------- Kanban ---------- */
 .kanban { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 14px; align-items: start; }
@@ -281,6 +317,8 @@ textarea { resize: vertical; min-height: 64px; }
   .nav-item span { display: none; }
   .nav-item.is-active { box-shadow: inset 0 -2px 0 var(--accent); }
   .sidebar-foot { margin-top: 0; }
+  .project-picker { flex-direction: row; align-items: center; gap: 8px; flex: none; }
+  .project-picker select { min-width: 150px; }
   .brand-text { display: none; }
   .main { padding: 20px 16px 40px; }
   .form-grid { grid-template-columns: 1fr; }

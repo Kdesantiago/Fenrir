@@ -36,6 +36,24 @@ const fmtUsd = (n) => "$" + (n ?? 0).toLocaleString("en-US", { minimumFractionDi
 const fmtUsd4 = (n) => "$" + (n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const esc = (s) => (s ?? "").toString().replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// milliseconds -> human ("1.2s", "3m 4s", "—" when unknown)
+const fmtDur = (ms) => {
+  ms = ms ?? 0;
+  if (!ms) return "—";
+  if (ms < 1000) return ms + "ms";
+  const s = ms / 1000;
+  if (s < 60) return s.toFixed(1) + "s";
+  const m = Math.floor(s / 60);
+  return `${m}m ${Math.round(s % 60)}s`;
+};
+// ISO timestamp -> compact local "Jun 27, 21:21" (returns "—" when missing/invalid)
+const fmtWhen = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+};
+
 const PALETTE = ["#6366f1", "#22d3ee", "#34d399", "#fbbf24", "#f87171", "#c084fc", "#f472b6", "#38bdf8", "#a3e635", "#fb923c"];
 const colorFor = (str) => {
   let h = 0;
@@ -83,7 +101,20 @@ const charts = {};
 let board = null;
 let telemetry = null;
 let bydayMetric = "tokens";
+let selectedProject = "all"; // "all" | "<slug>"; populated from /api/projects on boot
 const filters = { epic: "", assignee: "" };
+let costs = null;            // cached /api/board/costs for the selected project's board
+let subagentSortByCost = true; // run table sort: true = cost desc, false = chronological (newest first)
+let traceUs = "";           // cost-trace US filter ("" = all)
+
+// readable label from a project slug, e.g. "-Users-kdesantiago-Desktop-Fenrir" -> "Fenrir"
+const projectLabel = (slug) => {
+  if (!slug) return "Unknown";
+  const parts = slug.split("-").filter(Boolean);
+  return parts[parts.length - 1] || slug;
+};
+// build "?project=<selected>" for telemetry endpoints
+const projParam = () => "?project=" + encodeURIComponent(selectedProject);
 
 const COLUMNS = [
   { id: "backlog", label: "Backlog" },
@@ -116,6 +147,8 @@ function switchView(view) {
     v.classList.toggle("is-active", on);
     v.hidden = !on;
   });
+  // the cost trace is fetched lazily the first time (and refreshed on each visit)
+  if (view === "trace") loadTrace();
   // charts need a resize nudge when revealed
   requestAnimationFrame(() => Object.values(charts).forEach((c) => c && c.resize()));
 }
@@ -137,14 +170,16 @@ async function loadOverview() {
   const body = $("#overview-body");
   $("#kpi-grid").innerHTML = Array(5).fill('<div class="skel skel-kpi"></div>').join("");
   try {
+    const q = projParam();
     const [summary, byday, bymodel, agents] = await Promise.all([
-      apiGet("/api/telemetry/summary"),
-      apiGet("/api/telemetry/by-day"),
-      apiGet("/api/telemetry/by-model"),
-      apiGet("/api/telemetry/agents"),
+      apiGet("/api/telemetry/summary" + q),
+      apiGet("/api/telemetry/by-day" + q),
+      apiGet("/api/telemetry/by-model" + q),
+      apiGet("/api/telemetry/agents" + q),
     ]);
     telemetry = { summary, byday, bymodel, agents };
     renderKPIs(summary);
+    renderScope(summary.scope);
     $("#overview-range").textContent =
       summary.first_day ? `${summary.first_day} → ${summary.last_day} · ${fmtInt(summary.sessions)} sessions` : "No telemetry recorded yet";
     renderByDay(byday);
@@ -173,6 +208,15 @@ function renderKPIs(s) {
   );
 }
 
+function renderScope(scope) {
+  const cap = $("#scope-caption");
+  if (!scope) { cap.hidden = true; cap.textContent = ""; return; }
+  const label = scope === "all projects" ? "all projects" : projectLabel(scope);
+  cap.hidden = false;
+  cap.innerHTML = "";
+  cap.append("Showing telemetry for ", el("b", { text: label }));
+}
+
 const gridColor = "rgba(255,255,255,.06)";
 const tickColor = "#64708a";
 function applyChartDefaults() {
@@ -183,10 +227,23 @@ function applyChartDefaults() {
 
 function destroy(key) { if (charts[key]) { charts[key].destroy(); charts[key] = null; } }
 
+// A chart's empty-state used to overwrite its wrap, deleting the <canvas>; the next render
+// then hit `null.getContext`. These keep the wrap (anchored by data-canvas) the source of
+// truth: chartEmpty() shows a message, freshCanvas() always hands back a clean canvas.
+function chartWrap(id) { return document.querySelector(`.chart-wrap[data-canvas="${id}"]`); }
+function chartEmpty(id, opts) { const w = chartWrap(id); if (w) stateMsg(w, opts); }
+function freshCanvas(id) {
+  const w = chartWrap(id);
+  if (!w) return null;
+  w.innerHTML = "";
+  return w.appendChild(el("canvas", { id, role: "img", "aria-label": w.dataset.label || id }));
+}
+
 function renderByDay(rows) {
   destroy("byday");
-  const ctx = $("#chart-byday");
-  if (!rows.length) { stateMsg(ctx.parentElement, { icon: ICON_EMPTY, title: "No daily data", msg: "Usage will appear here." }); return; }
+  if (!rows.length) { chartEmpty("chart-byday", { icon: ICON_EMPTY, title: "No daily data", msg: "Usage will appear here." }); return; }
+  const ctx = freshCanvas("chart-byday");
+  if (!ctx) return;
   const labels = rows.map((r) => r.day);
   const data = rows.map((r) => r[bydayMetric]);
   const isCost = bydayMetric === "cost_usd";
@@ -213,8 +270,9 @@ function renderByDay(rows) {
 
 function renderByModel(rows) {
   destroy("bymodel");
-  const ctx = $("#chart-bymodel");
-  if (!rows.length) { stateMsg(ctx.parentElement, { icon: ICON_EMPTY, title: "No model data", msg: "" }); return; }
+  if (!rows.length) { chartEmpty("chart-bymodel", { icon: ICON_EMPTY, title: "No model data", msg: "" }); return; }
+  const ctx = freshCanvas("chart-bymodel");
+  if (!ctx) return;
   charts.bymodel = new Chart(ctx, {
     type: "doughnut",
     data: { labels: rows.map((r) => shortModel(r.key)), datasets: [{
@@ -231,8 +289,9 @@ function renderByModel(rows) {
 
 function renderSource(rows) {
   destroy("source");
-  const ctx = $("#chart-source");
-  if (!rows.length) { stateMsg(ctx.parentElement, { icon: ICON_EMPTY, title: "No agent data", msg: "" }); return; }
+  if (!rows.length) { chartEmpty("chart-source", { icon: ICON_EMPTY, title: "No agent data", msg: "" }); return; }
+  const ctx = freshCanvas("chart-source");
+  if (!ctx) return;
   charts.source = new Chart(ctx, {
     type: "doughnut",
     data: { labels: rows.map((r) => r.key === "main" ? "Main thread" : "Subagent"), datasets: [{
@@ -254,18 +313,115 @@ const shortModel = (m) => (m || "").replace(/^.*?(claude|gpt|gemini)/i, "$1").re
 async function loadAgents() {
   const body = $("#agents-body");
   try {
-    const [bymodel, byskill, agents] = await Promise.all([
-      apiGet("/api/telemetry/by-model"),
-      apiGet("/api/telemetry/by-skill"),
-      apiGet("/api/telemetry/agents"),
+    const q = projParam();
+    const [bymodel, byskill, agents, subagents] = await Promise.all([
+      apiGet("/api/telemetry/by-model" + q),
+      apiGet("/api/telemetry/by-skill" + q),
+      apiGet("/api/telemetry/agents" + q),
+      apiGet("/api/telemetry/subagents" + q),
     ]);
     fillTable("#tbl-model", bymodel, (r) => shortModel(r.key));
     fillTable("#tbl-skill", byskill, (r) => r.key);
     fillTable("#tbl-source", agents.by_source, (r) => r.key === "main" ? "Main thread" : "Subagent");
     renderSourceBar(agents.by_source);
+    renderSubagents(subagents);
   } catch (e) {
     stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load agent data", msg: e.message, error: true });
   }
+}
+
+/* ------------------------------------------------------------------ SUBAGENTS */
+let subagentRuns = []; // last-fetched runs, kept for client-side re-sort
+
+function renderSubagents(data) {
+  subagentRuns = data.runs || [];
+  renderSubagentRecon(data);
+  renderSubagentTypeTable(data.by_type || []);
+  renderSubagentTypeBar(data.by_type || []);
+  renderSubagentRuns();
+}
+
+// the reconciliation line: attributed X / total Y (Z unattributed)
+function renderSubagentRecon(d) {
+  const node = $("#subagent-recon");
+  node.innerHTML = "";
+  const total = d.subagent_total_tokens ?? 0;
+  const attr = d.attributed_tokens ?? 0;
+  const unattr = d.unattributed_tokens ?? 0;
+  const reconciled = unattr === 0;
+  node.append(
+    "Attributed ",
+    el("b", { text: fmtInt(attr) }),
+    " / total ",
+    el("b", { text: fmtInt(total) }),
+    " tokens (",
+    el("span", { class: reconciled ? "recon-ok" : "recon-gap", text: fmtInt(unattr) + " unattributed" }),
+    ")",
+  );
+  node.title = `${fmtInt(attr)} attributed + ${fmtInt(unattr)} unattributed = ${fmtInt(total)} subagent tokens`;
+}
+
+function renderSubagentTypeTable(rows) {
+  const tbody = $("#tbl-subagent-type tbody");
+  tbody.innerHTML = "";
+  if (!rows.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: "5", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs" })));
+    return;
+  }
+  rows.forEach((r) => {
+    tbody.append(el("tr", {}, [
+      el("td", { class: "k", text: r.agent_type }),
+      el("td", { class: "num", text: fmtInt(r.runs) }),
+      el("td", { class: "num", text: fmtTok(r.input_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
+    ]));
+  });
+}
+
+function renderSubagentTypeBar(rows) {
+  destroy("subagenttype");
+  if (!rows.length) { chartEmpty("chart-subagent-type", { icon: ICON_EMPTY, title: "No subagent runs", msg: "" }); return; }
+  const ctx = freshCanvas("chart-subagent-type");
+  if (!ctx) return;
+  charts.subagenttype = new Chart(ctx, {
+    type: "bar",
+    data: { labels: rows.map((r) => r.agent_type), datasets: [{
+      label: "Cost (USD)", data: rows.map((r) => r.cost_usd),
+      backgroundColor: rows.map((r) => colorFor(r.agent_type)),
+      borderRadius: 6, maxBarThickness: 34,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: "y",
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: (c) => `${fmtUsd4(c.parsed.x)} · ${fmtInt(rows[c.dataIndex].runs)} runs` } } },
+      scales: { x: { grid: { color: gridColor }, ticks: { callback: (v) => "$" + v } }, y: { grid: { display: false } } },
+    },
+  });
+}
+
+function renderSubagentRuns() {
+  const tbody = $("#tbl-subagent-runs tbody");
+  tbody.innerHTML = "";
+  if (!subagentRuns.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: "8", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs recorded" })));
+    return;
+  }
+  const rows = [...subagentRuns].sort((a, b) =>
+    subagentSortByCost ? (b.cost_usd - a.cost_usd) : ((b.when || "").localeCompare(a.when || "")));
+  rows.forEach((r) => {
+    const ok = r.status === "completed" && r.attributed;
+    tbody.append(el("tr", { title: r.description || "" }, [
+      el("td", { class: "k", text: r.agent_type }),
+      el("td", {}, el("span", { class: "when", text: fmtWhen(r.when) })),
+      el("td", { class: "k", text: shortModel(r.model) || "—" }),
+      el("td", { class: "num", text: fmtTok(r.input_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
+      el("td", { class: "num", text: fmtDur(r.duration_ms) }),
+      el("td", {}, el("span", { class: "pill " + (ok ? "pill-ok" : "pill-warn"), text: r.status })),
+    ]));
+  });
 }
 
 function fillTable(sel, rows, labelFn) {
@@ -288,8 +444,9 @@ function fillTable(sel, rows, labelFn) {
 
 function renderSourceBar(rows) {
   destroy("sourcebar");
-  const ctx = $("#chart-source-bar");
-  if (!rows.length) return;
+  if (!rows.length) { chartEmpty("chart-source-bar", { icon: ICON_EMPTY, title: "No data", msg: "" }); return; }
+  const ctx = freshCanvas("chart-source-bar");
+  if (!ctx) return;
   charts.sourcebar = new Chart(ctx, {
     type: "bar",
     data: { labels: rows.map((r) => r.key === "main" ? "Main thread" : "Subagent"), datasets: [{
@@ -305,12 +462,44 @@ function renderSourceBar(rows) {
   });
 }
 
+/* ------------------------------------------------------------------ PROJECTS */
+async function loadProjects() {
+  const sel = $("#project-select");
+  try {
+    const { active, projects } = await apiGet("/api/projects");
+    sel.innerHTML = "";
+    sel.append(el("option", { value: "all", text: "All projects" }));
+    (projects || []).forEach((slug) =>
+      sel.append(el("option", { value: slug, text: projectLabel(slug), title: slug }))
+    );
+    // pre-select the backend's active project; fall back to "all"
+    selectedProject = active && (projects || []).includes(active) ? active : "all";
+    sel.value = selectedProject;
+  } catch {
+    // leave the static "All projects" option in place; scope to all
+    selectedProject = "all";
+    sel.value = "all";
+  }
+}
+
+// project switch: re-fetch & re-render telemetry views only (board is project-independent)
+function onProjectChange() {
+  selectedProject = $("#project-select").value || "all";
+  loadOverview();
+  loadAgents();
+  loadBoard();   // the kanban is scoped to the selected project too
+  loadTrace();   // trace is board-derived → re-scope it as well
+}
+
 /* ------------------------------------------------------------------ KANBAN */
 async function loadBoard() {
   const body = $("#kanban-body");
   try {
-    board = await apiGet("/api/board");
+    board = await apiGet("/api/board" + projParam());
+    costs = null; // board changed: drop stale cost cache, refetch lazily
+    try { await ensureCosts(); } catch { /* badges stay hidden if costs unavailable */ }
     populateFilters();
+    populateTraceFilter();
     renderKanban();
   } catch (e) {
     stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load board", msg: e.message, error: true });
@@ -320,6 +509,19 @@ async function loadBoard() {
 const featureById = (id) => board.features.find((f) => f.id === id);
 const epicById = (id) => board.epics.find((e) => e.id === id);
 const epicOfStory = (story) => { const f = featureById(story.feature_id); return f ? epicById(f.epic_id) : null; };
+
+/* ---- board-derived costs (per selected project; cached, refreshed on mutation) ---- */
+async function ensureCosts() {
+  if (costs) return costs;
+  costs = await apiGet("/api/board/costs" + projParam());
+  return costs;
+}
+// invalidate + re-render anything cost-derived after a board mutation
+async function refreshCosts() {
+  costs = null;
+  try { await ensureCosts(); } catch { /* badges simply stay hidden */ }
+  if (board) renderKanban();
+}
 
 function populateFilters() {
   const epicSel = $("#filter-epic");
@@ -395,7 +597,17 @@ function storyCard(s) {
   );
 
   const meta = el("div", { class: "card-meta" });
-  if (ep) meta.append(el("span", { class: "chip chip-epic", style: `color:${ep.color}`, text: ep.title }));
+  if (ep) {
+    meta.append(el("span", { class: "chip chip-epic", style: `color:${ep.color}`, text: ep.title }));
+    // board-derived cost badge for the epic this story rolls up to
+    const ec = costs && costs.epics && costs.epics[ep.id];
+    if (ec && ec.cost_usd > 0) meta.append(el("span", { class: "cost-badge", title: `Epic ${ep.title} total`, text: fmtUsd(ec.cost_usd) }));
+  }
+  const feat = featureById(s.feature_id);
+  if (feat) {
+    const fc = costs && costs.features && costs.features[feat.id];
+    if (fc && fc.cost_usd > 0) meta.append(el("span", { class: "cost-badge", title: `Feature ${feat.title} total`, text: fmtUsd(fc.cost_usd) }));
+  }
   if (s.points) meta.append(el("span", { class: "chip chip-points", text: s.points + " pts" }));
   if (s.assignee) meta.append(el("span", { class: "chip" }, [
     el("span", { class: "avatar", style: `background:${colorFor(s.assignee)}`, text: initials(s.assignee) }),
@@ -435,7 +647,7 @@ function initSortable() {
         const id = evt.item.getAttribute("data-id");
         if (newStatus === oldStatus) return;
         try {
-          await apiPatch(`/api/story/${id}/status`, { status: newStatus });
+          await apiPatch(`/api/story/${id}/status` + projParam(), { status: newStatus });
           const st = board.stories.find((x) => x.id === id);
           if (st) st.status = newStatus;
           toast(`Moved to ${COLUMNS.find((c) => c.id === newStatus).label}`, "ok");
@@ -452,11 +664,12 @@ function initSortable() {
 async function deleteStory(s) {
   if (!confirm(`Delete story “${s.title}”? This cannot be undone.`)) return;
   try {
-    await apiDel(`/api/story/${s.id}`);
+    await apiDel(`/api/story/${s.id}` + projParam());
     board.stories = board.stories.filter((x) => x.id !== s.id);
     toast("Story deleted", "ok");
     populateFilters();
     renderKanban();
+    refreshCosts();
   } catch (e) {
     toast("Delete failed: " + e.message, "err");
   }
@@ -524,7 +737,7 @@ function openStoryDetail(s) {
       asgInput,
       el("button", { class: "btn btn-sm", text: "Save", onclick: async () => {
         try {
-          await apiPatch(`/api/story/${s.id}/assign`, { assignee: asgInput.value.trim() });
+          await apiPatch(`/api/story/${s.id}/assign` + projParam(), { assignee: asgInput.value.trim() });
           s.assignee = asgInput.value.trim();
           toast("Assignee updated", "ok"); populateFilters(); renderKanban();
         } catch (e) { toast("Failed: " + e.message, "err"); }
@@ -545,7 +758,7 @@ function openStoryDetail(s) {
   tasks.forEach((t) => taskSec.append(el("div", { class: "story-statement", style: "margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center" }, [
     el("span", { text: `${t.title} · ${t.status}${t.assignee ? " · " + t.assignee : ""}` }),
     el("button", { class: "btn btn-danger btn-sm", text: "✕", "aria-label": "Delete task", onclick: async () => {
-      try { await apiDel(`/api/task/${t.id}`); board.tasks = board.tasks.filter((x) => x.id !== t.id); toast("Task deleted", "ok"); openStoryDetail(s); }
+      try { await apiDel(`/api/task/${t.id}` + projParam()); board.tasks = board.tasks.filter((x) => x.id !== t.id); costs = null; toast("Task deleted", "ok"); openStoryDetail(s); }
       catch (e) { toast("Failed: " + e.message, "err"); }
     } }),
   ])));
@@ -555,12 +768,22 @@ function openStoryDetail(s) {
     el("button", { class: "btn btn-sm", text: "+ Task", onclick: async () => {
       if (!taskInput.value.trim()) return;
       try {
-        const t = await apiPost("/api/tasks", { story_id: s.id, title: taskInput.value.trim(), assignee: "" });
-        board.tasks.push(t); toast("Task added", "ok"); openStoryDetail(s);
+        const t = await apiPost("/api/tasks" + projParam(), { story_id: s.id, title: taskInput.value.trim(), assignee: "" });
+        board.tasks.push(t); costs = null; toast("Task added", "ok"); openStoryDetail(s);
       } catch (e) { toast("Failed: " + e.message, "err"); }
     } }),
   ]));
   wrap.append(taskSec);
+
+  // per-US cost (board-derived; fetched once and cached, refreshed after mutations)
+  const costSec = el("div", { class: "detail-section" }, [el("h4", { text: "Cost" })]);
+  const costBody = el("div");
+  costBody.append(el("div", { class: "cost-empty", text: "Loading cost…" }));
+  costSec.append(costBody);
+  wrap.append(costSec);
+  ensureCosts()
+    .then((c) => renderStoryCost(costBody, c && c.stories ? c.stories[s.id] : null))
+    .catch(() => { costBody.innerHTML = ""; costBody.append(el("div", { class: "cost-empty", text: "Cost unavailable" })); });
 
   // work log
   const wl = s.work_log || [];
@@ -589,6 +812,103 @@ function openStoryDetail(s) {
   openModal(`${s.id} · ${s.title}`, wrap);
 }
 
+// render a story's cost rollup (total + per-agent breakdown) into a container
+function renderStoryCost(target, r) {
+  target.innerHTML = "";
+  if (!r || !r.cost_usd) {
+    target.append(el("div", { class: "cost-empty", text: "No cost recorded for this story yet." }));
+    return;
+  }
+  target.append(el("div", { class: "cost-total" }, [
+    el("span", { class: "big", text: fmtUsd(r.cost_usd) }),
+    el("span", { class: "sub", text: `${fmtTok(r.input_tokens)} in · ${fmtTok(r.output_tokens)} out` }),
+  ]));
+  if ((r.by_agent || []).length) {
+    target.append(el("table", { class: "wl-table" }, [
+      el("thead", {}, el("tr", {}, [
+        el("th", { text: "Agent" }), el("th", { class: "num", text: "In" }),
+        el("th", { class: "num", text: "Out" }), el("th", { class: "num", text: "Cost" }),
+      ])),
+      el("tbody", {}, r.by_agent.map((a) => el("tr", {}, [
+        el("td", { text: a.agent || "—" }),
+        el("td", { class: "num", text: fmtTok(a.input_tokens) }),
+        el("td", { class: "num", text: fmtTok(a.output_tokens) }),
+        el("td", { class: "num", text: fmtUsd4(a.cost_usd) }),
+      ]))),
+    ]));
+  }
+}
+
+/* ------------------------------------------------------------------ COST TRACE */
+function populateTraceFilter() {
+  const sel = $("#trace-us");
+  if (!sel || !board) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">All stories</option>';
+  board.stories.forEach((s) => sel.append(el("option", { value: s.id, text: `${s.id} · ${s.title}` })));
+  // keep the prior selection if the story still exists
+  sel.value = board.stories.some((s) => s.id === prev) ? prev : "";
+  traceUs = sel.value;
+}
+
+async function loadTrace() {
+  const tbody = $("#tbl-trace tbody");
+  const tfoot = $("#tbl-trace tfoot");
+  tbody.innerHTML = "";
+  tfoot.innerHTML = "";
+  tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "Loading…" })));
+  try {
+    const parts = [];
+    if (traceUs) parts.push("us=" + encodeURIComponent(traceUs));
+    const pq = projParam();          // "?project=<sel>" or ""
+    if (pq) parts.push(pq.slice(1));
+    const rows = await apiGet("/api/trace" + (parts.length ? "?" + parts.join("&") : ""));
+    renderTrace(rows);
+  } catch (e) {
+    tbody.innerHTML = "";
+    stateMsg($("#trace-body"), { icon: ICON_ERR, title: "Couldn’t load cost trace", msg: e.message, error: true });
+  }
+}
+
+function renderTrace(rows) {
+  const tbody = $("#tbl-trace tbody");
+  const tfoot = $("#tbl-trace tfoot");
+  tbody.innerHTML = "";
+  tfoot.innerHTML = "";
+  if (!rows.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No work-log entries yet." })));
+    return;
+  }
+  let tin = 0, tout = 0, tcost = 0;
+  rows.forEach((r) => {
+    tin += r.input_tokens || 0;
+    tout += r.output_tokens || 0;
+    tcost += r.cost_usd || 0;
+    const agent = r.subagent_type || r.agent || "—";
+    tbody.append(el("tr", { title: r.note || "" }, [
+      el("td", {}, el("span", { class: "when", text: fmtWhen(r.at) })),
+      el("td", {}, [
+        el("span", { class: "k", style: "color:var(--txt-3)", text: r.us_id + " " }),
+        el("span", { text: r.title || "" }),
+      ]),
+      el("td", { class: "k", text: agent }),
+      el("td", { class: "num", text: fmtTok(r.input_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
+      el("td", { text: r.source || (r.kind === "task" ? "task" : "story") }),
+    ]));
+  });
+  tfoot.append(el("tr", {}, [
+    el("td", { text: `${rows.length} ${rows.length === 1 ? "entry" : "entries"}` }),
+    el("td", { text: "" }),
+    el("td", { text: "Total" }),
+    el("td", { class: "num", text: fmtTok(tin) }),
+    el("td", { class: "num", text: fmtTok(tout) }),
+    el("td", { class: "num cost", text: fmtUsd4(tcost) }),
+    el("td", { text: "" }),
+  ]));
+}
+
 /* --- add forms --- */
 function formRow(labelText, field) {
   const id = "f-" + Math.random().toString(36).slice(2, 8);
@@ -613,7 +933,7 @@ function openAddEpic() {
     e.preventDefault();
     if (!title.value.trim()) return;
     try {
-      await apiPost("/api/epics", { title: title.value.trim(), description: desc.value.trim(), color: color.value });
+      await apiPost("/api/epics" + projParam(), { title: title.value.trim(), description: desc.value.trim(), color: color.value });
       toast("Epic created", "ok"); closeModal(); await loadBoard();
     } catch (err) { toast("Failed: " + err.message, "err"); }
   });
@@ -638,7 +958,7 @@ function openAddFeature() {
     e.preventDefault();
     if (!title.value.trim()) return;
     try {
-      await apiPost("/api/features", { epic_id: epic.value, title: title.value.trim(), description: desc.value.trim() });
+      await apiPost("/api/features" + projParam(), { epic_id: epic.value, title: title.value.trim(), description: desc.value.trim() });
       toast("Feature created", "ok"); closeModal(); await loadBoard();
     } catch (err) { toast("Failed: " + err.message, "err"); }
   });
@@ -674,7 +994,7 @@ function openAddStory() {
     e.preventDefault();
     if (!title.value.trim()) return;
     try {
-      await apiPost("/api/stories", {
+      await apiPost("/api/stories" + projParam(), {
         feature_id: feature.value, title: title.value.trim(),
         assignee: assignee.value.trim(), points: parseInt(points.value || "0", 10) || 0,
         as_a: asA.value.trim(), i_want: iWant.value.trim(), so_that: soThat.value.trim(),
@@ -696,8 +1016,19 @@ function initControls() {
     if (telemetry) renderByDay(telemetry.byday);
   }));
 
+  $("#project-select").addEventListener("change", onProjectChange);
+
   $("#filter-epic").addEventListener("change", (e) => { filters.epic = e.target.value; renderKanban(); });
   $("#filter-assignee").addEventListener("change", (e) => { filters.assignee = e.target.value; renderKanban(); });
+
+  $("#subagent-sort").addEventListener("click", (e) => {
+    subagentSortByCost = !subagentSortByCost;
+    e.target.textContent = subagentSortByCost ? "Cost ↓" : "Recent ↓";
+    e.target.setAttribute("aria-pressed", subagentSortByCost ? "true" : "false");
+    renderSubagentRuns();
+  });
+
+  $("#trace-us").addEventListener("change", (e) => { traceUs = e.target.value; loadTrace(); });
 
   $("#add-epic-btn").addEventListener("click", openAddEpic);
   $("#add-feature-btn").addEventListener("click", openAddFeature);
@@ -705,7 +1036,10 @@ function initControls() {
 }
 
 async function loadAll() {
-  await Promise.all([loadOverview(), loadAgents(), loadBoard()]);
+  // resolve the active project first so telemetry fetches use the right scope;
+  // the board is project-independent and can load alongside.
+  await Promise.all([loadProjects(), loadBoard()]);
+  await Promise.all([loadOverview(), loadAgents()]);
 }
 
 function boot() {

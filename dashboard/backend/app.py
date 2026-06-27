@@ -15,8 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import telemetry
-from .board import BoardStore
+from . import config, telemetry
 from .models import Status, WorkLogEntry
 
 KINDS = {"epic", "feature", "story", "task"}
@@ -24,18 +23,27 @@ KINDS = {"epic", "feature", "story", "task"}
 app = FastAPI(title="Fenrir Dashboard", version="0.1.0")
 
 
-def _store() -> BoardStore:
-    p = os.environ.get("FENRIR_DASH_BOARD")
-    return BoardStore(Path(p) if p else None)
+def _store(project: str | None = None):
+    return config.store(_resolve_project(project) if project is not None else None)
 
 
 def _claude_dir() -> Path:
-    p = os.environ.get("FENRIR_DASH_CLAUDE_DIR")
-    return Path(p) if p else telemetry.default_claude_dir()
+    return config.claude_dir()
 
 
-def _events() -> list[dict]:
-    return telemetry.load_events(_claude_dir(), os.environ.get("FENRIR_DASH_PROJECT"))
+def _resolve_project(q: str | None) -> str | None:
+    """Which project to scope telemetry to. Query param wins; then env; then auto-detect
+    the current repo's project; `""`/`"all"` means every project."""
+    if q is None:
+        env = os.environ.get("FENRIR_DASH_PROJECT")
+        if env is not None:
+            return env or None
+        return telemetry.current_project_slug(_claude_dir())
+    return None if q in ("", "all") else q
+
+
+def _events(project: str | None) -> list[dict]:
+    return telemetry.load_events(_claude_dir(), _resolve_project(project))
 
 
 def _now() -> str:
@@ -92,27 +100,37 @@ def health() -> dict:
 
 
 @app.get("/api/board")
-def get_board() -> dict:
-    return _store().load().model_dump()
+def get_board(project: str | None = None) -> dict:
+    return _store(project).load().model_dump()
+
+
+@app.get("/api/board/costs")
+def board_costs(project: str | None = None) -> dict:
+    return _store(project).costs()
+
+
+@app.get("/api/trace")
+def trace(us: str | None = None, project: str | None = None) -> list[dict]:
+    return _store(project).trace(us or None)
 
 
 @app.post("/api/epics")
-def add_epic(body: EpicIn) -> dict:
-    return _store().add_epic(body.title, body.description, body.color, _now()).model_dump()
+def add_epic(body: EpicIn, project: str | None = None) -> dict:
+    return _store(project).add_epic(body.title, body.description, body.color, _now()).model_dump()
 
 
 @app.post("/api/features")
-def add_feature(body: FeatureIn) -> dict:
+def add_feature(body: FeatureIn, project: str | None = None) -> dict:
     try:
-        return _store().add_feature(body.epic_id, body.title, body.description).model_dump()
+        return _store(project).add_feature(body.epic_id, body.title, body.description).model_dump()
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
 
 
 @app.post("/api/stories")
-def add_story(body: StoryIn) -> dict:
+def add_story(body: StoryIn, project: str | None = None) -> dict:
     try:
-        return _store().add_story(
+        return _store(project).add_story(
             body.feature_id, body.title, body.assignee, body.points,
             body.as_a, body.i_want, body.so_that, body.acceptance_criteria,
         ).model_dump()
@@ -121,73 +139,86 @@ def add_story(body: StoryIn) -> dict:
 
 
 @app.post("/api/tasks")
-def add_task(body: TaskIn) -> dict:
+def add_task(body: TaskIn, project: str | None = None) -> dict:
     try:
-        return _store().add_task(body.story_id, body.title, body.assignee).model_dump()
+        return _store(project).add_task(body.story_id, body.title, body.assignee).model_dump()
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
 
 
 @app.patch("/api/{kind}/{item_id}/status")
-def set_status(kind: str, item_id: str, body: StatusIn) -> dict:
+def set_status(kind: str, item_id: str, body: StatusIn, project: str | None = None) -> dict:
     _check_kind(kind)
     try:
-        return _store().set_status(kind, item_id, body.status).model_dump()
+        return _store(project).set_status(kind, item_id, body.status).model_dump()
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
 
 
 @app.patch("/api/{kind}/{item_id}/assign")
-def assign(kind: str, item_id: str, body: AssignIn) -> dict:
+def assign(kind: str, item_id: str, body: AssignIn, project: str | None = None) -> dict:
     _check_kind(kind)
     try:
-        return _store().assign(kind, item_id, body.assignee).model_dump()
+        return _store(project).assign(kind, item_id, body.assignee).model_dump()
     except (KeyError, ValueError) as e:
         raise HTTPException(404 if isinstance(e, KeyError) else 400, str(e)) from e
 
 
 @app.post("/api/{kind}/{item_id}/worklog")
-def log_work(kind: str, item_id: str, entry: WorkLogEntry) -> dict:
+def log_work(kind: str, item_id: str, entry: WorkLogEntry, project: str | None = None) -> dict:
     _check_kind(kind)
     try:
-        return _store().log_work(kind, item_id, entry).model_dump()
+        return _store(project).log_work(kind, item_id, entry).model_dump()
     except (KeyError, ValueError) as e:
         raise HTTPException(404 if isinstance(e, KeyError) else 400, str(e)) from e
 
 
 @app.delete("/api/{kind}/{item_id}")
-def delete(kind: str, item_id: str) -> dict:
+def delete(kind: str, item_id: str, project: str | None = None) -> dict:
     _check_kind(kind)
     try:
-        _store().delete(kind, item_id)
+        _store(project).delete(kind, item_id)
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
     return {"deleted": item_id}
 
 
+@app.get("/api/projects")
+def projects() -> dict:
+    cd = _claude_dir()
+    return {"active": telemetry.current_project_slug(cd), "projects": telemetry.list_projects(cd)}
+
+
 @app.get("/api/telemetry/summary")
-def telemetry_summary() -> dict:
-    return telemetry.summary(_events())
+def telemetry_summary(project: str | None = None) -> dict:
+    out = telemetry.summary(_events(project))
+    out["scope"] = _resolve_project(project) or "all projects"
+    return out
 
 
 @app.get("/api/telemetry/by-model")
-def telemetry_by_model() -> list[dict]:
-    return telemetry.by_model(_events())
+def telemetry_by_model(project: str | None = None) -> list[dict]:
+    return telemetry.by_model(_events(project))
 
 
 @app.get("/api/telemetry/by-skill")
-def telemetry_by_skill() -> list[dict]:
-    return telemetry.by_skill(_events())
+def telemetry_by_skill(project: str | None = None) -> list[dict]:
+    return telemetry.by_skill(_events(project))
 
 
 @app.get("/api/telemetry/by-day")
-def telemetry_by_day() -> list[dict]:
-    return telemetry.by_day(_events())
+def telemetry_by_day(project: str | None = None) -> list[dict]:
+    return telemetry.by_day(_events(project))
 
 
 @app.get("/api/telemetry/agents")
-def telemetry_agents() -> dict:
-    return telemetry.agents(_events())
+def telemetry_agents(project: str | None = None) -> dict:
+    return telemetry.agents(_events(project))
+
+
+@app.get("/api/telemetry/subagents")
+def telemetry_subagents(project: str | None = None) -> dict:
+    return telemetry.subagent_runs(_claude_dir(), _resolve_project(project))
 
 
 # --- static SPA (mounted last so /api/* wins) -----------------------------------------

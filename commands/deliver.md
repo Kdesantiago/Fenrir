@@ -47,7 +47,7 @@ Before each stage, snapshot: commit WIP or `git stash push -m "deliver:<slug>:<s
 
 - **architect** (full only): reads spec → writes `docs/adr/NNNN-*.md`, sets the decision the coder builds against.
 - **red-team** (full + risk-path diffs only): `red-team-destroyer` attacks the ADR before any code is written. Parse its final `VERDICT:` line — `REDESIGN` is treated like reviewer=BLOCK (STOP, loop back to architect); `FIX-FIRST` means fold its findings into the spec before coding; `SHIP` proceeds.
-- **coder**: implements against spec + ADR. (Default main-thread behavior or a restricted coder agent.)
+- **coder**: delegate to the **`coder` subagent** to implement against the spec + ADR. Running it as a subagent means its token spend lands in `toolUseResult` and is attributable to the US (see §6). It returns files touched + what it ran.
 - **qa-tester** (full only): reads spec/ADR → writes new tests + any bug repro; must run them and report real results.
 - **doc-keeper** (both): syncs `CHANGELOG.md` + affected README(s)/API-docs to the diff BEFORE review (so the changelog entry reviewer checks for already exists). Idempotent.
 - **native correctness review** (full only): run `/code-review` **from this command body** (the main thread can use SlashCommand; a subagent cannot). Capture its findings as text.
@@ -60,6 +60,20 @@ Before each stage, snapshot: commit WIP or `git stash push -m "deliver:<slug>:<s
 
 ## 5. Hand off to ship (only if every stage passed)
 Invoke `/fenrir:ship` to open the PR. Pass it the spec path and the ADR path so they're linked in the PR body.
+
+## 6. Cost & US tracking (when the `dashboard/` board exists)
+Standardize the work as a tracked, costed **User Story** (the `us-cost-tracking` skill):
+- **Before the pipeline:** represent the task on the board — one **User Story** (under an
+  Epic → Feature) mirroring this spec's goal — and move it to `in_progress`
+  (`python -m backend.cli story add … ` / `move --kind story --id us-N --status in_progress`).
+  One spec = one US, so cost and review map 1:1 to a board item.
+- **After the run (or per stage):** attribute the **real** spend to that US —
+  `python -m backend.cli link --kind story --id us-N --session <session-id>` (idempotent per
+  session+US; writes one entry per source — main vs subagent — so the coder/qa/reviewer
+  subagent cost is captured). On success move the US to `review`/`done`.
+- **Report** the US cost with `cli trace --us us-N`; subagent breakdown via the dashboard
+  Subagents view. Cost is a derived estimate, never a gate.
+This is advisory bookkeeping, not a merge gate — couche-0 (CI + branch-protection) gates.
 
 ## Stop conditions
 - No `org-profile.yaml` → route to `repo-bootstrap`, stop.
