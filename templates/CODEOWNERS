@@ -1,0 +1,21 @@
+# CODEOWNERS — who must review which paths.
+# Replace the @your-org/* placeholders with real GitHub teams (or @users) before relying on this.
+# GitHub: enable branch-protection "Require review from Code Owners" or this file gates nothing.
+# Azure DevOps: this file is ignored — encode the same ownership as branch-policy required reviewers.
+
+# Default owner for everything not matched below.
+*                         @your-org/maintainers
+
+# Risk paths — the owning team must review every change (mirror these in branch-protection).
+/auth/                    @your-org/security
+**/security/              @your-org/security
+/iac/                     @your-org/platform
+/migrations/              @your-org/data
+**/alembic/               @your-org/data
+
+# Couche-0 gate config — edits here change the delivery gate itself.
+/.github/workflows/       @your-org/platform
+/.pre-commit-config.yaml  @your-org/platform
+/branch-protection.tf     @your-org/platform
+/org-profile.yaml         @your-org/maintainers
+/CODEOWNERS               @your-org/maintainers

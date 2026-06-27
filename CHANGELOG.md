@@ -4,6 +4,17 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **`templates/renovate.json`** + **`templates/CODEOWNERS`** — `repo-bootstrap` now copies both from templates instead of hand-generating them (every other couche-0 artifact already had a template; these two were the gap). Renovate policy: patch/minor auto-merge after green required CI, major stays manual; CODEOWNERS ships risk-path owners (`auth/`, `iac/`, `migrations/`, `**/security/`, gate config) with `@your-org/*` placeholders to fill.
+
+### Changed
+- **All 8 agents compressed (~17% fewer characters per body, paid on every invocation)** — terse imperative bullets, dropped prose/repetition. Adversarially verified (8/8 PASS): YAML frontmatter byte-identical and every machine-parseable contract preserved verbatim (`VERDICT:` line, guardrail JSON, `MISSING-MAPPING`/`REFUSED` blocks, `MERGE-READY VERDICT`, the ADR + Context-Plan templates). Zero operating rule dropped.
+- **Skill descriptions rebalanced** — thin ones gained concrete trigger phrases (`auth-gen`, `frontend-gen`, `doc-generator`, `security-review`); verbose ones trimmed (`progressive-delivery`, `gitops`, `feature-flags`) by moving mechanism detail into the body. All now in a consistent ~350–580 char band for more even skill routing.
+- **`repo-bootstrap`** step 6 now references `templates/renovate.json` and `templates/CODEOWNERS` explicitly.
+
+### Fixed
+- **`langgraph-workflow`** — a botched global replace from the v1.1.1 namespacing pass had corrupted a sentence to `verify exact class/fenrir:init`; restored to `verify exact class/init`.
+
 ## [1.1.1] — 2026-06-27
 
 ### Changed

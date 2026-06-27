@@ -1,6 +1,6 @@
 ---
 name: frontend-gen
-description: Use when you need framework-aware frontend generation OR convention/a11y checking for react/vue/svelte/streamlit/html. NOT for backend code, APIs, or infra. Reads org-profile.yaml front and refuses on unknown/none framework.
+description: Use when you need framework-aware frontend generation OR convention/accessibility checking for react/vue/svelte/streamlit/html. Triggers — "scaffold a component/page", "build this UI", "check a11y/accessibility", "audit my frontend conventions". NOT for backend code, APIs, or infra. Reads org-profile.yaml front and refuses on unknown/none framework.
 ---
 
 # Frontend Generator

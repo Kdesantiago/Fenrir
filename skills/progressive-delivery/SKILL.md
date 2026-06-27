@@ -1,6 +1,6 @@
 ---
 name: progressive-delivery
-description: Use when you need automated, metric-gated progressive rollout (canary / blue-green) for an AKS workload — a Rollout CRD plus the metric-analysis mechanism that drives promotion or rollback. NOT for the GitOps delivery loop (use `gitops`) and NOT for hand-rolled traffic shifting. Generates an Argo Rollouts (default) or Flagger config: a Rollout with ONE strategy (canary OR blue-green — Argo's strategy is exclusive), AnalysisTemplate/AnalysisRun with metric queries, and traffic management (ingress / SMI / Gateway API). Requires the Argo Rollouts/Flagger controller already running in-cluster and real metrics in `obs_backend` — without them, promotion/rollback is not actually automated. Reads org-profile.yaml `platform` (aks/k8s only — refuses otherwise) and `obs_backend` (metric source); refuses on mismatch.
+description: Use when you need automated, metric-gated progressive rollout (canary / blue-green) for an AKS/k8s workload — a Rollout CRD plus the metric-analysis that drives promotion or rollback (Argo Rollouts default, or Flagger). Triggers — "canary/blue-green this service", "add metric-gated promotion with auto-rollback on bad metrics". NOT for the GitOps delivery loop (use `gitops`) and NOT for hand-rolled traffic shifting. Reads org-profile.yaml `platform` (aks/k8s only) + `obs_backend` (metric source); refuses otherwise.
 ---
 
 # Progressive Delivery

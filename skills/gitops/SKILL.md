@@ -1,6 +1,6 @@
 ---
 name: gitops
-description: Use when you need a pull-based GitOps delivery loop for AKS — an in-cluster operator that reconciles the cluster to a Git config repo, with CI and CD split. NOT for generating the infra itself (use `iac-gen`) and NOT for the rollout/metric-gating strategy (use `progressive-delivery`). Scaffolds Flux v2 (default) or Argo CD: enable Flux as an AKS cluster extension via Terraform (azurerm) / Bicep / az CLI (applied at scale with Azure Policy), structure the config repo (clusters/ apps/ infrastructure/), and SPLIT CI (build+push to ACR, bump the image tag) from CD (operator pulls + reconciles drift). Includes image-update-automation + drift detection. Reads org-profile.yaml `platform` (aks/k8s; refuses otherwise).
+description: Use when you need a pull-based GitOps delivery loop for AKS/k8s — an in-cluster operator (Flux v2 default, or Argo CD) reconciling the cluster to a Git config repo, with CI and CD split so build agents never get cluster creds. Triggers — "set up GitOps / Flux / Argo CD", "pull-based delivery", "CI pushes the image, the cluster pulls". NOT for generating the infra itself (use `iac-gen`) and NOT for the rollout/metric-gating strategy (use `progressive-delivery`). Reads org-profile.yaml `platform` (aks/k8s; refuses otherwise).
 ---
 
 # GitOps

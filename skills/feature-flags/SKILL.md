@@ -1,6 +1,6 @@
 ---
 name: feature-flags
-description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store with kill-switches, percentage flighting, and targeting. NOT for secret storage (that's the `secrets` skill / Key Vault) and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Scaffolds Azure App Configuration accessed via the official Python feature-management library: per-environment labels (dev/staging/prod), percentage flighting for canary-style ramp, runtime kill-switches, and targeting filters. Reads org-profile.yaml `platform`/`framework`; if stack-interface.yaml exists, gets App Configuration access via the stack-adapter agent. Refuses on mismatch.
+description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store (Azure App Configuration via the Python feature-management library) with kill-switches, percentage flighting, and targeting. Triggers — "add feature flags", "kill-switch for a feature", "roll a feature out to 5% of users then ramp". NOT for secret storage (use `secrets` / Key Vault) and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Reads org-profile.yaml `platform`/`framework` (FastAPI/Streamlit); refuses on mismatch.
 ---
 
 # Feature Flags

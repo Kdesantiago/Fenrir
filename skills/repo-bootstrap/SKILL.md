@@ -29,7 +29,7 @@ This skill installs the **deterministic enforcement infrastructure**. A skill ca
    - **Copy `templates/.semgrep.yml` → repo root.** The `sast` check hard-runs `semgrep --config .semgrep.yml`; without this file SAST is red forever.
    - Set PR triggers to the repo's real branches (e.g. `dev`, `main`, `release/*`), not main-only.
 5. **Branch-protection-as-code** — GitHub → `templates/branch-protection.tf`; Azure DevOps → `templates/azure-branch-policy.tf`. Fill repo/branch; `terraform apply` (this is the only thing that truly blocks a non-conforming merge). The required-check names MUST equal the CI job/stage names — verify the coupling.
-6. **Repo hygiene** — `.gitignore` (skip if present, e.g. when `/fenrir:init` already wrote one), `renovate.json`, `CODEOWNERS`, conventional-commits, `README.md` skeleton (skip if present). Also copy `scripts/bootstrap-smoke-test.sh` into the repo so the gate can be verified locally.
+6. **Repo hygiene** — `.gitignore` (skip if present, e.g. when `/fenrir:init` already wrote one); copy `templates/renovate.json` → `renovate.json` (patch/minor auto-merge after green CI, major manual) and `templates/CODEOWNERS` → `CODEOWNERS` (fill the `@your-org/*` placeholders + risk-path owners); conventional-commits; `README.md` skeleton (skip if present). Also copy `scripts/bootstrap-smoke-test.sh` into the repo so the gate can be verified locally.
 7. **Version assertion** — stamp the consumed plugin/template version in `org-profile.yaml` (`template_version:`) so `delivery-gates` can fail loud on mismatch.
 
 ## Idempotency
