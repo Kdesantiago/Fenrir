@@ -24,7 +24,7 @@ Product-building, not delivery: this scaffolds application code for an LLM workf
 
 ## Steps
 1. Read `org-profile.yaml`; resolve `llm_provider`. If unset or `none`, REFUSE.
-2. Resolve the chat-model client for the provider — verify exact class/init against current LangGraph + LangChain docs (they move fast):
+2. Resolve the chat-model client for the provider — verify exact class/fenrir:init against current LangGraph + LangChain docs (they move fast):
    - `anthropic` → `ChatAnthropic`
    - `openai` → `ChatOpenAI`
    - `azure` (Azure OpenAI Service) → `AzureChatOpenAI` (`azure_endpoint` + `api_version` + **deployment name**, not a model id; AAD/managed-identity or key)

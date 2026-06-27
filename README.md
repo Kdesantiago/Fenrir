@@ -19,7 +19,7 @@ Most teams re-invent delivery in every repo: different CI, different review bar,
 In any Claude Code session (CLI or app):
 
 ```text
-/plugin marketplace add Kdesantiago/fenrir@v1.0.2
+/plugin marketplace add Kdesantiago/Fenrir@v1.1.1
 /plugin install fenrir@fenrir-marketplace
 ```
 
@@ -46,9 +46,9 @@ In any Claude Code session (CLI or app):
 3. **Declare your stack** in `org-profile.yaml` (platform, framework, auth, observability, LLM provider…). Generators read it and refuse to emit wrong-stack code.
 
 4. **Work, the standardized way:**
-   - `/challenge-me <idea>` — turns a fuzzy idea into a scoped, red-teamed spec, then drives the build.
-   - `/deliver <task>` — orchestrates architect → coder → tests → review → gates → PR.
-   - `/ship` — runs the automated pre-PR review and opens the PR.
+   - `/fenrir:challenge-me <idea>` — turns a fuzzy idea into a scoped, red-teamed spec, then drives the build.
+   - `/fenrir:deliver <task>` — orchestrates architect → coder → tests → review → gates → PR.
+   - `/fenrir:ship` — runs the automated pre-PR review and opens the PR.
    - Or ask for any single capability by intent ("design the API for X", "add a safe migration", "set up canary on AKS", "cut a release"…).
 
 New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end-to-end walkthrough.
@@ -65,7 +65,7 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Operate** | `incident-runbook`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
 | **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow`, `context-engineering` |
 | **Agents** | `architect`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter` |
-| **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/challenge-me`, `/deliver`, `/ship` |
+| **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship` |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.

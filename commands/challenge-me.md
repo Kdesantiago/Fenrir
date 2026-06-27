@@ -1,8 +1,8 @@
 ---
-description: Turn a raw IDEA into a challenged, scoped, and built project. Use at the very start, when what to build is still fuzzy — it adversarially interrogates assumptions/real-problem/smallest-valuable-slice, writes a reviewed spec, then drives the creation + delivery skills (repo-bootstrap → generators → architect → /deliver → /ship). Triggers: "/challenge-me", "challenge my idea", "is this worth building", "help me scope X". NOT for an already-decided change (use `architect` for design, `/deliver` to build). Usage: /challenge-me <what you want to build>.
+description: Turn a raw IDEA into a challenged, scoped, and built project. Use at the very start, when what to build is still fuzzy — it adversarially interrogates assumptions/real-problem/smallest-valuable-slice, writes a reviewed spec, then drives the creation + delivery skills (repo-bootstrap → generators → architect → /fenrir:deliver → /fenrir:ship). Triggers: "/fenrir:challenge-me", "challenge my idea", "is this worth building", "help me scope X". NOT for an already-decided change (use `architect` for design, `/fenrir:deliver` to build). Usage: /fenrir:challenge-me <what you want to build>.
 ---
 
-# /challenge-me <context>
+# /fenrir:challenge-me <context>
 
 `$ARGUMENTS` = the raw idea. Two gears: **(1) cook it** — challenge and extract what's really worth building; **(2) build it** — route through the existing creation + delivery skills. Do NOT skip gear 1 and start scaffolding; the whole point is to attack the idea before spending effort on it.
 
@@ -29,7 +29,7 @@ If `$ARGUMENTS` is empty, ask what they want to build before anything else.
 4. **Converge fast — hard cap 2 rounds of `AskUserQuestion`.** After at most 2 rounds, decide: build (proceed to Gear 2), defer (write down what's blocking), or reject (recommend the smaller/none/buy path). No third round — if it's still unclear after 2, that itself is the finding: the idea isn't ready, say so and stop.
 
 ## Gear 2 — Spec & decision record
-1. Write the spec to `docs/specs/<slug>.md` (the artifact `/deliver` consumes): problem, users, **acceptance criteria**, scope / out-of-scope, chosen stack, the **v1 cut**, risks + riskiest assumption.
+1. Write the spec to `docs/specs/<slug>.md` (the artifact `/fenrir:deliver` consumes): problem, users, **acceptance criteria**, scope / out-of-scope, chosen stack, the **v1 cut**, risks + riskiest assumption.
 2. Record the key decisions and any **deferred scope** to delivery-memory via `memory-keeper` (so the cut is remembered, not silently re-expanded).
 3. **Spec red-team (recommended; do it unless the change is trivial):** run `red-team-destroyer` on the spec. If you run it, honor its `VERDICT:` — `REDESIGN` → back to Gear 1; `FIX-FIRST` → fold findings into the spec; `SHIP` → proceed. (The Gear-3 build still has its own gates regardless.)
 
@@ -42,7 +42,7 @@ Route by what the spec actually needs — do not run everything blindly.
    - Deploy target → `iac-gen` (aks/webapp/…).
    - Auth → `auth-gen`. Logs/metrics → `observability-gen`. UI → `frontend-gen`. LLM → `llm-gen`. Scheduled work → `cronjob`.
 4. **Design**: `architect` writes the ADR for the load-bearing decisions (the spec links it).
-5. **Deliver the first slice**: `/deliver` (architect→coder→qa→review→gates) on the v1 cut, then `/ship` (runs the automated pre-PR review).
+5. **Deliver the first slice**: `/fenrir:deliver` (architect→coder→qa→review→gates) on the v1 cut, then `/fenrir:ship` (runs the automated pre-PR review).
 
 ## Stop conditions
 - Idea rejected or deferred in Gear 1 → stop with the recommendation; do not build.
@@ -52,4 +52,4 @@ Route by what the spec actually needs — do not run everything blindly.
 ## Output
 - The spec path + the decisions recorded to delivery-memory.
 - `org-profile.yaml` (chosen stack) and the ordered build plan.
-- What actually ran in Gear 3, and the first PR opened by `/ship` (or why it stopped).
+- What actually ran in Gear 3, and the first PR opened by `/fenrir:ship` (or why it stopped).

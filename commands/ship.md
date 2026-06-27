@@ -2,25 +2,25 @@
 description: Open a conventional-commit PR linking the ADR + spec artifact, run delivery-gates for fast local feedback, then surface CI required-check status — does NOT enforce; branch-protection (infra) decides the merge.
 ---
 
-# /ship
+# /fenrir:ship
 
-Open the PR and surface CI status. This command **prepares and reports — it does not gate**. The merge is blocked or allowed by **branch-protection-as-code + CI required status checks** (couche 0 infra), not by `/ship`. Anything below is local feedback and PR plumbing; the authoritative decision happens in infra after the PR exists.
+Open the PR and surface CI status. This command **prepares and reports — it does not gate**. The merge is blocked or allowed by **branch-protection-as-code + CI required status checks** (couche 0 infra), not by `/fenrir:ship`. Anything below is local feedback and PR plumbing; the authoritative decision happens in infra after the PR exists.
 
 ## 1. Preconditions
 - Clean-ish working tree on a feature branch (not the default branch). If on default branch, STOP.
-- Confirm `org-profile.yaml` at root. Locate the artifacts to link: the spec at `docs/specs/<slug>.md` and the ADR at `docs/adr/NNNN-*.md` (passed in by `/deliver`, or discovered from the branch's diff). If an architectural / risk-path diff has no ADR, WARN loudly — branch-protection's ADR-required check will likely reject it.
+- Confirm `org-profile.yaml` at root. Locate the artifacts to link: the spec at `docs/specs/<slug>.md` and the ADR at `docs/adr/NNNN-*.md` (passed in by `/fenrir:deliver`, or discovered from the branch's diff). If an architectural / risk-path diff has no ADR, WARN loudly — branch-protection's ADR-required check will likely reject it.
 
 ## 2. Local fast feedback (advisory, before pushing)
 - Run `delivery-gates` (lint + type + test + coverage on the diff) for quick pass/fail. This is FAST FEEDBACK, not a gate. If it fails, surface the failures and ask before proceeding — but note the real block is CI, not this step.
 
 ## 3. Sync docs (doc-keeper)
-Delegate to the `doc-keeper` agent: update `CHANGELOG.md` + the affected README(s)/API-docs to match the diff so docs are never left stale. `doc-keeper` checks for an existing `[Unreleased]` entry and skips it, so if `/deliver` already synced this diff this is a genuine no-op (no duplicate entries). This is what makes the reviewer's "changelog entry present" check pass and keeps docs always-up-to-date on every ship (light or full path).
+Delegate to the `doc-keeper` agent: update `CHANGELOG.md` + the affected README(s)/API-docs to match the diff so docs are never left stale. `doc-keeper` checks for an existing `[Unreleased]` entry and skips it, so if `/fenrir:deliver` already synced this diff this is a genuine no-op (no duplicate entries). This is what makes the reviewer's "changelog entry present" check pass and keeps docs always-up-to-date on every ship (light or full path).
 
-## 4. Automated pre-PR review (the review automator — /ship-driven)
+## 4. Automated pre-PR review (the review automator — /fenrir:ship-driven)
 This is the automatic LLM review before any PR exists. Runs in the main thread (which can invoke slash commands; a subagent cannot).
 - Run `/code-review` on the working diff → capture its correctness/security findings as text.
 - Delegate to the `reviewer` subagent, passing those findings + the diff → it adds org PR-hygiene (conventional title, ADR link for risk-path diffs, changelog entry, no secrets, profile respected) and returns a verdict block. Parse its `Verdict:` line (`READY | BLOCK`).
-- **If verdict = BLOCK** (any unresolved critical/high): STOP — do NOT open the PR. Report findings and ask. The review is advisory, but `/ship` chooses not to publish a known-bad PR.
+- **If verdict = BLOCK** (any unresolved critical/high): STOP — do NOT open the PR. Report findings and ask. The review is advisory, but `/fenrir:ship` chooses not to publish a known-bad PR.
 - Record any recurring/confirmed finding to delivery-memory `lessons.md` (via `memory-keeper`) so the same class is caught earlier next time.
 
 ## 5. Build the conventional-commit PR
@@ -45,4 +45,4 @@ Report:
 - Pre-PR review verdict (`READY | BLOCK`) + any blocking findings.
 - CI required-check status + merge state.
 
-End with the explicit statement: **the merge is gated by branch-protection + CI required-checks (infra), not by `/ship`.** This command surfaces status; infra enforces it.
+End with the explicit statement: **the merge is gated by branch-protection + CI required-checks (infra), not by `/fenrir:ship`.** This command surfaces status; infra enforces it.

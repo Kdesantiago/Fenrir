@@ -4,6 +4,12 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-06-27
+
+### Changed
+- All Fenrir command references in the docs are now consistently namespaced: `/fenrir:init`, `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship` (native `/code-review`, `/security-review`, `/plugin` untouched). The plugin id stays `fenrir`.
+- Repository renamed to **`Kdesantiago/Fenrir`** (capital F); install/clone/marketplace references updated. The plugin id (`fenrir`) and marketplace id (`fenrir-marketplace`) are unchanged.
+
 ## [1.1.0] — 2026-06-27
 
 ### Added
@@ -41,13 +47,13 @@ First public release. Renamed from `delivery-standard` to **Fenrir**. Everything
 - **`memory-keeper` skill — in-repo, git-tracked delivery-memory**: decisions, `gate-exceptions.jsonl` (owner + mandatory expiry; the SessionStart hook surfaces open ones), `drift-log.jsonl`, `lessons.md`. Scoped to delivery; stores no secrets/personal data.
 - **AKS + Azure Web App platforms**: `org-profile.yaml` `platform` adds `aks` | `webapp`; `iac-gen` branches (AKS: workload-identity + AGIC/app-routing + ACR + Azure CNI; Web App: `azurerm_linux_web_app` + App Service plan + staging slots, no k8s).
 - **`stack-adapter` agent + `stack-interface.yaml` manifest** — adapts to enterprise Azure wrappers: the manifest declares the company's CLI/IaC/registry/deploy commands; the agent translates standard ops into them (never guesses; refuses raw `az` when a wrapper is declared). Generators consult it.
-- **`/ship` now runs the automated pre-PR review** (native `/code-review` + `reviewer` verdict) and refuses to open a known-BLOCK PR.
+- **`/fenrir:ship` now runs the automated pre-PR review** (native `/code-review` + `reviewer` verdict) and refuses to open a known-BLOCK PR.
 - **`api-first` skill** — contract-first HTTP APIs: OpenAPI 3.1 spec as source of truth, enforced REST conventions (resources/verbs/status, RFC 9457 errors, versioning, pagination, idempotency), Spectral lint, framework-driven codegen, and Schemathesis/Dredd contract tests (optional `api-contract` CI gate). Refuses to write endpoints absent from the spec.
-- **`/challenge-me <context>` command** — the front door: adversarially interrogates a raw idea (steelman, real-problem-vs-solution, MVP cut, decisive forks via AskUserQuestion, "don't build / buy instead" allowed), writes a red-teamed spec to `docs/specs/` + records decisions to delivery-memory, then routes deterministically through `repo-bootstrap` → generators (`api-first`/`iac-gen`/…) → `architect` → `/deliver` → `/ship`. Never scaffolds before challenging.
+- **`/fenrir:challenge-me <context>` command** — the front door: adversarially interrogates a raw idea (steelman, real-problem-vs-solution, MVP cut, decisive forks via AskUserQuestion, "don't build / buy instead" allowed), writes a red-teamed spec to `docs/specs/` + records decisions to delivery-memory, then routes deterministically through `repo-bootstrap` → generators (`api-first`/`iac-gen`/…) → `architect` → `/fenrir:deliver` → `/fenrir:ship`. Never scaffolds before challenging.
 - **`cronjob` skill** — platform-correct scheduled jobs (`aks`/`k8s`→CronJob, `webapp`/`serverless`→Azure timer/Container Apps job, `vm`→systemd timer) with mandatory reliability defaults: no double-run (`concurrencyPolicy`), timeout, bounded backoff, missed-run handling, failure + dead-man's-switch alerting, and a stated idempotency strategy. Refuses a state-mutating job with no idempotency plan.
 - **`templates/.semgrep.yml`** — curated SAST ruleset: 14 ERROR (blocking) + 2 WARNING (advisory, excluded by `--severity ERROR`). `0.0.0.0` bind and bare-Jinja2 are WARNING (false-positive on containerized/LLM-prompt code); the narrow autoescape-disabled rule stays ERROR.
 - **Concrete `template_version` compatibility check** in `delivery-gates` — reads `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`, compares semver (major-match, 0.x minor-match) to `org-profile.yaml`, fails loud on mismatch. Replaces the prose.
-- `red-team-destroyer` now ends with `VERDICT: SHIP | FIX-FIRST | REDESIGN` + steelman/HARD-SOFT-ASSUMPTION rules; wired into `/deliver` as a pre-code stage against the ADR (REDESIGN = BLOCK).
+- `red-team-destroyer` now ends with `VERDICT: SHIP | FIX-FIRST | REDESIGN` + steelman/HARD-SOFT-ASSUMPTION rules; wired into `/fenrir:deliver` as a pre-code stage against the ADR (REDESIGN = BLOCK).
 - `GETTING-STARTED.md` (solo walkthrough) + this `CHANGELOG.md`.
 
 ### Changed / Fixed (red-team iteration 3, verified against the real uv/3.12 monorepo)
@@ -89,7 +95,7 @@ First public release. Renamed from `delivery-standard` to **Fenrir**. Everything
 - **org-profile** += optional `vector_store` (pgvector | azure-ai-search | qdrant | weaviate | none) for the `retriever` skill.
 
 ### Added (profile values + docs agent)
-- **`doc-keeper` agent** — keeps docs true to the code: on a diff it updates `CHANGELOG.md` (conventional-commit→Keep-a-Changelog mapping), the affected README(s), and API docs, and runs a stale-reference pass (flags docs naming a file/skill/flag that no longer exists). Wired into `/deliver` and `/ship` (runs before the review, so the changelog reviewer requires already exists) → docs stay current on every delivery. Complements the `doc-generator` skill (conventions) by APPLYING them to a specific change.
+- **`doc-keeper` agent** — keeps docs true to the code: on a diff it updates `CHANGELOG.md` (conventional-commit→Keep-a-Changelog mapping), the affected README(s), and API docs, and runs a stale-reference pass (flags docs naming a file/skill/flag that no longer exists). Wired into `/fenrir:deliver` and `/fenrir:ship` (runs before the review, so the changelog reviewer requires already exists) → docs stay current on every delivery. Complements the `doc-generator` skill (conventions) by APPLYING them to a specific change.
 - **org-profile values**: `obs_backend` += `langfuse` (LLM tracing/evals — `observability-gen` wires it over OTLP/SDK, pairs with `llm-gen`); `llm_provider` += `azure` (Azure OpenAI Service — `llm-gen` uses `AzureOpenAI`/`azure_endpoint`/`api_version`/deployment, AAD or key auth); `front` += `html` (plain static — `frontend-gen` emits semantic HTML + vanilla CSS/JS, no build step).
 
 ### Security hardening (red-team iteration 4 — bypasses found by EXECUTING the hooks)
@@ -114,7 +120,7 @@ First public release. Renamed from `delivery-standard` to **Fenrir**. Everything
 - 3-layer architecture: **skills** (capabilities) + **subagents** (personas) + **commands** (orchestration), over a **couche-0 infra** gate.
 - Skills: `repo-bootstrap`, `delivery-gates`, `security-review`, `doc-generator`, and 5 profile-driven generators (`iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `llm-gen`).
 - Subagents: `architect`, `qa-tester`, `reviewer`, `red-team-destroyer`.
-- Commands: `/deliver` (deterministic light/full routing), `/ship`.
+- Commands: `/fenrir:deliver` (deterministic light/full routing), `/fenrir:ship`.
 - Couche-0 templates: `org-profile.yaml`, `.pre-commit-config.yaml`, GitHub + Azure CI + branch-protection, `scripts/bootstrap-smoke-test.sh`.
 - `plugin.json` + `marketplace.json`.
 - Design rationale + red-team teardowns: `DELIVERY-SKILLSET.md`.

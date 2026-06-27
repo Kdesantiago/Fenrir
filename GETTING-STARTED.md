@@ -14,7 +14,7 @@ This is everything you need to use the plugin **alone**, end to end. No external
 | `python3` | the in-session guard hook (stdlib only) | yes |
 | `pre-commit` | local lint/type/secret gate | yes (`pipx install pre-commit`) |
 | `terraform` | applies branch-protection (the real merge block) | for enforcement |
-| `gh` or `az` CLI | opens PRs (`/ship`) | for PR flow |
+| `gh` or `az` CLI | opens PRs (`/fenrir:ship`) | for PR flow |
 | `pipx` | runs `semgrep` / `cyclonedx-bom` in CI | CI only |
 
 ---
@@ -78,9 +78,9 @@ template_version: "1.0.0"
 ## 4. Daily use
 
 ### Orchestrated delivery (the common path)
-> "/deliver — add endpoint X" → routes **light** (hotfix: coder → gates → ship) or **full** (feature: architect → coder → qa-tester → review → gates → ship) by a deterministic git diff measure. Writes a spec artifact to `docs/specs/` that every subagent reads. Stops before PR on any hard failure.
+> "/fenrir:deliver — add endpoint X" → routes **light** (hotfix: coder → gates → ship) or **full** (feature: architect → coder → qa-tester → review → gates → ship) by a deterministic git diff measure. Writes a spec artifact to `docs/specs/` that every subagent reads. Stops before PR on any hard failure.
 
-> "/ship" → opens a conventional-commit PR, links the ADR + spec, runs gates for local feedback, surfaces CI status. It does **not** claim to enforce — branch-protection does.
+> "/fenrir:ship" → opens a conventional-commit PR, links the ADR + spec, runs gates for local feedback, surfaces CI status. It does **not** claim to enforce — branch-protection does.
 
 ### Skills (trigger by asking)
 | Want | Say |
@@ -106,7 +106,7 @@ local       delivery-gates skill   →   pre-commit hooks (commit/push)
                                        + 5 in-session .claude hooks (agent guard + security:
                                          deny --no-verify/secret-exfil/zero-access, injection scans)
 merge       reviewer subagent      →   CI required-checks
-            /ship pre-PR review        + branch-protection-as-code  ← the real block
+            /fenrir:ship pre-PR review        + branch-protection-as-code  ← the real block
 ```
 
 Security layer (ported from PAI, pure Python): `prompt-guard` (input), `delivery-guard` (tool calls), `content-scanner` (fetched content), `config-audit` (settings changes), `session-context` (injects the live contract). All log to `.claude/audit/security-events.jsonl`.

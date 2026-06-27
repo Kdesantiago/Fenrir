@@ -2,7 +2,7 @@
 
 Self-contained guide: how to put this plugin on a Claude Code marketplace, distribute it across your org, and use it. No other file required to follow this.
 
-> **What this is.** `fenrir` is a Claude Code **plugin** (26 skills, 8 subagents, 3 commands, 9 hooks, bundled MCP/LSP/Monitors) that standardizes the whole delivery lifecycle — from `/challenge-me <idea>` through scaffolding, gates, progressive delivery on AKS, and LLM-app evals. **This repository is itself the marketplace** (it ships `.claude-plugin/marketplace.json`), so publishing = pushing this repo to git and tagging a release.
+> **What this is.** `fenrir` is a Claude Code **plugin** (26 skills, 8 subagents, 3 commands, 9 hooks, bundled MCP/LSP/Monitors) that standardizes the whole delivery lifecycle — from `/fenrir:challenge-me <idea>` through scaffolding, gates, progressive delivery on AKS, and LLM-app evals. **This repository is itself the marketplace** (it ships `.claude-plugin/marketplace.json`), so publishing = pushing this repo to git and tagging a release.
 
 ---
 
@@ -41,7 +41,7 @@ git commit -m "fenrir plugin + marketplace v1.0.0"
 git branch -M main
 
 # create an empty repo on your host first, then:
-git remote add origin git@github.com:OWNER/fenrir.git
+git remote add origin git@github.com:OWNER/Fenrir.git
 git push -u origin main
 
 # tag the release — the tag MUST match plugin.json "version"
@@ -64,9 +64,9 @@ In any Claude Code session:
 
 ```bash
 # 1. Add this repo as a marketplace, PINNED to the released tag.
-/plugin marketplace add OWNER/fenrir@v1.0.0
+/plugin marketplace add OWNER/Fenrir@v1.0.0
 #    …or a full git URL (Azure Repos / GitLab / self-hosted), pin with #ref:
-#    /plugin marketplace add https://github.com/OWNER/fenrir.git#v1.0.0
+#    /plugin marketplace add https://github.com/OWNER/Fenrir.git#v1.0.0
 
 # 2. Install the plugin from that marketplace.
 /plugin install fenrir@fenrir-marketplace
@@ -91,7 +91,7 @@ So nobody runs `/plugin install` by hand: commit `templates/team-settings.json` 
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "extraKnownMarketplaces": {
     "fenrir-marketplace": {
-      "source": { "source": "github", "repo": "OWNER/fenrir" }
+      "source": { "source": "github", "repo": "OWNER/Fenrir" }
     }
   },
   "enabledPlugins": {
@@ -151,11 +151,11 @@ Enterprise Azure wrappers? Also copy `templates/stack-interface.yaml` → repo r
 ## 6. Use it — daily
 
 **Start from an idea** (the front door):
-> `/challenge-me build an internal RAG assistant for X` — it challenges the idea, writes a scoped spec, then drives the build skills.
+> `/fenrir:challenge-me build an internal RAG assistant for X` — it challenges the idea, writes a scoped spec, then drives the build skills.
 
 **Orchestrated delivery:**
-> `/deliver add endpoint Y` → architect → coder → qa-tester → doc-keeper → review → gates → PR (light/full by diff size).
-> `/ship` → runs the automated pre-PR review, opens the PR, surfaces CI status.
+> `/fenrir:deliver add endpoint Y` → architect → coder → qa-tester → doc-keeper → review → gates → PR (light/full by diff size).
+> `/fenrir:ship` → runs the automated pre-PR review, opens the PR, surfaces CI status.
 
 **Ask for a skill by intent** (examples):
 | Want | Say |
@@ -196,7 +196,7 @@ git push origin main vX.Y.Z
 Consumers move up by re-pointing the marketplace at the new tag and updating:
 
 ```bash
-/plugin marketplace add OWNER/fenrir@vX.Y.Z
+/plugin marketplace add OWNER/Fenrir@vX.Y.Z
 /plugin marketplace update fenrir-marketplace
 /plugin update fenrir@fenrir-marketplace
 ```

@@ -12,7 +12,7 @@ Donc le standard de livraison = **3 produits distincts**, pas 1 skillset:
 |---|---|---|---|
 | **A. INFRA (couche 0)** | repo-template + hooks + CI + branch-protection. **Le vrai gate.** | Fichiers déterministes, pas modèle | Platform team |
 | **B. GENERATORS** | scaffold profile-driven (iac/auth/obs/front/llm) | Skills lisant `org-profile.yaml` | Platform team |
-| **C. ORCHESTRATION** | subagents + `/deliver` + `/ship` | Subagents + commands | DevEx |
+| **C. ORCHESTRATION** | subagents + `/fenrir:deliver` + `/fenrir:ship` | Subagents + commands | DevEx |
 
 Tout livré en **1 plugin Claude Code versionné (semver)**, pas de copie `~/.claude` par repo (= drift garanti).
 
@@ -86,8 +86,8 @@ Trimmés vs v1 (fix §7 — overlap natif).
 
 | Command | Job | Fixes appliqués |
 |---|---|---|
-| `/deliver` | Pipeline: architect→coder→qa→reviewer→gates→PR | (a) **spec-artifact sur disque** = source de vérité que chaque subagent relit (anti context-loss). (b) **routing déterministe par script** (LOC, fichiers risque via globs), pas jugement LLM. (c) **checkpoint git par stage** + resume. (d) gates réels = CI, pas la command. |
-| `/ship` | Ouvre PR + affiche statut CI | **Ne prétend PAS enforcer** — branch-protection (infra) bloque le merge, pas `/ship` (fix #1) |
+| `/fenrir:deliver` | Pipeline: architect→coder→qa→reviewer→gates→PR | (a) **spec-artifact sur disque** = source de vérité que chaque subagent relit (anti context-loss). (b) **routing déterministe par script** (LOC, fichiers risque via globs), pas jugement LLM. (c) **checkpoint git par stage** + resume. (d) gates réels = CI, pas la command. |
+| `/fenrir:ship` | Ouvre PR + affiche statut CI | **Ne prétend PAS enforcer** — branch-protection (infra) bloque le merge, pas `/fenrir:ship` (fix #1) |
 
 **Adaptatif résolu**: script calcule taille/risque → route `light` (hotfix) vs `full` (feature). Déterministe, reproductible.
 
@@ -121,7 +121,7 @@ Rangées par priorité:
 |---|---|---|
 | 1 | Skill ne peut pas enforcer le gate | Gate → couche 0 INFRA (hooks+CI+branch-protection). Skill = advisory |
 | 2 | 5 scaffolds non-portables | `org-profile.yaml` + generators qui refusent sur mismatch |
-| 3 | `/deliver` multi-agent fragile | spec-artifact disque + routing script déterministe + checkpoints |
+| 3 | `/fenrir:deliver` multi-agent fragile | spec-artifact disque + routing script déterministe + checkpoints |
 | 4 | Distribution = drift | 1 plugin semver pinné, owning team |
 | 5 | 3 produits en 1 | Split A(infra)/B(generators)/C(orchestration). **Ship A en premier** |
 
@@ -133,5 +133,5 @@ Rangées par priorité:
 2. `org-profile.yaml` + 1 generator pilote (`iac-gen` sur stack k8s actuelle)
 3. `delivery-gates` + `security-review` (wrap natif)
 4. Subagents `architect` + `qa-tester`
-5. `/deliver` + `/ship`
+5. `/fenrir:deliver` + `/fenrir:ship`
 6. Release + supply-chain + secrets (primitives ajoutées)

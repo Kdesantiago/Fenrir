@@ -2,7 +2,7 @@
 description: Orchestrate the full delivery pipeline (architect → coder → qa-tester → reviewer → delivery-gates → PR) adaptively, routing light vs full by a deterministic diff/risk computation, with a disk spec artifact as ground truth and a git checkpoint per stage.
 ---
 
-# /deliver
+# /fenrir:deliver
 
 Orchestrate a change from intent to a ready-to-open PR. Routing and gating are **deterministic** (computed by shell/git), never an LLM vibe. Every subagent has ISOLATED context, so the **spec artifact on disk is the single source of truth** they each re-read. This command does NOT enforce merge — the real gate is CI required-checks + branch-protection (infra). It prepares the PR; infra decides if it merges.
 
@@ -56,10 +56,10 @@ Before each stage, snapshot: commit WIP or `git stash push -m "deliver:<slug>:<s
 
 ## 4. Failure handling — STOP, do not open a PR
 - **Hard failure** (a stage errors, gates fail, reviewer verdict = BLOCK, red-team verdict = REDESIGN, qa repro still failing): STOP immediately. Do NOT proceed to ship/PR. Record the failing stage + checkpoint ref in the ledger and report.
-- **Resume**: re-invoking `/deliver` reads the ledger, restores the last good checkpoint, and re-enters at the first non-passed stage — earlier passed stages are not redone.
+- **Resume**: re-invoking `/fenrir:deliver` reads the ledger, restores the last good checkpoint, and re-enters at the first non-passed stage — earlier passed stages are not redone.
 
 ## 5. Hand off to ship (only if every stage passed)
-Invoke `/ship` to open the PR. Pass it the spec path and the ADR path so they're linked in the PR body.
+Invoke `/fenrir:ship` to open the PR. Pass it the spec path and the ADR path so they're linked in the PR body.
 
 ## Stop conditions
 - No `org-profile.yaml` → route to `repo-bootstrap`, stop.
