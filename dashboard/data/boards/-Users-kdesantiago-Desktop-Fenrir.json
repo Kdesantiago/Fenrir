@@ -1,0 +1,382 @@
+{
+  "epics": [
+    {
+      "id": "epic-1",
+      "title": "Quality hardening & audit",
+      "description": "Audit Fenrir, compress agents, dogfood couche-0, add delivery skills.",
+      "status": "done",
+      "color": "#6366f1",
+      "created": "2026-06-27T21:00:22.643786+00:00"
+    },
+    {
+      "id": "epic-2",
+      "title": "Tech Lead surface",
+      "description": "Give a tech lead a read/govern surface over the standard.",
+      "status": "done",
+      "color": "#6366f1",
+      "created": "2026-06-27T21:00:22.805441+00:00"
+    },
+    {
+      "id": "epic-3",
+      "title": "Monitoring dashboard",
+      "description": "Local telemetry + agent-driven Agile board.",
+      "status": "in_progress",
+      "color": "#6366f1",
+      "created": "2026-06-27T21:00:22.980071+00:00"
+    }
+  ],
+  "features": [
+    {
+      "id": "feat-1",
+      "epic_id": "epic-1",
+      "title": "Agent & skill quality",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-2",
+      "epic_id": "epic-1",
+      "title": "Couche-0 self-dogfooding",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-3",
+      "epic_id": "epic-1",
+      "title": "New delivery skills",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-4",
+      "epic_id": "epic-2",
+      "title": "/fenrir:status",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-5",
+      "epic_id": "epic-2",
+      "title": "Governance",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-6",
+      "epic_id": "epic-3",
+      "title": "Telemetry & cost",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-7",
+      "epic_id": "epic-3",
+      "title": "Agile board",
+      "description": "",
+      "status": "backlog"
+    },
+    {
+      "id": "feat-8",
+      "epic_id": "epic-3",
+      "title": "Quality pass",
+      "description": "",
+      "status": "backlog"
+    }
+  ],
+  "stories": [
+    {
+      "id": "us-1",
+      "feature_id": "feat-1",
+      "title": "Compress 8 agents (-17%, contracts intact)",
+      "status": "done",
+      "assignee": "red-team-destroyer",
+      "points": 5,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-2",
+      "feature_id": "feat-1",
+      "title": "Rebalance skill descriptions",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-3",
+      "feature_id": "feat-1",
+      "title": "renovate.json + CODEOWNERS templates",
+      "status": "done",
+      "assignee": "coder",
+      "points": 1,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-4",
+      "feature_id": "feat-2",
+      "title": "CI on Fenrir's own artifacts",
+      "status": "done",
+      "assignee": "qa-tester",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-5",
+      "feature_id": "feat-2",
+      "title": "209 hook behavior tests",
+      "status": "done",
+      "assignee": "qa-tester",
+      "points": 5,
+      "as_a": "maintainer",
+      "i_want": "the 9 hooks tested",
+      "so_that": "a regression can't silently disable the gate",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-6",
+      "feature_id": "feat-2",
+      "title": "Root pre-commit + pyproject",
+      "status": "done",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-7",
+      "feature_id": "feat-3",
+      "title": "alert-delivery skill",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-8",
+      "feature_id": "feat-3",
+      "title": "load-test skill",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-9",
+      "feature_id": "feat-3",
+      "title": "image-scan skill",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-10",
+      "feature_id": "feat-4",
+      "title": "Tech Lead report (gate/exceptions/onboarding)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 5,
+      "as_a": "tech lead",
+      "i_want": "one honest report per repo",
+      "so_that": "I see arming, exceptions and drift at a glance",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-11",
+      "feature_id": "feat-4",
+      "title": "branch-protection live ARMED check",
+      "status": "done",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-12",
+      "feature_id": "feat-5",
+      "title": "memory-keeper approved_by (anti self-grant)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-13",
+      "feature_id": "feat-6",
+      "title": "Tokens/cost by model, skill, day",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "telemetry",
+          "session_id": "",
+          "input_tokens": 3005280,
+          "output_tokens": 936440,
+          "cost_usd": 450.0277,
+          "note": "all Fenrir telemetry",
+          "at": "2026-06-27T21:01:23.736208+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-14",
+      "feature_id": "feat-6",
+      "title": "Project scope = current repo",
+      "status": "done",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-15",
+      "feature_id": "feat-6",
+      "title": "Telemetry -> work_log cross-link",
+      "status": "in_progress",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "real tokens/cost on a story",
+      "so_that": "the board reflects actual spend",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "telemetry",
+          "session_id": "5997e59a-7148-4bb9-b0a0-edc15190efcc",
+          "input_tokens": 3005280,
+          "output_tokens": 936440,
+          "cost_usd": 450.0277,
+          "note": "this session's spend",
+          "at": "2026-06-27T21:01:23.512939+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-16",
+      "feature_id": "feat-7",
+      "title": "Epic->Feature->US kanban",
+      "status": "done",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-17",
+      "feature_id": "feat-7",
+      "title": "Agent-driven board CLI",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-18",
+      "feature_id": "feat-7",
+      "title": "Drag-drop + charts SPA",
+      "status": "done",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-19",
+      "feature_id": "feat-8",
+      "title": "Replace demo seed with the real board",
+      "status": "in_progress",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-20",
+      "feature_id": "feat-8",
+      "title": "MCP server (agents drive natively)",
+      "status": "backlog",
+      "assignee": "",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    },
+    {
+      "id": "us-21",
+      "feature_id": "feat-8",
+      "title": "Live auto-refresh",
+      "status": "backlog",
+      "assignee": "",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": []
+    }
+  ],
+  "tasks": []
+}

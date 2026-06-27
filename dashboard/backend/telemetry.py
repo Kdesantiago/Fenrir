@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 
 from . import pricing
@@ -18,6 +19,27 @@ from . import pricing
 
 def default_claude_dir() -> Path:
     return Path.home() / ".claude"
+
+
+def encode_project(path: Path) -> str:
+    """Claude Code encodes a project dir as its absolute path with `/` and `.` -> `-`."""
+    return str(path.resolve()).replace("/", "-").replace(".", "-")
+
+
+def list_projects(claude_dir: Path) -> list[str]:
+    base = claude_dir / "projects"
+    if not base.is_dir():
+        return []
+    return sorted(p.name for p in base.iterdir() if p.is_dir())
+
+
+def current_project_slug(claude_dir: Path, cwd: Path | None = None) -> str | None:
+    """Best-match the project for `cwd` (default: real cwd). Picks the longest available
+    project slug that prefixes the cwd encoding, so running from a subdir (e.g. dashboard/)
+    still resolves to the repo's project. None if nothing matches."""
+    enc = encode_project(cwd or Path.cwd())
+    candidates = [p for p in list_projects(claude_dir) if enc == p or enc.startswith(p)]
+    return max(candidates, key=len) if candidates else None
 
 
 def find_transcripts(claude_dir: Path, project: str | None = None) -> list[Path]:
@@ -150,4 +172,112 @@ def agents(events: list[dict]) -> dict:
     return {
         "by_source": by_source(events),
         "by_skill": by_skill(events),
+    }
+
+
+# --- subagent attribution (who/what/when/how-much) ------------------------------------
+# Layout: <session>/subagents/agent-<id>.meta.json {agentType, description, toolUseId}
+# is co-located with agent-<id>.jsonl (the run's transcript). Tokens come ONLY from the
+# .jsonl (already part of the sidechain stream) — meta is identity only, so there is no
+# double counting. Runs reconcile against the by_source subagent total.
+
+
+def _iso_ms(ts: str) -> float | None:
+    try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp() * 1000
+    except (ValueError, AttributeError):
+        return None
+
+
+def _run_tokens(path: Path) -> dict:
+    """Sum a subagent transcript's own usage events (single source of truth for tokens)."""
+    inp = out = 0
+    cost = 0.0
+    first = last = ""
+    if not path.exists():
+        return {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "model": "",
+                "when": "", "duration_ms": 0, "found": False}
+    model = ""
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        ev = _event(obj)
+        if not ev:
+            continue
+        inp += ev["input_tokens"]
+        out += ev["output_tokens"]
+        cost += ev["cost"]
+        model = model or ev["model"]
+        ts = ev["ts"]
+        if ts:
+            first = first or ts
+            last = ts
+    dur = 0
+    a, b = _iso_ms(first), _iso_ms(last)
+    if a is not None and b is not None:
+        dur = int(b - a)
+    return {"input_tokens": inp, "output_tokens": out, "cost_usd": round(cost, 4),
+            "model": model, "when": first, "duration_ms": dur, "found": True}
+
+
+def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
+    """One record per subagent run: identity from agent-*.meta.json, tokens from the
+    co-located agent-*.jsonl. Reconciles: attributed + unattributed == subagent total."""
+    base = claude_dir / "projects"
+    root = (base / project) if project else base
+    runs: list[dict] = []
+    if root.exists():
+        for meta_path in sorted(root.rglob("agent-*.meta.json")):
+            try:
+                meta = json.loads(meta_path.read_text())
+            except (OSError, ValueError):
+                continue
+            if not isinstance(meta, dict):
+                continue
+            tok = _run_tokens(meta_path.with_suffix("").with_suffix(".jsonl"))
+            runs.append({
+                "agent_type": meta.get("agentType", "?"),
+                "description": meta.get("description", ""),
+                "tool_use_id": meta.get("toolUseId", ""),
+                "when": tok["when"],
+                "model": tok["model"],
+                "status": "completed" if tok["found"] else "no-transcript",
+                "duration_ms": tok["duration_ms"],
+                "input_tokens": tok["input_tokens"],
+                "output_tokens": tok["output_tokens"],
+                "total_tokens": tok["input_tokens"] + tok["output_tokens"],
+                "cost_usd": tok["cost_usd"],
+                "attributed": tok["found"] and (tok["input_tokens"] + tok["output_tokens"]) > 0,
+            })
+    runs.sort(key=lambda r: r["when"], reverse=True)
+
+    # Reconcile against the authoritative subagent total (same event stream).
+    sub_events = [e for e in load_events(claude_dir, project) if e["source"] == "subagent"]
+    sub_total = sum(e["input_tokens"] + e["output_tokens"] for e in sub_events)
+    attributed = sum(r["input_tokens"] + r["output_tokens"] for r in runs)
+
+    agg: dict[str, dict] = defaultdict(
+        lambda: {"runs": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+    )
+    for r in runs:
+        a = agg[r["agent_type"]]
+        a["runs"] += 1
+        a["input_tokens"] += r["input_tokens"]
+        a["output_tokens"] += r["output_tokens"]
+        a["cost_usd"] += r["cost_usd"]
+    by_type = sorted(
+        ({"agent_type": k, **v, "cost_usd": round(v["cost_usd"], 4)} for k, v in agg.items()),
+        key=lambda r: r["cost_usd"], reverse=True,
+    )
+    return {
+        "runs": runs,
+        "by_type": by_type,
+        "subagent_total_tokens": sub_total,
+        "attributed_tokens": attributed,
+        "unattributed_tokens": max(0, sub_total - attributed),
     }

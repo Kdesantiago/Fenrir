@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 29 skills, 8 subagents, 5 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 30 skills, 9 subagents, 5 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -62,9 +62,9 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Scaffold & gate** | `repo-bootstrap`, `delivery-gates`, `security-review`, `quality-master`, `deps`, `secrets`, `image-scan` |
 | **Build (stack-aware)** | `api-first`, `iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `cronjob`, `db-migration` |
 | **Ship to production** | `progressive-delivery` (canary/blue-green on AKS), `gitops` (Flux/Argo CD), `feature-flags`, `load-test`, `release` |
-| **Operate** | `incident-runbook`, `alert-delivery`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
+| **Operate** | `incident-runbook`, `alert-delivery`, `error-budget`, `llm-cost-monitor`, `online-llm-eval`, `us-cost-tracking` (per-US cost on the dashboard) |
 | **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow` |
-| **Agents** | `architect`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail` |
+| **Agents** | `architect`, `coder`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail` |
 | **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship`, `/fenrir:status` (tech-lead report) |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 
@@ -82,7 +82,7 @@ Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub),
 
 ## Companion: monitoring dashboard
 
-A local web app under **[dashboard/](dashboard/README.md)** — real token/cost/agent telemetry parsed from `~/.claude` + an **agent-driven Agile board** (Epic → Feature → User Story → Task) with a kanban, charts, and a CLI the agents use to manage the board. Companion app, not a plugin component. `cd dashboard && uv sync --extra dev && uv run uvicorn backend.app:app`.
+A local web app under **[dashboard/](dashboard/README.md)** — real token/cost/agent telemetry parsed from `~/.claude` + an **agent-driven Agile board** (Epic → Feature → User Story → Task) with a kanban, charts, and a CLI the agents use to manage the board. Plus **cost accounting**: per-US (per-agent) token/USD cost, a chronological cost trace, and **subagent attribution** (which named subagent ran, when, how much — reconciled, no double-count). Companion app, not a plugin component. `cd dashboard && uv sync --extra dev && uv run uvicorn backend.app:app`.
 
 ## Docs
 

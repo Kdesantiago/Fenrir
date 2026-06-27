@@ -42,7 +42,18 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="12"/><rect x="17" y="3" width="4" height="8"/></svg>
           <span>Kanban</span>
         </button>
+        <button class="nav-item" role="tab" aria-selected="false" data-view="trace" id="tab-trace" aria-controls="view-trace">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
+          <span>Cost trace</span>
+        </button>
       </nav>
+
+      <div class="project-picker">
+        <label class="project-label" for="project-select">Project</label>
+        <select id="project-select" aria-label="Scope telemetry to a project">
+          <option value="all">All projects</option>
+        </select>
+      </div>
 
       <div class="sidebar-foot">
         <button class="btn btn-ghost btn-sm" id="refresh-btn" title="Reload all data">
@@ -66,6 +77,7 @@
 
         <div id="overview-body">
           <div class="kpi-grid" id="kpi-grid"></div>
+          <p class="scope-caption" id="scope-caption" hidden></p>
 
           <div class="panel-grid">
             <section class="panel panel-wide">
@@ -76,17 +88,17 @@
                   <button class="seg-btn" data-metric="cost_usd">Cost</button>
                 </div>
               </header>
-              <div class="chart-wrap"><canvas id="chart-byday" aria-label="Usage over time line chart" role="img"></canvas></div>
+              <div class="chart-wrap" data-canvas="chart-byday" data-label="Usage over time line chart"><canvas id="chart-byday" aria-label="Usage over time line chart" role="img"></canvas></div>
             </section>
 
             <section class="panel">
               <header class="panel-head"><h2>Cost by model</h2></header>
-              <div class="chart-wrap"><canvas id="chart-bymodel" aria-label="Cost by model doughnut chart" role="img"></canvas></div>
+              <div class="chart-wrap" data-canvas="chart-bymodel" data-label="Cost by model doughnut chart"><canvas id="chart-bymodel" aria-label="Cost by model doughnut chart" role="img"></canvas></div>
             </section>
 
             <section class="panel">
               <header class="panel-head"><h2>Main vs subagent</h2></header>
-              <div class="chart-wrap"><canvas id="chart-source" aria-label="Main vs subagent split chart" role="img"></canvas></div>
+              <div class="chart-wrap" data-canvas="chart-source" data-label="Main vs subagent split chart"><canvas id="chart-source" aria-label="Main vs subagent split chart" role="img"></canvas></div>
             </section>
           </div>
         </div>
@@ -114,8 +126,40 @@
 
           <section class="panel">
             <header class="panel-head"><h2>Main vs subagent</h2></header>
-            <div class="chart-wrap chart-bar"><canvas id="chart-source-bar" aria-label="Main vs subagent cost bar chart" role="img"></canvas></div>
+            <div class="chart-wrap chart-bar" data-canvas="chart-source-bar" data-label="Main vs subagent cost bar chart"><canvas id="chart-source-bar" aria-label="Main vs subagent cost bar chart" role="img"></canvas></div>
             <div class="table-wrap"><table class="data-table" id="tbl-source"><thead><tr><th>Source</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
+          </section>
+
+          <!-- ===== Subagents ===== -->
+          <section class="panel">
+            <header class="panel-head">
+              <h2>Subagent runs</h2>
+              <p class="subagent-recon" id="subagent-recon" aria-live="polite"></p>
+            </header>
+
+            <h3 class="subhead">By agent type</h3>
+            <div class="chart-wrap chart-bar" data-canvas="chart-subagent-type" data-label="Cost by subagent type bar chart"><canvas id="chart-subagent-type" aria-label="Cost by subagent type bar chart" role="img"></canvas></div>
+            <div class="table-wrap">
+              <table class="data-table" id="tbl-subagent-type">
+                <thead><tr><th>Agent type</th><th class="num">Runs</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="panel-head subagent-runs-head">
+              <h3 class="subhead">Runs</h3>
+              <button class="seg-btn is-active" id="subagent-sort" aria-pressed="true" title="Toggle sort order">Cost ↓</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="tbl-subagent-runs">
+                <thead><tr>
+                  <th>Agent type</th><th>When</th><th>Model</th>
+                  <th class="num">Input</th><th class="num">Output</th>
+                  <th class="num">Cost</th><th class="num">Duration</th><th>Status</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </section>
         </div>
       </section>
@@ -146,6 +190,38 @@
 
         <div id="kanban-body">
           <div class="kanban" id="kanban-cols"></div>
+        </div>
+      </section>
+
+      <!-- ========== COST TRACE ========== -->
+      <section class="view" id="view-trace" role="tabpanel" aria-labelledby="tab-trace" tabindex="0" hidden>
+        <header class="view-head">
+          <div>
+            <h1>Cost trace</h1>
+            <p class="muted">Chronological work-log entries charged against the board</p>
+          </div>
+          <div class="toolbar">
+            <label class="field-inline">
+              <span class="vh">Filter by user story</span>
+              <select id="trace-us" aria-label="Filter cost trace by user story"><option value="">All stories</option></select>
+            </label>
+          </div>
+        </header>
+
+        <div id="trace-body">
+          <section class="panel">
+            <div class="table-wrap">
+              <table class="data-table" id="tbl-trace">
+                <thead><tr>
+                  <th>When</th><th>User story</th><th>Agent</th>
+                  <th class="num">Input</th><th class="num">Output</th>
+                  <th class="num">Cost</th><th>Source</th>
+                </tr></thead>
+                <tbody></tbody>
+                <tfoot></tfoot>
+              </table>
+            </div>
+          </section>
         </div>
       </section>
     </main>

@@ -93,7 +93,7 @@ template_version: "1.0.0"
 | Record a decision / waive a gate / log drift | "remember this decision", "waive check X until Y" → `memory-keeper` (in-repo delivery-memory) |
 
 ### Subagents (delegated personas)
-`architect` (design + ADR), `context-engineering` (what fills the LLM context window + versioned prompt artifacts), `qa-tester` (write new tests + repros), `reviewer` (PR-hygiene verdict), `red-team-destroyer` (ruthless adversarial review — "red-team this"), `stack-adapter` (translates standard cloud ops into your enterprise Azure wrappers, reading `stack-interface.yaml`), `doc-keeper` (keeps CHANGELOG/READMEs/API-docs in sync with the diff), `security-guardrail` (opt-in LLM guardrail that judges prompts for injection/safety). (Coding is the main thread's default — there is no `coder` subagent.)
+`architect` (design + ADR), `coder` (implements the change against the spec/ADR — the builder in the delivery flow), `context-engineering` (what fills the LLM context window + versioned prompt artifacts), `qa-tester` (write new tests + repros), `reviewer` (PR-hygiene verdict), `red-team-destroyer` (ruthless adversarial review — "red-team this"), `stack-adapter` (translates standard cloud ops into your enterprise Azure wrappers, reading `stack-interface.yaml`), `doc-keeper` (keeps CHANGELOG/READMEs/API-docs in sync with the diff), `security-guardrail` (opt-in LLM guardrail that judges prompts for injection/safety). Running the coder as a subagent means its token spend is attributable to the US (see the dashboard's cost accounting).
 
 ---
 

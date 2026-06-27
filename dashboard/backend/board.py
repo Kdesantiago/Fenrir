@@ -6,6 +6,7 @@ module, so there is a single source of truth.
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +127,77 @@ class BoardStore:
         item.work_log.append(entry)
         self.save(b)
         return item
+
+    # --- cost rollups + trace (derived from work_log — the single source) --------------
+    def has_session_for(self, kind: str, item_id: str, session_id: str) -> bool:
+        """True if a work_log entry for this item already covers session_id (idempotency)."""
+        b = self.load()
+        item = self._find(b, kind, item_id)
+        return any(w.session_id == session_id and session_id for w in item.work_log)
+
+    def costs(self) -> dict:
+        """Per Epic/Feature/US cost rollup from work_log (tasks roll up into their story)."""
+        b = self.load()
+
+        def agg(entries: list[WorkLogEntry]) -> dict:
+            inp = out = 0
+            cost = 0.0
+            by: dict[str, dict] = defaultdict(
+                lambda: {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+            for e in entries:
+                inp += e.input_tokens
+                out += e.output_tokens
+                cost += e.cost_usd
+                key = e.subagent_type or e.agent or "unknown"
+                by[key]["input_tokens"] += e.input_tokens
+                by[key]["output_tokens"] += e.output_tokens
+                by[key]["cost_usd"] += e.cost_usd
+            return {
+                "input_tokens": inp, "output_tokens": out, "cost_usd": round(cost, 4),
+                "by_agent": sorted(
+                    ({"agent": k, **v, "cost_usd": round(v["cost_usd"], 4)} for k, v in by.items()),
+                    key=lambda r: r["cost_usd"], reverse=True),
+            }
+
+        story_entries: dict[str, list[WorkLogEntry]] = {s.id: list(s.work_log) for s in b.stories}
+        for t in b.tasks:
+            story_entries.setdefault(t.story_id, []).extend(t.work_log)
+        feat_entries: dict[str, list[WorkLogEntry]] = defaultdict(list)
+        for s in b.stories:
+            feat_entries[s.feature_id].extend(story_entries.get(s.id, []))
+        epic_entries: dict[str, list[WorkLogEntry]] = defaultdict(list)
+        for f in b.features:
+            epic_entries[f.epic_id].extend(feat_entries.get(f.id, []))
+        return {
+            "stories": {sid: agg(es) for sid, es in story_entries.items()},
+            "features": {fid: agg(es) for fid, es in feat_entries.items()},
+            "epics": {eid: agg(es) for eid, es in epic_entries.items()},
+            "total": agg([e for es in story_entries.values() for e in es]),
+        }
+
+    def trace(self, us_id: str | None = None) -> list[dict]:
+        """Flatten every work_log entry into a chronological cost trace (optionally one US)."""
+        b = self.load()
+        title = {s.id: s.title for s in b.stories}
+        rows: list[dict] = []
+
+        def row(uid: str, kind: str, e: WorkLogEntry, task_id: str = "") -> dict:
+            d = e.model_dump()
+            d.update({"us_id": uid, "title": title.get(uid, uid), "kind": kind})
+            if task_id:
+                d["task_id"] = task_id
+            return d
+
+        for s in b.stories:
+            if us_id and s.id != us_id:
+                continue
+            rows.extend(row(s.id, "story", e) for e in s.work_log)
+        for t in b.tasks:
+            if us_id and t.story_id != us_id:
+                continue
+            rows.extend(row(t.story_id, "task", e, t.id) for e in t.work_log)
+        rows.sort(key=lambda r: r.get("at") or "")
+        return rows
 
     def delete(self, kind: str, item_id: str) -> None:
         """Delete an item and cascade to its children."""

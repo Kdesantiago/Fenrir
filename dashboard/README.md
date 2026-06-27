@@ -2,10 +2,11 @@
 
 A local monitoring web app for Fenrir. It does two things:
 
-1. **Telemetry** — parses your real Claude Code transcripts under `~/.claude` and aggregates agent / token / cost activity (by model, skill, day, and source: main thread vs subagent). Read-only; it never mutates the logs.
+1. **Telemetry** — parses your real Claude Code transcripts under `~/.claude` and aggregates agent / token / cost activity (by model, skill, day, and source: main thread vs subagent). **Scoped to the current repo's project by default** (a header selector / `?project=` switches between projects, or `all`). Read-only; it never mutates the logs.
 2. **Agile board** — an `Epic → Feature → User Story → Task` kanban that the agents drive themselves via a CLI. The board is plain, git-trackable JSON (`data/board.json`), and stories/tasks cross-link to real telemetry through their `work_log`.
+3. **Cost accounting** — answer *"what did this User Story cost?"*: per-US (and Feature/Epic) input/output tokens + USD, broken down **per agent**, a chronological **cost trace**, and **subagent attribution** (which named subagent ran, when, on what, how much — reconciled, no double-count). See [Track the cost of a User Story](#track-the-cost-of-a-user-story).
 
-> This is a **companion app**, not a plugin component. It has its own dependencies, its own CI job, and runs standalone.
+> This is a **companion app**, not a plugin component. It has its own dependencies, its own CI job, and runs standalone. **Cost is a derived estimate** (token×price-book), not billed dollars.
 
 ## Run
 
@@ -23,7 +24,40 @@ Then open <http://127.0.0.1:8000>. The JSON API lives under `/api/*`; a static S
 | --- | --- | --- |
 | `FENRIR_DASH_BOARD` | `data/board.json` | Path to the board JSON store. |
 | `FENRIR_DASH_CLAUDE_DIR` | `~/.claude` | Override the Claude Code directory scanned for telemetry. |
-| `FENRIR_DASH_PROJECT` | *(all)* | Restrict telemetry to a single `~/.claude/projects/<name>` directory. Unset = scan every project. |
+| `FENRIR_DASH_PROJECT` | *(auto: current repo)* | Pin telemetry to one `~/.claude/projects/<name>`. Unset → the dashboard auto-detects the current repo's project; the UI selector / `?project=<slug>` overrides per request (`all` = every project). |
+
+## Track the cost of a User Story
+
+The dashboard's headline workflow — represent work as a US, then attribute the real spend
+to it (the `us-cost-tracking` skill drives this for agents):
+
+```bash
+cd dashboard
+# 1. represent the work
+python -m backend.cli epic add    --title "Checkout v2"
+python -m backend.cli feature add --epic epic-1 --title "Payment API"
+python -m backend.cli story add   --feature feat-1 --title "Refund endpoint" --assignee architect --points 3
+
+# 2. move it as you work
+python -m backend.cli move --kind story --id us-1 --status in_progress
+
+# 3. record REAL cost from a Claude Code session
+#    (pulls actual tokens/cost from ~/.claude; idempotent per session; one entry per source)
+python -m backend.cli link --kind story --id us-1 --session <session-id>
+
+# 4. read what it cost
+python -m backend.cli trace --us us-1
+```
+
+- **Per-US / per-agent cost:** `GET /api/board/costs` (or the story modal in the UI) shows
+  each US's input/output tokens + USD, broken down by agent, rolled up to Feature and Epic.
+- **Cost trace:** `cli trace` / `GET /api/trace?us=<id>` — every cost event, chronological.
+- **Subagent attribution:** `GET /api/telemetry/subagents` (or the **Subagents** panel) —
+  which named subagent ran, when, on what model, how long, and how much. It **reconciles**:
+  `attributed_tokens + unattributed_tokens == subagent_total_tokens` (no double-count;
+  identity comes from `agent-*.meta.json`, tokens from the subagent's own transcript).
+
+Cost is a **derived estimate** (token × price book), not an invoice.
 
 ## How agents drive the board
 
@@ -55,6 +89,15 @@ python -m backend.cli assign --kind story --id us-1 --agent coder
 python -m backend.cli log --kind story --id us-1 --agent coder \
     --in-tokens 1200 --out-tokens 800 --cost 0.05 --note "first pass"
 
+# link REAL telemetry into a work_log — pulls actual tokens/cost from ~/.claude
+# (filter by session and/or skill; defaults to the current repo's project)
+python -m backend.cli link --kind story --id us-1 --session <session-id>
+python -m backend.cli link --kind story --id us-1 --skill fenrir:deliver
+# project slugs start with "-", so argparse needs the = form: --project=-Users-...-Fenrir
+
+# read the cost trace (flattened work_log, chronological); --us filters to one story
+python -m backend.cli trace --us us-1
+
 # print the whole board as a tree
 python -m backend.cli list
 
@@ -71,6 +114,8 @@ python -m backend.cli delete --kind feature --id feat-1
 - `move` — `--kind` (required), `--id` (required), `--status` (required: `backlog`, `todo`, `in_progress`, `review`, `done`, `blocked`)
 - `assign` — `--kind` (required), `--id` (required), `--agent` (required) — stories/tasks only
 - `log` — `--kind` (required), `--id` (required), `--agent`, `--session`, `--in-tokens` (int), `--out-tokens` (int), `--cost` (float), `--note`, `--at` (ISO timestamp; defaults to now) — stories/tasks only
+- `link` — `--kind` (required), `--id` (required), `--session`, `--skill`, `--project` (default: current repo; use `--project=<slug>`), `--agent`, `--note` — sums REAL telemetry matching the filters into work_log entries (**one per source**: main vs subagent). **Idempotent** per `(session, item)` — re-running is a no-op. Stories/tasks only.
+- `trace` — `--us` (optional, filter to one story) — print the chronological cost trace (flattened work_log) with a total
 - `delete` — `--kind` (required), `--id` (required) — cascades to children
 - `list` — no flags
 
@@ -82,19 +127,23 @@ Board:
 
 - `GET  /api/health` — liveness check
 - `GET  /api/board` — full board (epics, features, stories, tasks)
+- `GET  /api/board/costs` — per Epic/Feature/US cost rollup with per-agent breakdown
+- `GET  /api/trace?us=<id>` — chronological cost trace (flattened work_log; `us` optional)
 - `POST /api/epics` · `POST /api/features` · `POST /api/stories` · `POST /api/tasks` — create
 - `PATCH /api/{kind}/{id}/status` — move (body: `{"status": ...}`)
 - `PATCH /api/{kind}/{id}/assign` — assign (body: `{"assignee": ...}`; stories/tasks only)
 - `POST  /api/{kind}/{id}/worklog` — append a work-log entry (stories/tasks only)
 - `DELETE /api/{kind}/{id}` — delete (cascades)
 
-Telemetry (all read-only aggregations over `~/.claude`):
+Telemetry (all read-only aggregations over `~/.claude`). Every endpoint accepts `?project=<slug>` (omit = current repo; `all` = every project):
 
-- `GET /api/telemetry/summary` — totals: calls, tokens, cache, cost, models, sessions, date range
+- `GET /api/projects` — available project slugs + the auto-detected active one
+- `GET /api/telemetry/summary` — totals: calls, tokens, cache, cost, models, sessions, date range, plus the active `scope`
 - `GET /api/telemetry/by-model` — cost/tokens grouped by model
 - `GET /api/telemetry/by-skill` — grouped by attributed Fenrir skill
 - `GET /api/telemetry/by-day` — daily tokens + cost
 - `GET /api/telemetry/agents` — "who spent what": split by source (main vs subagent) and by skill
+- `GET /api/telemetry/subagents` — per-subagent runs (type · when · model · tokens · cost · duration · status) + by-type rollup + the attributed/unattributed reconciliation
 
 ## Data model
 
@@ -109,7 +158,7 @@ Epic (epic-N)
 
 - **Status** (all items): `backlog`, `todo`, `in_progress`, `review`, `done`, `blocked`. The kanban renders the first five as columns.
 - **Assignee** (stories/tasks): an agent name, e.g. `architect`, `coder`, `reviewer`.
-- **WorkLogEntry**: `agent`, `session_id`, `input_tokens`, `output_tokens`, `cost_usd`, `note`, `at` (ISO timestamp). This is how an item links to real agent activity.
+- **WorkLogEntry**: `agent`, `subagent_type`, `session_id`, `input_tokens`, `output_tokens`, `cost_usd`, `source` (`manual` | `telemetry-link`), `note`, `at` (ISO timestamp). This is how an item links to real agent activity; `cli link`/`trace` and `/api/board/costs` read it.
 - IDs are auto-assigned with a per-kind prefix (`epic-`, `feat-`, `us-`, `task-`) and a collision-safe numeric suffix.
 
 Telemetry events are normalized from each assistant message line in `~/.claude` transcripts: `model`, `usage` (input/output/cache tokens), `timestamp`, `sessionId`, `isSidechain` (subagent vs main), and `attributionSkill` / `attributionPlugin`.

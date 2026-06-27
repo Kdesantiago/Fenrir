@@ -16,8 +16,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import defaultdict
 from datetime import UTC, datetime
 
+from . import config, telemetry
 from .board import BoardStore
 from .models import Status, WorkLogEntry
 
@@ -56,6 +58,47 @@ def _cmd_log(s: BoardStore, a) -> None:
                          output_tokens=a.out_tokens, cost_usd=a.cost, note=a.note,
                          at=a.at or datetime.now(UTC).isoformat())
     _emit(s.log_work(a.kind, a.id, entry))
+
+
+def _cmd_link(s: BoardStore, a) -> None:
+    """Pull REAL telemetry (by session and/or skill) into a story/task work_log.
+    Idempotent per (session, item); writes one entry per source (main vs subagent)."""
+    if a.session and s.has_session_for(a.kind, a.id, a.session):
+        print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
+        return
+    cd = config.claude_dir()
+    project = a.project or telemetry.current_project_slug(cd)  # default: current repo
+    ev = telemetry.load_events(cd, project)
+    ev = [e for e in ev
+          if (not a.session or e["session_id"] == a.session)
+          and (not a.skill or e["skill"] == a.skill)]
+    if not ev:
+        raise ValueError("no telemetry matched the given --session/--skill/--project")
+    groups: dict[str, dict] = defaultdict(lambda: {"in": 0, "out": 0, "cost": 0.0, "n": 0})
+    for e in ev:
+        g = groups[e["source"]]
+        g["in"] += e["input_tokens"]; g["out"] += e["output_tokens"]
+        g["cost"] += e["cost"]; g["n"] += 1
+    now = datetime.now(UTC).isoformat()
+    for src, g in sorted(groups.items()):
+        s.log_work(a.kind, a.id, WorkLogEntry(
+            agent=a.agent or src, subagent_type=(src if src == "subagent" else ""),
+            session_id=a.session, source="telemetry-link",
+            input_tokens=g["in"], output_tokens=g["out"], cost_usd=round(g["cost"], 4),
+            note=a.note or f"linked {g['n']} {src} events", at=now))
+    _emit(s.load())
+
+
+def _cmd_trace(s: BoardStore, a) -> None:
+    rows = s.trace(a.us or None)
+    total = round(sum(r.get("cost_usd", 0) for r in rows), 4)
+    tin = sum(r.get("input_tokens", 0) for r in rows)
+    tout = sum(r.get("output_tokens", 0) for r in rows)
+    for r in rows:
+        print(f"{r.get('at',''):26} {r['us_id']:7} {r.get('agent',''):14} "
+              f"in={r.get('input_tokens',0):>8} out={r.get('output_tokens',0):>7} "
+              f"${r.get('cost_usd',0):.4f}  [{r.get('source','')}] {r.get('title','')}")
+    print(f"--- {len(rows)} entries | in={tin} out={tout} | total ${total:.4f}")
 
 
 def _cmd_delete(s: BoardStore, a) -> None:
@@ -122,8 +165,17 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--cost", type=float, default=0.0); a.add_argument("--note", default="")
     a.add_argument("--at", default=""); a.set_defaults(fn=_cmd_log)
 
+    a = sub.add_parser("link", help="pull real telemetry (by session/skill) into a work_log")
+    a.add_argument("--kind", required=True); a.add_argument("--id", required=True)
+    a.add_argument("--session", default=""); a.add_argument("--skill", default="")
+    a.add_argument("--project", default=None); a.add_argument("--agent", default="")
+    a.add_argument("--note", default=""); a.set_defaults(fn=_cmd_link)
+
     a = sub.add_parser("delete"); a.add_argument("--kind", required=True)
     a.add_argument("--id", required=True); a.set_defaults(fn=_cmd_delete)
+
+    a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
+    a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)
 
     sub.add_parser("list").set_defaults(fn=_cmd_list)
     return p
@@ -132,7 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        args.fn(BoardStore(), args)
+        args.fn(config.store(), args)
     except (KeyError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

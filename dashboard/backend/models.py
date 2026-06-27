@@ -35,10 +35,12 @@ class WorkLogEntry(BaseModel):
     """A unit of real agent work charged against an item (sourced from telemetry)."""
 
     agent: str = ""
+    subagent_type: str = ""  # named subagent (e.g. fenrir:reviewer) when known
     session_id: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    source: str = ""  # manual | telemetry-link | telemetry-subagent
     note: str = ""
     at: str = ""  # ISO timestamp, supplied by caller (no clock in pure model)
 
