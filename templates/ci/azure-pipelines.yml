@@ -22,9 +22,9 @@ stages:
       - job: pytest_cov
         strategy:
           matrix:
-            rag_generation_api: { svc: "src/rag_generation_api" }
-            rag_ingest_api:     { svc: "src/rag_ingest_api" }
-            sharepoint:         { svc: "src/sharepoint_connector" }
+            service_a: { svc: "src/service_a" }
+            service_b:     { svc: "src/service_b" }
+            service_c:         { svc: "src/service_c" }
         steps:
           - task: UsePythonVersion@0
             inputs: { versionSpec: "$(pyVersion)" }
@@ -50,7 +50,7 @@ stages:
           - publish: sbom.json
             artifact: sbom
           - script: |
-              for svc in src/rag_generation_api src/rag_ingest_api src/sharepoint_connector; do
+              for svc in src/service_a src/service_b src/service_c; do
                 [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
               done
             displayName: dependency audit (pip-audit)

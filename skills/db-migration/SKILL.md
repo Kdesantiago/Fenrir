@@ -1,13 +1,13 @@
 ---
 name: db-migration
-description: Use when you need a SAFE schema migration for a SQLAlchemy/Alembic service (the org's rag_ingest_api/alembic) — autogenerate then human-review, reversible downgrade, lock-free DDL, backfill split from schema, idempotent, tested up→down→up. NOT for ORM model authoring or app data access (framework generators). Reads org-profile.yaml `framework` and refuses on non-SQLAlchemy stacks. It writes/reviews migration scripts; the migrate step in CI/the deploy pipeline applies them.
+description: Use when you need a SAFE schema migration for any SQLAlchemy/Alembic service (a service with an `alembic/` tree) — autogenerate then human-review, reversible downgrade, lock-free DDL, backfill split from schema, idempotent, tested up→down→up. NOT for ORM model authoring or app data access (framework generators). Reads org-profile.yaml `framework` and refuses on non-SQLAlchemy stacks. It writes/reviews migration scripts; the migrate step in CI/the deploy pipeline applies them.
 ---
 
 # DB Migration
 
 ## When to use
 - "add/alter a column", "create an index", "backfill a table" on a Python/SQLAlchemy service
-- The repo has an `alembic/` tree (e.g. `rag_ingest_api/alembic`) and `framework: fastapi`
+- The repo has an `alembic/` tree (e.g. `src/<service>/alembic`) and `framework: fastapi`
 - You want the expand/contract discipline applied to a risky schema change before it merges
 
 ## When NOT to use

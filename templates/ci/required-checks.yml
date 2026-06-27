@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: ["src/rag_generation_api", "src/rag_ingest_api", "src/sharepoint_connector"]
+        service: ["src/service_a", "src/service_b", "src/service_c"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,7 +53,7 @@ jobs:
         with: { name: sbom, path: sbom.json }
       - name: dependency audit (pip-audit per service; add ignores to .pip-audit.toml as needed)
         run: |
-          for svc in src/rag_generation_api src/rag_ingest_api src/sharepoint_connector; do
+          for svc in src/service_a src/service_b src/service_c; do
             [ -f "$svc/uv.lock" ] && (cd "$svc" && pip install uv && uv export --format requirements-txt | pipx run pip-audit -r /dev/stdin)
           done
 

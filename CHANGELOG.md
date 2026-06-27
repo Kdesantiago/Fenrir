@@ -4,6 +4,11 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-06-27
+
+### Changed
+- Removed org-specific (Suez) references from the shipped templates and skills. Example service names are now generic (`src/service_a`/`service_b`/`service_c`) and the default `environments` is `[dev, staging, prod]`. Examples only — no behavioral change.
+
 ## [1.0.0] — 2026-06-27
 
 First public release. Renamed from `delivery-standard` to **Fenrir**. Everything below shipped in 1.0.0.
@@ -28,7 +33,7 @@ First public release. Renamed from `delivery-standard` to **Fenrir**. Everything
 - `red-team-destroyer` now ends with `VERDICT: SHIP | FIX-FIRST | REDESIGN` + steelman/HARD-SOFT-ASSUMPTION rules; wired into `/deliver` as a pre-code stage against the ADR (REDESIGN = BLOCK).
 - `GETTING-STARTED.md` (solo walkthrough) + this `CHANGELOG.md`.
 
-### Changed / Fixed (red-team iteration 3, verified against the real Suez uv/3.12 monorepo)
+### Changed / Fixed (red-team iteration 3, verified against the real uv/3.12 monorepo)
 - **`marketplace.json` `source` set to `"./"`** — plugin sources resolve relative to the marketplace root (the dir containing `.claude-plugin/`), which is the repo root; confirmed with `claude plugin validate` (an earlier `"../"` attempt was wrong and rejected by the validator).
 - **CI templates uv-aware + Python 3.12** (was 3.13, which aborts install on services pinned `>=3.12,<3.13`): `uv sync`/`uv run pytest` when `uv.lock` present; triggers `dev`/`main`/`release/*`; added `pip-audit` dependency audit; merged coverage into the `test` job (no duplicate full pytest run).
 - `branch-protection.tf` required checks `test/sast/build` (coverage folded into `test`).
@@ -43,7 +48,7 @@ First public release. Renamed from `delivery-standard` to **Fenrir**. Everything
 - **`aks-deploy-watch.sh` hung forever** (`tail -F & … wait`) when `DS_ERROR_LOG` was set, and ignored a `DS_KUBECTL` wrapper-with-args; now traps+kills the tail, drops the `wait`, `read -ra` splits the wrapper, `sed -u` for live lines, 20-min cap corrected.
 - **`obs_backend` mismatch** — progressive-delivery/error-budget keyed off `prometheus`/`azure-monitor`, not in the enum; added both to `org-profile.yaml obs_backend`.
 - **observability-gen didn't author SLI/SLO/alert rules** that progressive-delivery, error-budget, and incident-runbook delegate to it; extended it to do so (the delegations were dead).
-- **`deploy-watch` dangling reference** in incident-runbook → `aks-deploy-watch`. **`container_registry`** + **`environments`** added to `org-profile.yaml` (gitops/feature-flags referenced keys that didn't exist; feature-flags no longer hardcodes `dev/hml/prod`).
+- **`deploy-watch` dangling reference** in incident-runbook → `aks-deploy-watch`. **`container_registry`** + **`environments`** added to `org-profile.yaml` (gitops/feature-flags referenced keys that didn't exist; feature-flags no longer hardcodes `dev/staging/prod`).
 - **Rollout "both canary AND blue-green"** is invalid (Argo strategy is exclusive) → progressive-delivery now emits ONE strategy + states the in-cluster-controller prerequisite.
 - Reciprocal NOT-clauses added (delivery-gates↔error-budget, llm-gen↔online-llm-eval); online-llm-eval drops the unwired `PostToolUse` hook claim (only `Stop` is wired); VERIFY commands hardened against empty `$(...)` false-OK.
 - delivery-guard branch-guard resolves the branch once (was two `git symbolic-ref` calls per commit).

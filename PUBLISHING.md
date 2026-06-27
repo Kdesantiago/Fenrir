@@ -140,7 +140,7 @@ llm_provider: azure      # anthropic | openai | azure | bedrock | vertex | none
 front: html              # react | vue | svelte | streamlit | html | none
 vector_store: pgvector   # pgvector | azure-ai-search | qdrant | weaviate | none
 container_registry: ""   # e.g. mycorp.azurecr.io (or declare in stack-interface.yaml)
-environments: [dev, hml, prod]
+environments: [dev, staging, prod]
 template_version: "1.0.0"
 ```
 

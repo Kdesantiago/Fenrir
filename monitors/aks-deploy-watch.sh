@@ -4,7 +4,7 @@
 # failures / error spikes without being asked to start watching.
 #
 # Config via env (set in your shell or .claude/settings.json env):
-#   DS_K8S_DEPLOYMENT  (e.g. deploy/rag-generation-api)  — required for rollout watch
+#   DS_K8S_DEPLOYMENT  (e.g. deploy/service-a)  — required for rollout watch
 #   DS_K8S_NAMESPACE   (default: default)
 #   DS_ERROR_LOG       (path to tail, optional)
 #   DS_KUBECTL         (wrapper, may include args, e.g. "mycorp-kubectl --ctx prod"; default: kubectl)

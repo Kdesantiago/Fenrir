@@ -9,7 +9,7 @@ llm_provider: anthropic  # anthropic | openai | azure | bedrock | vertex | none 
 front: streamlit         # react | vue | svelte | streamlit | html | none  (html = plain static HTML/CSS/JS)
 vector_store: pgvector   # pgvector | azure-ai-search | qdrant | weaviate | none  (used by the retriever skill; optional)
 container_registry: ""   # e.g. mycorp.azurecr.io — used by gitops/iac-gen image automation (optional; or declare in stack-interface.yaml)
-environments: [dev, hml, prod]   # ordered promotion path; used by feature-flags labels + env promotion (edit to your envs)
+environments: [dev, staging, prod]   # ordered promotion path; used by feature-flags labels + env promotion (edit to your envs)
 
 # Consumer contract — assert the fenrir plugin/template version this repo targets.
 # delivery-gates fails loud if the installed plugin version is incompatible.

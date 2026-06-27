@@ -1,6 +1,6 @@
 ---
 name: feature-flags
-description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store with kill-switches, percentage flighting, and targeting. NOT for secret storage (that's the `secrets` skill / Key Vault) and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Scaffolds Azure App Configuration accessed via the official Python feature-management library: per-environment labels (dev/hml/prod), percentage flighting for canary-style ramp, runtime kill-switches, and targeting filters. Reads org-profile.yaml `platform`/`framework`; if stack-interface.yaml exists, gets App Configuration access via the stack-adapter agent. Refuses on mismatch.
+description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store with kill-switches, percentage flighting, and targeting. NOT for secret storage (that's the `secrets` skill / Key Vault) and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Scaffolds Azure App Configuration accessed via the official Python feature-management library: per-environment labels (dev/staging/prod), percentage flighting for canary-style ramp, runtime kill-switches, and targeting filters. Reads org-profile.yaml `platform`/`framework`; if stack-interface.yaml exists, gets App Configuration access via the stack-adapter agent. Refuses on mismatch.
 ---
 
 # Feature Flags
@@ -20,7 +20,7 @@ This skill is advisory — it scaffolds the flag store + the client wiring + a f
 
 ## Inputs
 - `org-profile.yaml` → `platform` and `framework` (expects the FastAPI/Streamlit Python stack)
-- `org-profile.yaml` → `environments` (the declared list, e.g. `[dev, hml, prod]`) → become App Configuration **labels** (do not hardcode; read the profile)
+- `org-profile.yaml` → `environments` (the declared list, e.g. `[dev, staging, prod]`) → become App Configuration **labels** (do not hardcode; read the profile)
 - The flags + their type (boolean kill-switch, percentage flighting, targeting filter)
 - `stack-interface.yaml` (OPTIONAL) → get App Configuration endpoint/auth from the `stack-adapter` agent, not raw `az appconfig`
 
@@ -38,7 +38,7 @@ This skill is advisory — it scaffolds the flag store + the client wiring + a f
 
 ## Output / validation
 - An App Configuration store reference + the Python client wiring (`featuremanagement` + provider, managed-identity auth) + per-env labels + the flag set (kill-switches, percentage filters, targeting filters) + a short flag taxonomy/runbook.
-- Validation: no secrets in App Configuration (those route to `secrets`/Key Vault); auth is managed-identity, never a literal connection string; flags resolve per `dev/hml/prod` label; provider refresh is enabled so flips are runtime; flighting/targeting filters parse.
+- Validation: no secrets in App Configuration (those route to `secrets`/Key Vault); auth is managed-identity, never a literal connection string; flags resolve per `dev/staging/prod` label; provider refresh is enabled so flips are runtime; flighting/targeting filters parse.
 
 ## Refuses when
 - `org-profile.yaml` missing, or `platform`/`framework` not the supported Python (FastAPI/Streamlit) stack.
