@@ -4,6 +4,12 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Monitoring dashboard** (`dashboard/`, companion web app — not a plugin component): a local FastAPI + SPA that gives a tech lead a real monitoring surface.
+  - **Telemetry** — parses real `~/.claude` transcripts into tokens/cost aggregated by model, skill (`attributionSkill`), day, and source (main thread vs subagent), with USD **derived** from a configurable price book (`backend/pricing.py`). Read-only.
+  - **Agile board** — an `Epic → Feature → User Story → Task` kanban (drag-drop status, charts, filters), stored as git-trackable JSON (`data/board.json`), that **agents drive themselves** via `python -m backend.cli` (epic/feature/story/task add, move, assign, log) — same store as the REST API. Stories/tasks cross-link to real telemetry via their `work_log`.
+  - Stack: FastAPI + vanilla-JS SPA (Chart.js + SortableJS via CDN, no build step). 61 backend tests (board/telemetry/pricing) + a `dashboard` CI job (ruff/mypy/pytest); the SPA was verified end-to-end against the running app.
+
 ## [1.2.0] — 2026-06-27
 
 ### Added
