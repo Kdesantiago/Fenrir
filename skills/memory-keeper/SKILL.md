@@ -25,13 +25,13 @@ Delivery memory is an **in-repo, git-tracked, reviewable** record scoped to deli
 - The consuming repo root (memory lives at `docs/delivery-memory/` under it)
 - The operation: `record` | `waive` | `list` | `expire` | `recall`
 - For `record`: kind (`decision` | `drift` | `lesson`) and its payload
-- For `waive`: `rule` (which check is waived), `reason`, `granted_by`, and `expires` (default: today + 30 days)
+- For `waive`: `rule` (which check is waived), `reason`, `granted_by`, `expires` (default: today + 30 days), and optionally `approved_by` (a distinct approver; absent or `== granted_by` ⇒ self-granted)
 - For `recall`: a task description / keywords to match against existing memory
 - Today's date (for default expiry and for expiry filtering)
 
 ## Layout (all under the consuming repo)
 - `docs/delivery-memory/decisions/` — short decision notes, one Markdown file per decision (e.g. `2026-06-27-postgres-over-dynamo.md`). Lighter than an ADR; link the ADR if one exists.
-- `docs/delivery-memory/gate-exceptions.jsonl` — temporary gate waivers, one JSON object per line. A SessionStart hook reads this; **field names are fixed.**
+- `docs/delivery-memory/gate-exceptions.jsonl` — temporary gate waivers, one JSON object per line. A SessionStart hook reads this; **the required field names are fixed** (only the OPTIONAL `approved_by` may be added — the hook ignores unknown keys).
 - `docs/delivery-memory/drift-log.jsonl` — append-only log of changes to `org-profile.yaml` / `template_version` / platform.
 - `docs/delivery-memory/lessons.md` — recurring review/red-team findings worth feeding back into checks.
 
@@ -46,6 +46,7 @@ Delivery memory is an **in-repo, git-tracked, reviewable** record scoped to deli
 - `rule` — the exact check being waived (must match how the gate names it).
 - `reason` — why; non-empty, no secrets.
 - `granted_by` — owner accountable for the waiver.
+- `approved_by` — OPTIONAL; a second owner who approved the waiver. A waiver counts as *approved* only when `approved_by` is set and `!= granted_by`; otherwise it is *self-granted* — still recorded, but unverified (no identity/PR check), and tools (e.g. `/fenrir:status`) flag it as a claimed-but-unverified approver.
 - `expires` — `YYYY-MM-DD`; **mandatory**. The hook filters by this date.
 - `status` — `open` | `closed`.
 
@@ -65,7 +66,7 @@ An exception that is `closed` OR past `expires` is auto-ineligible: the hook nev
 1. Append an entry to `lessons.md`: the finding, the class of bug, and the concrete check/gate change that would catch it next time.
 
 **waive**
-1. Require `rule`, `reason`, `granted_by`. If `expires` is absent, default to today + 30 days. Refuse a waiver with no reason or no owner.
+1. Require `rule`, `reason`, `granted_by`. If `expires` is absent, default to today + 30 days. Refuse a waiver with no reason or no owner. Record `approved_by` when a distinct approver is given; if absent or `== granted_by`, the waiver is self-granted (it still records, but is flagged unverified).
 2. Append exactly one line to `gate-exceptions.jsonl` using the schema above, `status: "open"`, a fresh `id`.
 3. State that this does NOT disable the gate — it is a last-resort, expiring, session-visible deviation.
 
@@ -75,7 +76,7 @@ An exception that is `closed` OR past `expires` is auto-ineligible: the hook nev
 
 **expire**
 1. Read `gate-exceptions.jsonl`; for every `open` line with `expires < today` (or one the user names as resolved), rewrite that line with `status: "closed"`.
-2. Preserve all other fields and line order. Report which ids were closed.
+2. Preserve all other fields — **including `approved_by` if present** — and line order. Report which ids were closed.
 
 **recall**
 1. Match the task keywords against `decisions/*.md`, open `gate-exceptions.jsonl` entries, recent `drift-log.jsonl`, and `lessons.md`.
@@ -89,7 +90,7 @@ An exception that is `closed` OR past `expires` is auto-ineligible: the hook nev
 - `recall`: a short digest of relevant decisions, open waivers, and lessons for the task.
 
 ## validation
-- After any write, the changed file is valid: each `.jsonl` line parses as a single JSON object; `gate-exceptions.jsonl` lines carry all six fields (`id`, `rule`, `reason`, `granted_by`, `expires`, `status`) with `expires` as `YYYY-MM-DD`.
+- After any write, the changed file is valid: each `.jsonl` line parses as a single JSON object; `gate-exceptions.jsonl` lines carry the six required fields (`id`, `rule`, `reason`, `granted_by`, `expires`, `status`) plus the OPTIONAL `approved_by`, with `expires` as `YYYY-MM-DD`.
 - Re-running `list` reflects the write; the SessionStart hook would surface exactly the `open` + non-expired exceptions.
 - All paths are under `docs/delivery-memory/` in the current repo; nothing is written outside it.
 - Diffs are reviewable in the normal PR flow — memory is git-tracked, never hidden.
@@ -97,6 +98,6 @@ An exception that is `closed` OR past `expires` is auto-ineligible: the hook nev
 ## Refuses when
 - Asked to store secrets, tokens, credentials, PII, or raw session transcripts
 - Asked to write a gate-exception without a `reason`, without a `granted_by` owner, or without an `expires` date (and unable to default one)
-- Asked to change the `gate-exceptions.jsonl` field names/schema the SessionStart hook depends on
+- Asked to change or remove the `gate-exceptions.jsonl` required field names/schema the SessionStart hook depends on (adding the OPTIONAL `approved_by` is the one allowed additive exception — the hook ignores unknown keys)
 - Asked to use this as personal-AI / cross-session assistant memory, or to aggregate memory across repos (out of scope — this repo only)
 - Asked to duplicate full ADR content instead of linking it

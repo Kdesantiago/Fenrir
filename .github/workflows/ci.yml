@@ -94,11 +94,11 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: install dev tooling
         run: uv sync --extra dev
-      - name: py_compile all hooks
-        run: python3 -m py_compile hooks/*.py
+      - name: py_compile hooks + scripts
+        run: python3 -m py_compile hooks/*.py scripts/*.py
       - name: ruff
-        run: uv run ruff check hooks
+        run: uv run ruff check hooks scripts
       - name: mypy
-        run: uv run mypy hooks
-      - name: pytest (hook behavior)
+        run: uv run mypy hooks scripts
+      - name: pytest (hook + helper behavior)
         run: uv run pytest

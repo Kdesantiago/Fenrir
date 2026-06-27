@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 29 skills, 8 subagents, 4 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 29 skills, 8 subagents, 5 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -65,7 +65,7 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Operate** | `incident-runbook`, `alert-delivery`, `error-budget`, `llm-cost-monitor`, `online-llm-eval` |
 | **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow` |
 | **Agents** | `architect`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail` |
-| **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship` |
+| **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship`, `/fenrir:status` (tech-lead report) |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.
