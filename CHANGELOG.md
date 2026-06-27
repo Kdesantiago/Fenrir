@@ -8,7 +8,7 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ### Changed
 - **README rewritten for end users** (what Fenrir is, why, install, quick start) — maintainer/internal detail moved to `GETTING-STARTED.md` / `PUBLISHING.md`.
-- Removed the last org-specific example references (SharePoint mentions in `.semgrep.yml` rule comments) — generic wording only; no rule behavior change.
+- Removed the last org-specific example references from `.semgrep.yml` rule comments — generic wording only; no rule behavior change.
 
 ## [1.0.1] — 2026-06-27
 
