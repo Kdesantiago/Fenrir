@@ -1,4 +1,4 @@
-# 0002 — Specialized coder roster: no new coder subagent (us-96)
+# ADR 0002 — Specialized coder roster: no new coder subagent (us-96)
 
 - Status: Accepted
 - Date: 2026-06-28
@@ -50,7 +50,7 @@ us-96 asks the narrower question: **does any delivery domain have a real GAP —
 **Add NO new specialized coder subagent.** The generator/skill roster + the generic `coder` fallback already cover every delivery domain Fenrir targets. The "specialized coders" the user wants already exist — they are the generator skills routed as subagents per `commands/deliver.md:49-85`. The single uncovered region (open-ended backend/business-logic) is *correctly* served by the generic `coder`, which derives correctness from the spec/ADR + sibling conventions (`agents/coder.md:15-21`), not from a domain system-prompt that cannot be written for "all business logic."
 
 Routing-to-generators beats minting new agents because:
-- **A skill ≠ an agent.** A generator skill is invokable inside the existing `coder`/specialist subagent. New domains are absorbed by **adding a skill and one §2b table row**, not a new maintained agent system-prompt — cheaper, and it keeps domain discipline (the VERIFY.md gate) attached to the work.
+- **A skill ≠ an agent.** A generator skill is applied **by delegating to a `coder` subagent that reads `skills/<name>/SKILL.md` (+ VERIFY) and follows it inline** — using the coder's existing Read/Bash tools, no Skill-tool wiring required (`commands/deliver.md` §3). New domains are absorbed by **adding a skill and one §2b table row**, not a new maintained agent system-prompt — cheaper, and it keeps domain discipline (the VERIFY.md gate) attached to the work.
 - **Each agent is standing maintenance.** 14 agents already exist (`agents/*.md`). A new coder agent must be kept terse, in-lane, profile-aware, and consistent with `coder.md` forever; the marginal correctness over "generic coder + relevant skill" is ~zero for the candidate gaps.
 - **No gap is load-bearing.** Every candidate above either (a) already has a skill, (b) decomposes into existing skills, or (c) is the generic coder's deliberate domain, or (d) is off-profile.
 
