@@ -93,7 +93,7 @@ template_version: "1.0.0"
 | Record a decision / waive a gate / log drift | "remember this decision", "waive check X until Y" → `memory-keeper` (in-repo delivery-memory) |
 
 ### Subagents (delegated personas)
-`architect` (design + ADR), `coder` (implements the change against the spec/ADR — the builder in the delivery flow), `context-engineering` (what fills the LLM context window + versioned prompt artifacts), `qa-tester` (write new tests + repros), `reviewer` (PR-hygiene verdict), `red-team-destroyer` (ruthless adversarial review — "red-team this"), `stack-adapter` (translates standard cloud ops into your enterprise Azure wrappers, reading `stack-interface.yaml`), `doc-keeper` (keeps CHANGELOG/READMEs/API-docs in sync with the diff), `security-guardrail` (opt-in LLM guardrail that judges prompts for injection/safety). Running the coder as a subagent means its token spend is attributable to the US (see the dashboard's cost accounting).
+`architect` (design + ADR), `coder` (implements the change against the spec/ADR — the builder in the delivery flow), `context-engineering` (what fills the LLM context window + versioned prompt artifacts), `qa-tester` (write new tests + repros), `reviewer` (PR-hygiene verdict), `red-team-destroyer` (ruthless adversarial review — "red-team this"), `stack-adapter` (translates standard cloud ops into your enterprise Azure wrappers, reading `stack-interface.yaml`), `doc-keeper` (keeps CHANGELOG/READMEs/API-docs in sync with the diff), `security-guardrail` (opt-in LLM guardrail that judges prompts for injection/safety), `delivery-tracker` (traces a session's work onto the Agile board — Epic→Feature→US→Task — and attributes its real cost). Running the coder as a subagent means its token spend is attributable to the US (see the dashboard's cost accounting).
 
 ---
 
@@ -103,9 +103,11 @@ template_version: "1.0.0"
             advises (skippable)        enforces (deterministic)
             ───────────────────        ────────────────────────
 local       delivery-gates skill   →   pre-commit hooks (commit/push)
-                                       + 5 in-session .claude hooks (agent guard + security:
+                                       + in-session .claude hooks (agent guard + security:
                                          deny --no-verify/secret-exfil/zero-access, injection scans)
-merge       reviewer subagent      →   CI required-checks
+                                       + delivery-tracking hooks (auto-trace work to a US +
+                                         attribute cost; tracking-guard gates git commit)
+merge       reviewer subagent      →   CI required-checks (incl. delivery-trace)
             /fenrir:ship pre-PR review        + branch-protection-as-code  ← the real block
 ```
 

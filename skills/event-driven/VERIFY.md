@@ -1,0 +1,21 @@
+# VERIFY — event-driven
+
+Run after `event-driven` has been applied to a repo. All BLOCKING checks must pass.
+
+> The producer/consumer language depends on `org-profile.yaml` `framework`. The greps below are language-aware: substitute the source glob for your stack — `*.py` (fastapi/streamlit), `*.js`/`*.ts` (express), `*.java` (spring). On `framework: none` there is no app code; only the contract + runbook checks apply.
+
+## Blocking (the skill's output is incomplete/wrong if any fail)
+- [ ] a producer/consumer file exists using an Azure messaging client (NOT the AWS/other-cloud SDK): `git grep -lEi 'servicebus|eventgrid|eventhub|service-bus|azure-messaging' -- '*.py' '*.js' '*.ts' '*.java' && echo OK || echo MISSING` — (the primitive *choice* is prose justification; verified in the Functional/runbook check, not greppable here)
+- [ ] the message/event has a **versioned** schema wrapped in a CloudEvents-style envelope (`id`/`source`/`type`/`specversion`/`data`), validated on produce AND consume: `git grep -nEi 'specversion|cloudevent|schema_version|event_version' && echo OK || echo MISSING`
+- [ ] the consumer **dedups behaviorally** — a dedup-store lookup keyed on the message/idempotency id AND an early return when the key is already present (merely logging `message_id` is NOT enough): `git grep -nEiC2 '(get|exists|lookup|seen|has_key|sismember).*(message_id|idempotency|event_id|dedup)' -- '*.py' '*.js' '*.ts' '*.java' | git grep -Ei 'return|continue|skip|ack|already' && echo OK || echo MISSING` — if the lookup and the early-return are not co-located, treat as MISSING and confirm in the Functional check
+- [ ] poison/exhausted messages route to the **DLQ on a delivery-count / max-attempts comparison** (not just the word "poison" in a comment): `git grep -nEi '(delivery_?count|deliverycount|delivered_count|attempt[s]?)\s*(>=|>|==)|max.?delivery|max_attempts' -- '*.py' '*.js' '*.ts' '*.java' && git grep -nEi 'dead.?letter|deadletter|\$DeadLetterQueue' && echo OK || echo MISSING`
+- [ ] auth is **managed identity** (`DefaultAzureCredential` against the namespace FQDN), no literal connection string / SAS key: `! git grep -nEi 'Endpoint=sb://|SharedAccessKey=|AccountKey=' && echo OK || echo LITERAL-SECRET`
+- [ ] a **trace correlation id is propagated through the envelope** (a field carried producer→consumer): `git grep -nEi 'correlation.?id|traceparent|trace_id|traceId' -- '*.py' '*.js' '*.ts' '*.java' && echo OK || echo MISSING`
+
+## Informational (tooling presence — does NOT block; note if absent)
+- [ ] SDK presence for the declared `framework` — note absent, don't fail. Python (fastapi/streamlit): `python -c 'import azure.servicebus'`, `import azure.eventgrid`, `import azure.eventhub`, `import azure.identity`. Node (express): `npm ls @azure/service-bus @azure/event-hubs @azure/identity`. Java (spring): the `azure-messaging-*` / Spring Cloud Stream dependency on the build path. Plus `command -v az`.
+- [ ] **DLQ-depth + consumer-lag alert rule** exists in the `obs_backend` config (alerting lives in the obs backend, not in the producer/consumer source, so this is not a code grep). Best-effort assertion if alert rules are committed in-repo: `git grep -nEi 'dlq.?depth|dead.?letter.*(count|depth)|consumer.?lag|consumer.?group.*lag' && echo PRESENT || echo NOTE-absent-confirm-in-obs-backend`. Confirm the rule fires on DLQ growth / lag in the Functional check below.
+
+## Functional
+- Against a real (or emulated) bus: publish a message and confirm the consumer processes it; redeliver the SAME message id and confirm the second delivery is a no-op (dedup proven — the lookup hits and the handler early-returns); force a poison message (bad schema / always-failing handler) and confirm it lands in the DLQ after the bounded delivery-count rather than redelivering forever; confirm the DLQ-depth metric increments and the configured DLQ-depth / consumer-lag alert would fire.
+- **Justification check (the primitive choice):** the runbook states which primitive (Service Bus → commands/queues; Event Grid → reactive events; Event Hubs → streams) and ties it to the delivery contract (ordering / throughput / fan-out) — confirm the choice matches the stated requirement; this is prose and not greppable.

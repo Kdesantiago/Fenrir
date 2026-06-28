@@ -23,22 +23,22 @@ def _ev(session: str, inp: int = 1000, out: int = 500, sidechain: bool = False,
 def test_pricing_strips_tier_suffix():
     # the [1m] tier suffix is stripped before family matching
     assert pricing.rates_for("claude-opus-4-8[1m]") == pricing.rates_for("claude-opus-4-8")
-    assert pricing.rates_for("claude-opus-4-8[1m]")["input"] == 15.0
+    assert pricing.rates_for("claude-opus-4-8[1m]")["input"] == 5.0
     assert pricing.rates_for("claude-sonnet-4-6[1m]")["input"] == 3.0
 
 
 def test_cost_1h_cache_write_dearer_than_5m():
     # equal cache-write tokens cost MORE at the 1h TTL (2x input) than 5m (1.25x input)
     n = 1_000_000
-    c5 = pricing.cost_of({"cache_creation": {"ephemeral_5m_input_tokens": n}}, "claude-opus-4")
-    c1 = pricing.cost_of({"cache_creation": {"ephemeral_1h_input_tokens": n}}, "claude-opus-4")
+    c5 = pricing.cost_of({"cache_creation": {"ephemeral_5m_input_tokens": n}}, "claude-opus-4-8")
+    c1 = pricing.cost_of({"cache_creation": {"ephemeral_1h_input_tokens": n}}, "claude-opus-4-8")
     assert c1 > c5
-    assert c5 == 18.75 and c1 == 30.0  # opus: 15×1.25 vs 15×2.0
+    assert c5 == 6.25 and c1 == 10.0  # opus 4.8: 5×1.25 vs 5×2.0
 
 
 def test_thinking_counted_as_output():
     # extended-thinking tokens are billed as output (no separate field), so output covers them
-    assert pricing.cost_of({"output_tokens": 1_000_000}, "claude-opus-4") == 75.0
+    assert pricing.cost_of({"output_tokens": 1_000_000}, "claude-opus-4-8") == 25.0
 
 
 # --- subagent_runs: identity from meta, tokens from .jsonl, reconciled ---
@@ -128,3 +128,35 @@ def test_cli_link_idempotent_and_per_source(monkeypatch, tmp_path):
                      "--project=-proj"]) == 0
     wl2 = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log
     assert len(wl2) == 2
+
+
+def test_cli_link_captures_cache_and_refresh_updates(monkeypatch, tmp_path):
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj" / "s"
+    proj.mkdir(parents=True)
+    ev = json.dumps({
+        "timestamp": "2026-06-01T10:00:00Z", "sessionId": "S1", "isSidechain": False,
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": 1000, "output_tokens": 500,
+            "cache_creation_input_tokens": 2000, "cache_read_input_tokens": 40000}}})
+    p = proj / "main.jsonl"
+    p.write_text(ev + "\n")
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F"); st = s.add_story(f.id, "S")
+
+    cli.main(["link", "--kind", "story", "--id", st.id, "--session", "S1", "--project=-proj"])
+    w = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log[0]
+    assert w.cache_write_tokens == 2000 and w.cache_read_tokens == 40000  # cache persisted
+
+    rollup = BoardStore(board).costs()["stories"][st.id]
+    assert rollup["cache_write_tokens"] == 2000 and rollup["cache_read_tokens"] == 40000
+
+    # a second event accrues; --refresh re-links with current totals (still one entry, no dup)
+    p.write_text(ev + "\n" + ev + "\n")
+    cli.main(["link", "--kind", "story", "--id", st.id, "--session", "S1",
+              "--project=-proj", "--refresh"])
+    wl = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log
+    assert len(wl) == 1 and wl[0].cache_read_tokens == 80000  # refreshed, not doubled-up

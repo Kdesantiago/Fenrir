@@ -113,13 +113,29 @@ def _tok(e: dict) -> int:
 
 def summary(events: list[dict]) -> dict:
     days = sorted({e["day"] for e in events if e["day"]})
+    total_cost = sum(e["cost"] for e in events)
+    # Cost split by component so "is cache what costs me?" is answerable. input/output/cache-read
+    # are exact; cache-write is the remainder (absorbs the 5m-vs-1h TTL split the flat event loses),
+    # so the four always reconcile to total_cost.
+    ci = co = crd = 0.0
+    for e in events:
+        r = pricing.rates_for(e["model"])
+        ci += e["input_tokens"] * r["input"] / 1_000_000.0
+        co += e["output_tokens"] * r["output"] / 1_000_000.0
+        crd += e["cache_read"] * r["read"] / 1_000_000.0
     return {
         "calls": len(events),
         "input_tokens": sum(e["input_tokens"] for e in events),
         "output_tokens": sum(e["output_tokens"] for e in events),
+        "cache_write_tokens": sum(e["cache_creation"] for e in events),
+        "cache_read_tokens": sum(e["cache_read"] for e in events),
         "cache_tokens": sum(e["cache_creation"] + e["cache_read"] for e in events),
         "total_tokens": sum(_tok(e) for e in events),
-        "cost_usd": round(sum(e["cost"] for e in events), 4),
+        "cost_usd": round(total_cost, 4),
+        "cost_breakdown": {
+            "input": round(ci, 4), "output": round(co, 4),
+            "cache_read": round(crd, 4), "cache_write": round(total_cost - ci - co - crd, 4),
+        },
         "models": sorted({e["model"] for e in events}),
         "sessions": len({e["session_id"] for e in events if e["session_id"]}),
         "first_day": days[0] if days else None,
@@ -129,7 +145,8 @@ def summary(events: list[dict]) -> dict:
 
 def _group(events: Iterable[dict], key: str, label_default: str = "(none)") -> list[dict]:
     agg: dict[str, dict] = defaultdict(
-        lambda: {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+        lambda: {"calls": 0, "input_tokens": 0, "output_tokens": 0,
+                 "cache_write_tokens": 0, "cache_read_tokens": 0, "cost_usd": 0.0}
     )
     for e in events:
         k = e.get(key) or label_default
@@ -137,6 +154,8 @@ def _group(events: Iterable[dict], key: str, label_default: str = "(none)") -> l
         a["calls"] += 1
         a["input_tokens"] += e["input_tokens"]
         a["output_tokens"] += e["output_tokens"]
+        a["cache_write_tokens"] += e["cache_creation"]
+        a["cache_read_tokens"] += e["cache_read"]
         a["cost_usd"] += e["cost"]
     out = [{"key": k, **v, "cost_usd": round(v["cost_usd"], 4)} for k, v in agg.items()]
     return sorted(out, key=lambda r: r["cost_usd"], reverse=True)
@@ -191,11 +210,12 @@ def _iso_ms(ts: str) -> float | None:
 
 def _run_tokens(path: Path) -> dict:
     """Sum a subagent transcript's own usage events (single source of truth for tokens)."""
-    inp = out = 0
+    inp = out = cw = cr = 0
     cost = 0.0
     first = last = ""
     if not path.exists():
-        return {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "model": "",
+        return {"input_tokens": 0, "output_tokens": 0, "cache_write_tokens": 0,
+                "cache_read_tokens": 0, "cost_usd": 0.0, "model": "",
                 "when": "", "duration_ms": 0, "session_id": "", "found": False}
     model = session = ""
     for line in path.read_text().splitlines():
@@ -211,6 +231,8 @@ def _run_tokens(path: Path) -> dict:
             continue
         inp += ev["input_tokens"]
         out += ev["output_tokens"]
+        cw += ev["cache_creation"]
+        cr += ev["cache_read"]
         cost += ev["cost"]
         model = model or ev["model"]
         session = session or ev["session_id"]
@@ -222,7 +244,8 @@ def _run_tokens(path: Path) -> dict:
     a, b = _iso_ms(first), _iso_ms(last)
     if a is not None and b is not None:
         dur = int(b - a)
-    return {"input_tokens": inp, "output_tokens": out, "cost_usd": round(cost, 4),
+    return {"input_tokens": inp, "output_tokens": out, "cache_write_tokens": cw,
+            "cache_read_tokens": cr, "cost_usd": round(cost, 4),
             "model": model, "when": first, "duration_ms": dur, "session_id": session,
             "found": True}
 
@@ -254,6 +277,8 @@ def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
                 "duration_ms": tok["duration_ms"],
                 "input_tokens": tok["input_tokens"],
                 "output_tokens": tok["output_tokens"],
+                "cache_write_tokens": tok["cache_write_tokens"],
+                "cache_read_tokens": tok["cache_read_tokens"],
                 "total_tokens": tok["input_tokens"] + tok["output_tokens"],
                 "cost_usd": tok["cost_usd"],
                 "attributed": tok["found"] and (tok["input_tokens"] + tok["output_tokens"]) > 0,
@@ -266,13 +291,16 @@ def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
     attributed = sum(r["input_tokens"] + r["output_tokens"] for r in runs)
 
     agg: dict[str, dict] = defaultdict(
-        lambda: {"runs": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+        lambda: {"runs": 0, "input_tokens": 0, "output_tokens": 0,
+                 "cache_write_tokens": 0, "cache_read_tokens": 0, "cost_usd": 0.0}
     )
     for r in runs:
         a = agg[r["agent_type"]]
         a["runs"] += 1
         a["input_tokens"] += r["input_tokens"]
         a["output_tokens"] += r["output_tokens"]
+        a["cache_write_tokens"] += r["cache_write_tokens"]
+        a["cache_read_tokens"] += r["cache_read_tokens"]
         a["cost_usd"] += r["cost_usd"]
     by_type = sorted(
         ({"agent_type": k, **v, "cost_usd": round(v["cost_usd"], 4)} for k, v in agg.items()),

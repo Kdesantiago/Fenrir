@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 30 skills, 9 subagents, 5 commands, and 9 safety hooks. You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 44 skills, 13 subagents, 5 commands, and 13 hooks (safety + delivery-tracking). You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -60,13 +60,16 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | Layer | Examples |
 |---|---|
 | **Scaffold & gate** | `repo-bootstrap`, `delivery-gates`, `security-review`, `quality-master`, `deps`, `secrets`, `image-scan` |
-| **Build (stack-aware)** | `api-first`, `iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `cronjob`, `db-migration` |
+| **Build (stack-aware)** | `api-first`, `iac-gen`, `auth-gen`, `observability-gen`, `frontend-gen`, `cronjob`, `db-migration`, `data-model`, `caching`, `event-driven`, `knowledge-base`, `realtime-transport` |
+| **Author & evolve code** | `refactor`, `simplify` (DRY/KISS), `optimize` (under one constraint), `explain` (didactic), `report` (session digest) |
 | **Ship to production** | `progressive-delivery` (canary/blue-green on AKS), `gitops` (Flux/Argo CD), `feature-flags`, `load-test`, `release` |
 | **Operate** | `incident-runbook`, `alert-delivery`, `error-budget`, `llm-cost-monitor`, `online-llm-eval`, `us-cost-tracking` (per-US cost on the dashboard) |
+| **Azure live-ops** (via `az` MCP, read-only/advisory) | `azure-audit`, `azure-cost`, `azure-waf`, `azure-monitor-ops` |
 | **LLM apps** | `llm-gen`, `retriever` (RAG), `langgraph-workflow` |
-| **Agents** | `architect`, `coder`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail` |
+| **Agents** | `architect`, `coder`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail`, `delivery-tracker`, `azure-architect`, `azure-sre`, `azure-deploy-verifier` |
 | **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:deliver`, `/fenrir:ship`, `/fenrir:status` (tech-lead report) |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
+| **Delivery-tracking hooks** | auto-create the US for a session + auto-attribute its real cost (`tracking-finalize`/`tracking-collect`), make tracing a `git commit` obligatory (`tracking-guard`) — driven by the `delivery-tracker` agent |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.
 

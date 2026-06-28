@@ -1,0 +1,19 @@
+# VERIFY — azure-monitor-ops
+
+Run after `azure-monitor-ops` has been applied (a live KQL query against an Azure workspace / ADX cluster). All BLOCKING checks must pass.
+
+## Blocking (the skill's output is incomplete/wrong if any fail)
+- [ ] the output prints the EXACT KQL executed for every query (so the triage is reproducible) — not just prose results: `grep -Eqi 'where TimeGenerated|summarize|AppExceptions|AppRequests|AzureActivity|\| project' triage.md && echo OK || echo MISSING`
+- [ ] every cited number/error signature came from a REAL az MCP result (`mcp__azure__monitor` / `mcp__azure__kusto`), tied to a named workspace + time window — no invented rows, no from-memory error messages: `grep -Eqi 'workspace|TimeGenerated|ago\(' triage.md && echo OK || echo MISSING`
+- [ ] cross-refs `observability-gen` as the sibling that DEFINES the signals + EMITS the OTel/SLO/alert code (generate side) while this skill only QUERIES (operate side) — and does not generate init code: `grep -q 'observability-gen' triage.md && echo OK || echo MISSING`
+- [ ] read-only honesty stated: the report asserts it created no alerts, changed no config, and remediated nothing, AND states the skill cannot itself enforce read-only — the `--read-only` az MCP launch flag is the control — and names `azure-sre` as the owner of open-ended triage + remediation: `grep -Eqi 'read-only|no (alert|config|mutation)|created nothing' triage.md && grep -q -- '--read-only' triage.md && grep -q 'azure-sre' triage.md && echo OK || echo MISSING`
+- [ ] backend gate correct: the Kusto/ADX path is used ONLY when `obs_backend == adx`, the Log Analytics / App Insights path ONLY when `obs_backend == azure-monitor` — ADX is NOT run off an `azure-monitor` value: `grep -Eqi 'obs_backend.*adx|adx.*kusto' triage.md || ! grep -qi 'kusto' triage.md && echo OK || echo CHECK`
+- [ ] refuses (no fabricated results) when `obs_backend` is neither `azure-monitor` nor `adx`, when no live workspace/cluster is reachable via the az MCP, or when `stack-interface.yaml` is present and `stack-adapter` returns `MISSING-MAPPING`
+
+## Informational (tooling presence — does NOT block; note if absent)
+- [ ] `command -v az` — note absent, don't fail (the skill drives the az MCP, not the local CLI, but its presence helps spot-check a query in the portal)
+- [ ] az MCP reachable AND launched with `--read-only`: a `mcp__azure__applicationinsights` / `mcp__azure__monitor` call (or `mcp__azure__kusto` for `adx`) resolves at least one component + workspace/cluster — note if unreachable (then the skill should have refused). Confirm the server was started with the `--read-only` flag — that flag, not the skill, is what blocks write tools in the `monitor` namespace
+- [ ] `command -v jq` — for spot-checking exported query JSON; note absent, don't fail
+
+## Functional
+Run the skill against a live (or sandbox) Azure workspace whose `obs_backend` is `azure-monitor` (or an ADX cluster whose `obs_backend` is `adx`), with the az MCP started using the `--read-only` flag. Take the result set's TOP query, copy the printed KQL verbatim into the Azure portal (Log Analytics for `azure-monitor`, ADX for `adx`) against the same workspace/cluster and time window, and confirm it returns the same result shape (same top error signatures / latency profile) — proving the run was real and reproducible, not invented. Confirm the run mutated nothing (no alert rule, webtest, workbook, diagnostic setting, or threshold was created) — and verify the `--read-only` flag is the control by checking a write tool (`monitor_webtest_create-or-update`) is rejected by the server, since the skill itself cannot block it. Confirm that, with `obs_backend` neither `azure-monitor` nor `adx`, or no workspace/cluster reachable, the skill refuses rather than fabricating rows.

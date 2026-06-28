@@ -1,6 +1,6 @@
 ---
 name: feature-flags
-description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store (Azure App Configuration via the Python feature-management library) with kill-switches, percentage flighting, and targeting. Triggers — "add feature flags", "kill-switch for a feature", "roll a feature out to 5% of users then ramp". NOT for secret storage (use `secrets` / Key Vault) and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Reads org-profile.yaml `platform`/`framework` (FastAPI/Streamlit); refuses on mismatch.
+description: Use when you need centralized runtime feature-flag management to decouple RELEASE from DEPLOYMENT — a shared flag store (Azure App Configuration via the Python feature-management library) with kill-switches, percentage flighting, and targeting. Triggers — "add feature flags", "kill-switch for a feature", "roll a feature out to 5% of users then ramp". NOT for secret storage (use `secrets` / Key Vault), NOT a TTL/key-value cache (use `caching`), and NOT for the rollout traffic-shift mechanism (use `progressive-delivery`). Reads org-profile.yaml `platform`/`framework` (FastAPI/Streamlit); refuses on mismatch.
 ---
 
 # Feature Flags

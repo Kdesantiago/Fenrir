@@ -46,7 +46,11 @@ def _cmd_task(s: BoardStore, a) -> None:
 
 
 def _cmd_move(s: BoardStore, a) -> None:
-    _emit(s.set_status(a.kind, a.id, Status(a.status)))
+    _emit(s.set_status(a.kind, a.id, Status(a.status), at=datetime.now(UTC).isoformat()))
+
+
+def _cmd_metrics(s: BoardStore, a) -> None:
+    _emit(s.flow_metrics(now=datetime.now(UTC).isoformat()))
 
 
 def _cmd_assign(s: BoardStore, a) -> None:
@@ -64,8 +68,11 @@ def _cmd_link(s: BoardStore, a) -> None:
     """Pull REAL telemetry (by session and/or skill) into a story/task work_log.
     Idempotent per (session, item); writes one entry per source (main vs subagent)."""
     if a.session and s.has_session_for(a.kind, a.id, a.session):
-        print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
-        return
+        if getattr(a, "refresh", False):
+            s.clear_session_links(a.kind, a.id, a.session)  # re-link with current totals
+        else:
+            print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
+            return
     if a.session:  # exclusivity: don't lump a session that already has per-run attributions
         runs = [e for e in s.entries_for_session(a.session) if e["source"] == "telemetry-run"]
         if runs:
@@ -80,17 +87,20 @@ def _cmd_link(s: BoardStore, a) -> None:
           and (not a.skill or e["skill"] == a.skill)]
     if not ev:
         raise ValueError("no telemetry matched the given --session/--skill/--project")
-    groups: dict[str, dict] = defaultdict(lambda: {"in": 0, "out": 0, "cost": 0.0, "n": 0})
+    groups: dict[str, dict] = defaultdict(
+        lambda: {"in": 0, "out": 0, "cw": 0, "cr": 0, "cost": 0.0, "n": 0})
     for e in ev:
         g = groups[e["source"]]
         g["in"] += e["input_tokens"]; g["out"] += e["output_tokens"]
+        g["cw"] += e["cache_creation"]; g["cr"] += e["cache_read"]
         g["cost"] += e["cost"]; g["n"] += 1
     now = datetime.now(UTC).isoformat()
     for src, g in sorted(groups.items()):
         s.log_work(a.kind, a.id, WorkLogEntry(
             agent=a.agent or src, subagent_type=(src if src == "subagent" else ""),
             session_id=a.session, source="telemetry-link",
-            input_tokens=g["in"], output_tokens=g["out"], cost_usd=round(g["cost"], 4),
+            input_tokens=g["in"], output_tokens=g["out"],
+            cache_write_tokens=g["cw"], cache_read_tokens=g["cr"], cost_usd=round(g["cost"], 4),
             note=a.note or f"linked {g['n']} {src} events", at=now))
     _emit(s.load())
 
@@ -116,6 +126,8 @@ def _cmd_attribute(s: BoardStore, a) -> None:
         agent=a.agent or run["agent_type"], subagent_type=run["agent_type"],
         session_id=sess, run_id=a.run, source="telemetry-run",
         input_tokens=run["input_tokens"], output_tokens=run["output_tokens"],
+        cache_write_tokens=run.get("cache_write_tokens", 0),
+        cache_read_tokens=run.get("cache_read_tokens", 0),
         cost_usd=run["cost_usd"], note=a.note or (run["description"] or "")[:80],
         at=datetime.now(UTC).isoformat())
     _emit(s.log_work(a.kind, a.id, entry))
@@ -201,7 +213,10 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--kind", required=True); a.add_argument("--id", required=True)
     a.add_argument("--session", default=""); a.add_argument("--skill", default="")
     a.add_argument("--project", default=None); a.add_argument("--agent", default="")
-    a.add_argument("--note", default=""); a.set_defaults(fn=_cmd_link)
+    a.add_argument("--note", default="")
+    a.add_argument("--refresh", action="store_true",
+                   help="re-link with current totals (drop+rewrite prior session link entries)")
+    a.set_defaults(fn=_cmd_link)
 
     a = sub.add_parser("delete"); a.add_argument("--kind", required=True)
     a.add_argument("--id", required=True); a.set_defaults(fn=_cmd_delete)
@@ -214,6 +229,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
     a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)
+
+    sub.add_parser("metrics", help="flow metrics: cycle time, throughput, WIP, forecast").set_defaults(fn=_cmd_metrics)
 
     sub.add_parser("list").set_defaults(fn=_cmd_list)
     return p

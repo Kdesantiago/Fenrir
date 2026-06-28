@@ -1,0 +1,49 @@
+{
+  "//": "Fenrir DOGFOODS its own couche-0 here. Points at the repo's own hooks/ (plugin layout). The tracking engine resolves scripts/track_session.py automatically. MANDATORY tracking: FENRIR_TRACK_ENFORCE=strict blocks any git commit not traced to a US; UserPromptSubmit auto-creates the US so a commit is always traceable (strict never bricks). FENRIR_TRACK_DISABLE=1 turns tracking off.",
+  "env": { "FENRIR_TRACK_ENFORCE": "strict" },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|Read",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/delivery-guard.py\"" } ] },
+      { "matcher": "Bash",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tracking-guard.py\"" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/prompt-guard.py\"" },
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tracking-open.py\"" }
+      ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "WebFetch|WebSearch|mcp__.*(fetch|web|browser|navigate|http)",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/content-scanner.py\"" } ] },
+      { "matcher": "Write|Edit|MultiEdit",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/config-audit.py\"" } ] }
+    ],
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/session-context.py\"" } ] }
+    ],
+    "Stop": [
+      { "hooks": [
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/doc-staleness.py\"" },
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tracking-finalize.py\"" }
+      ] }
+    ],
+    "PostToolUseFailure": [
+      { "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tool-failure-triage.py\"" } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/session-end.py\"" },
+        { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tracking-finalize.py\"" }
+      ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/tracking-collect.py\"" } ] }
+    ],
+    "FileChanged": [
+      { "matcher": "main.tf|variables.tf|outputs.tf|versions.tf|providers.tf|terraform.tfvars",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/iac-watch.py\"" } ] }
+    ]
+  }
+}

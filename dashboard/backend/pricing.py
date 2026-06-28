@@ -17,13 +17,22 @@ Prices are public list-price ballparks — adjust `PRICES` to your contract.
 """
 from __future__ import annotations
 
-# Base (input, output) USD per 1M tokens, by model-family substring.
+# Base (input, output) USD per 1M tokens, by model-id substring (Anthropic list price,
+# 2026-06). Keys are matched in INSERTION ORDER, first substring hit wins — so put the
+# version-specific keys BEFORE the generic family key. Cache rates are DERIVED from the
+# input rate via CACHE below; the official table's cache columns all equal 1.25×/2×/0.1×
+# input, so a contract change is one number per model.
 PRICES: dict[str, tuple[float, float]] = {
-    "opus": (15.0, 75.0),
-    "sonnet": (3.0, 15.0),
-    "haiku": (1.0, 5.0),
-    "fable": (15.0, 75.0),  # treat as top-tier until priced
+    "opus-4-1": (15.0, 75.0),  # Opus 4.1 (obsolete) — older, pricier tier
+    "opus": (5.0, 25.0),       # Opus 4.5–4.8 (current) + generic opus fallback
+    "fable": (10.0, 50.0),     # Fable 5
+    "mythos": (10.0, 50.0),    # Mythos 5 (limited availability)
+    "sonnet": (3.0, 15.0),     # Sonnet 4–4.6
+    "haiku-3": (0.80, 4.0),    # Haiku 3.5 (retired)
+    "haiku": (1.0, 5.0),       # Haiku 4.5
 }
+# NOTE: the retired original Opus 4 ("claude-opus-4-2025…", $15/$75) is not separately keyed
+# and resolves to the current opus rate; price it explicitly if old transcripts need it.
 DEFAULT = PRICES["sonnet"]  # conservative fallback for unknown models
 
 # Cache multipliers relative to the base INPUT rate (so a contract change is one number).

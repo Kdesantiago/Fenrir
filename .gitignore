@@ -11,3 +11,6 @@ __pycache__/
 *.backup-*
 sbom.json
 .semgrep.cache/
+
+# delivery-tracking session state (not committed)
+.claude/tracking/
