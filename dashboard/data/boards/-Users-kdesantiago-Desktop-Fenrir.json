@@ -66,6 +66,16 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:21:13.494504+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T16:22:40.260204+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:25:27.941674+00:00"
         }
       ]
     }
@@ -234,12 +244,17 @@
       "epic_id": "epic-7",
       "title": "Board status rollup + draggable epic/feature",
       "description": "",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:21:13.494504+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:22:40.260204+00:00"
         }
       ]
     },
@@ -264,8 +279,14 @@
       "epic_id": "epic-7",
       "title": "DAT (technical architecture doc) agent",
       "description": "",
-      "status": "backlog",
-      "transitions": []
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:25:27.941674+00:00"
+        }
+      ]
     },
     {
       "id": "feat-24",
@@ -4327,7 +4348,7 @@
       "id": "us-65",
       "feature_id": "feat-20",
       "title": "Auto-rollup: feature/epic status derived from children (US in_progress→feature in_progress; all done→done)",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 3,
       "as_a": "",
@@ -4348,6 +4369,11 @@
           "from_status": "todo",
           "to_status": "review",
           "at": "2026-06-28T16:21:13.494504+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T16:22:40.104125+00:00"
         }
       ]
     },
@@ -4355,7 +4381,7 @@
       "id": "us-66",
       "feature_id": "feat-20",
       "title": "Draggable epic/feature cards on the kanban (manual override)",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 2,
       "as_a": "",
@@ -4375,6 +4401,11 @@
           "from_status": "todo",
           "to_status": "review",
           "at": "2026-06-28T16:21:13.684423+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T16:22:40.260204+00:00"
         }
       ]
     },
@@ -4428,7 +4459,7 @@
       "id": "us-69",
       "feature_id": "feat-23",
       "title": "dat-architect agent — write + audit a DAT (Document d'Architecture Technique)",
-      "status": "todo",
+      "status": "review",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4444,6 +4475,11 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:48.234807+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "review",
+          "at": "2026-06-28T16:25:27.941674+00:00"
         }
       ]
     },

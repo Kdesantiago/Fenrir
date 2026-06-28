@@ -5,6 +5,7 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 ## [Unreleased]
 
 ### Added
+- **`dat-architect` agent** (14 subagents) — writes OR audits a **DAT** (Document d'Architecture Technique): the full technical-architecture document (context, component/deployment view, data, interfaces, NFRs incl. security + cost, ops, risks/alternatives, ADR log). Write mode emits `docs/dat/<slug>.md`; audit mode scores each section present/partial/missing/stale with gap→fix + a `DAT VERDICT`. Carves vs `architect` (single-decision ADRs) — the DAT references decisions, doesn't replace them.
 - **Dashboard: kanban + cost-trace UX & US lifecycle** —
   - **Granularity selector** — view the kanban at **Epic / Feature / User Story** level (epic/feature cards show their cost rollup + child count; drag stays at US level).
   - **Active-only epic filter** — a `done` epic drops out of the epic dropdown (only live work clutters the view).
