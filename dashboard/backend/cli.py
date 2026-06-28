@@ -18,6 +18,7 @@ import json
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
+from pathlib import Path
 
 from . import config, telemetry
 from .board import BoardStore
@@ -293,6 +294,17 @@ def _cmd_trace(s: BoardStore, a) -> None:
     print(f"--- {len(rows)} entries | in={tin} out={tout} | total ${total:.4f}")
 
 
+def _cmd_retro(s: BoardStore, a) -> None:
+    """Write (or print) an epic's retrospective doc. Auto-runs on epic close too; this is the
+    explicit/regenerate path. Won't clobber a refined doc unless --force."""
+    if getattr(a, "show", False):
+        print(s.epic_retro_doc(a.epic))
+        return
+    out = Path(a.out) if a.out else None
+    path = s.write_epic_retro(a.epic, out=out, force=a.force)
+    _emit({"epic": a.epic, "retro": str(path)})
+
+
 def _cmd_delete(s: BoardStore, a) -> None:
     s.delete(a.kind, a.id)
     print(json.dumps({"deleted": a.id}))
@@ -397,6 +409,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
     a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)
+
+    a = sub.add_parser("retro", help="write/print an epic's retrospective (auto-runs on epic close)")
+    a.add_argument("--epic", required=True); a.add_argument("--out", default="")
+    a.add_argument("--force", action="store_true", help="overwrite a refined doc")
+    a.add_argument("--show", action="store_true", help="print to stdout instead of writing")
+    a.set_defaults(fn=_cmd_retro)
 
     sub.add_parser("metrics", help="flow metrics: cycle time, throughput, WIP, forecast").set_defaults(fn=_cmd_metrics)
 

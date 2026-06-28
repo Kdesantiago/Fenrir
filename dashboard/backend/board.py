@@ -20,8 +20,11 @@ _PREFIX = {"epic": "epic", "feature": "feat", "story": "us", "task": "task"}
 
 
 class BoardStore:
-    def __init__(self, path: Path | None = None) -> None:
+    def __init__(self, path: Path | None = None, retro_dir: Path | None = None) -> None:
         self.path = Path(path) if path else DEFAULT_BOARD_PATH
+        # Where to drop an epic retrospective when an epic closes. None → auto-write disabled
+        # (the lib stays pure; the CLI/app inject a real dir). See `write_epic_retro`.
+        self.retro_dir = Path(retro_dir) if retro_dir else None
 
     # --- persistence -------------------------------------------------------------------
     def load(self) -> Board:
@@ -134,6 +137,16 @@ class BoardStore:
     def set_status(self, kind: str, item_id: str, status: Status, at: str = "") -> Any:
         b = self.load()
         item = self._find(b, kind, item_id)
+        # which epic is affected, and was it already done before this change?
+        if kind == "epic":
+            epic_id = item_id
+        elif kind == "feature":
+            epic_id = item.epic_id
+        elif kind == "story":
+            epic_id = self._epic_of_feature(b, item.feature_id)
+        else:  # task — no status rollup, no epic close to detect
+            epic_id = ""
+        was_done = any(str(e.status) == "done" for e in b.epics if e.id == epic_id)
         self._set_status(item, status, at)
         # Roll the change UP: a US drives its feature + epic; a (manually-dragged) feature drives
         # its epic; an epic is terminal. The item just set is respected; parents are derived from
@@ -147,8 +160,20 @@ class BoardStore:
                 self._rollup_epic(b, feat.epic_id, at)
         elif kind == "feature":
             self._rollup_epic(b, item.epic_id, at)
+        now_done = any(str(e.status) == "done" for e in b.epics if e.id == epic_id)
         self.save(b)
+        # Epic just CLOSED → auto-write its retrospective (best-effort, never blocks the move).
+        if epic_id and now_done and not was_done and self.retro_dir:
+            try:
+                self.write_epic_retro(epic_id)
+            except Exception:
+                pass
         return item
+
+    @staticmethod
+    def _epic_of_feature(b: Board, feature_id: str) -> str:
+        f = next((x for x in b.features if x.id == feature_id), None)
+        return f.epic_id if f else ""
 
     def _rollup_epic(self, b: Board, epic_id: str, at: str) -> None:
         ep = next((e for e in b.epics if e.id == epic_id), None)
@@ -265,6 +290,157 @@ class BoardStore:
             "epics": {eid: agg(es) for eid, es in epic_entries.items()},
             "total": agg([e for es in story_entries.values() for e in es]),
         }
+
+    # --- epic retrospective (auto-written on epic close) -------------------------------
+    @staticmethod
+    def _slug(text: str) -> str:
+        s = "".join(c.lower() if c.isalnum() else "-" for c in text)
+        while "--" in s:
+            s = s.replace("--", "-")
+        return s.strip("-")[:48] or "epic"
+
+    @staticmethod
+    def _reopened(item: Any) -> bool:
+        """A status moved BACKWARD at some point (done→… or in_progress→backlog) = rework signal."""
+        rank = {"backlog": 0, "todo": 1, "in_progress": 2, "review": 3, "done": 4}
+        for t in item.transitions:
+            if rank.get(str(t.to_status), 0) < rank.get(str(t.from_status), 0):
+                return True
+        return False
+
+    def epic_retro_doc(self, epic_id: str) -> str:
+        """Render an epic's retrospective as Markdown from board facts: what shipped, the real
+        cost rollup (Epic = Σ Features = Σ US), flow span, a timeline, and SEEDED qualitative
+        sections (worked / didn't / revisit) primed from real signals (audit smells, rework,
+        expensive US) so the doc is never blank. The delivery-tracker agent refines the prose."""
+        b = self.load()
+        ep = next((e for e in b.epics if e.id == epic_id), None)
+        if not ep:
+            raise KeyError(f"epic {epic_id} not found")
+        c = self.costs()
+        feats = [f for f in b.features if f.epic_id == epic_id]
+        feat_ids = {f.id for f in feats}
+        stories = [s for s in b.stories if s.feature_id in feat_ids]
+        story_by_feat: dict[str, list] = defaultdict(list)
+        for s in stories:
+            story_by_feat[s.feature_id].append(s)
+
+        def usd(x: float) -> str:
+            return f"${x:,.2f}"
+
+        ecost = c["epics"].get(epic_id, {})
+
+        # opened/closed span from transitions across the epic + its children
+        all_ts = list(ep.transitions) + [t for f in feats for t in f.transitions] + \
+                 [t for s in stories for t in s.transitions]
+        ats = sorted(t.at for t in all_ts if t.at)
+        opened, closed = (ats[0][:10] if ats else "?"), (ats[-1][:10] if ats else "?")
+
+        lines: list[str] = []
+        lines.append(f"# Retrospective — {ep.title} (`{epic_id}`)")
+        lines.append("")
+        lines.append("> Auto-generated by Fenrir when this epic closed. Facts come from the board; "
+                     "the **What worked / didn't / revisit** sections are seeded from real signals "
+                     "— refine them (the `delivery-tracker` agent can enrich). Revisit when planning "
+                     "the next epic.")
+        lines.append("")
+        lines.append(f"- **Opened → Closed:** {opened} → {closed}")
+        lines.append(f"- **Features:** {len(feats)}  ·  **User Stories:** {len(stories)} "
+                     f"(all done)  ·  **Status:** {ep.status}")
+        lines.append(f"- **Real cost (with caching):** {usd(ecost.get('cost_usd', 0.0))} "
+                     f"— in {ecost.get('input_tokens', 0):,} · out {ecost.get('output_tokens', 0):,} "
+                     f"· cacheR {ecost.get('cache_read_tokens', 0):,} · cacheW "
+                     f"{ecost.get('cache_write_tokens', 0):,} tok")
+        lines.append("")
+
+        # Outcome table
+        lines.append("## What shipped")
+        lines.append("")
+        lines.append("| Feature | Cost | User Stories |")
+        lines.append("|---|---|---|")
+        for f in feats:
+            fc = c["features"].get(f.id, {}).get("cost_usd", 0.0)
+            us_cells = "<br>".join(
+                f"`{s.id}` {s.title} — {usd(c['stories'].get(s.id, {}).get('cost_usd', 0.0))}"
+                for s in story_by_feat.get(f.id, []))
+            lines.append(f"| **{f.title}** (`{f.id}`) | {usd(fc)} | {us_cells or '—'} |")
+        lines.append("")
+        lines.append(f"**Rollup check:** Epic {usd(ecost.get('cost_usd', 0.0))} "
+                     f"= Σ Features = Σ User Stories.")
+        lines.append("")
+
+        # Timeline (compact)
+        lines.append("## Timeline")
+        lines.append("")
+        for tr in sorted(ep.transitions, key=lambda x: x.at):
+            lines.append(f"- `{tr.at[:19]}` epic **{tr.from_status} → {tr.to_status}**")
+        lines.append("")
+
+        # Seeded qualitative sections from real signals
+        au = self.audit()
+        umbrellas = [u for u in au.get("coarse_us", []) if u.get("id") in {s.id for s in stories}]
+        pricey = [u for u in au.get("expensive_us", []) if u.get("id") in {s.id for s in stories}]
+        reworked = [s for s in stories if self._reopened(s)]
+        top_us = sorted(stories, key=lambda s: -c["stories"].get(s.id, {}).get("cost_usd", 0.0))
+
+        lines.append("## What worked")
+        lines.append("")
+        lines.append(f"- Delivered {len(stories)} US across {len(feats)} features; status rollup "
+                     "auto-closed the epic when the last US merged.")
+        if top_us:
+            tu = top_us[0]
+            lines.append(f"- Highest-value US: `{tu.id}` {tu.title} "
+                         f"({usd(c['stories'].get(tu.id, {}).get('cost_usd', 0.0))}).")
+        lines.append("- _(add: what to repeat — patterns, agents, decisions that paid off)_")
+        lines.append("")
+
+        lines.append("## What didn't / friction")
+        lines.append("")
+        if umbrellas:
+            lines.append(f"- **Non-atomic US (umbrellas):** {', '.join('`'+u['id']+'`' for u in umbrellas)} "
+                         "held an outsized share of cost — decompose next time.")
+        if reworked:
+            lines.append(f"- **Rework:** {', '.join('`'+s.id+'`' for s in reworked)} bounced backward "
+                         "(reopened/blocked) — scope or acceptance criteria were unclear.")
+        if not umbrellas and not reworked:
+            lines.append("- No structural smells flagged (atomic US, no rework). _(add real friction.)_")
+        lines.append("- _(add: where time leaked — flaky gates, unclear specs, context churn)_")
+        lines.append("")
+
+        lines.append("## Decisions to revisit")
+        lines.append("")
+        if pricey:
+            lines.append("- **Expensive-but-atomic US** (optimize, don't necessarily split): "
+                         + ", ".join(f"`{u['id']}` ({usd(u.get('cost_usd', 0.0))})" for u in pricey) + ".")
+        lines.append("- _(add: assumptions/tech choices to re-examine; link the ADRs in `docs/adr/`)_")
+        lines.append("")
+
+        lines.append("## Follow-ups")
+        lines.append("- _(open items carried into the next epic)_")
+        lines.append("")
+        lines.append("## References")
+        lines.append("- PRs: _(list the merged PRs for this epic)_  ·  Specs: `docs/specs/`  ·  "
+                     "ADRs: `docs/adr/`  ·  Board: this epic's US")
+        lines.append("")
+        return "\n".join(lines)
+
+    def write_epic_retro(self, epic_id: str, out: Path | None = None, force: bool = False) -> Path:
+        """Write the epic retro to `out` (or `<retro_dir>/<epic>-<slug>.md`). Does NOT clobber an
+        existing file unless `force` — so human-refined worked/didn't notes survive a re-close.
+        Returns the path (existing path if skipped)."""
+        b = self.load()
+        ep = next((e for e in b.epics if e.id == epic_id), None)
+        if not ep:
+            raise KeyError(f"epic {epic_id} not found")
+        if out is None:
+            base = self.retro_dir or (self.path.parent / "retros")
+            out = Path(base) / f"{epic_id}-{self._slug(ep.title)}.md"
+        out = Path(out)
+        if out.exists() and not force:
+            return out
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(self.epic_retro_doc(epic_id))
+        return out
 
     def audit(self, coarse_usd: float = 50.0, dominance: float = 0.4) -> dict:
         """Agile-hygiene check: flag US that are NOT atomic + structural smells.

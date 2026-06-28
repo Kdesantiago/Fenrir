@@ -86,6 +86,16 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:38:07.918853+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T16:50:13.177820+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:59:37.332182+00:00"
         }
       ]
     }
@@ -273,8 +283,14 @@
       "epic_id": "epic-7",
       "title": "Epic-close retrospective → memory doc",
       "description": "",
-      "status": "backlog",
-      "transitions": []
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:59:37.332182+00:00"
+        }
+      ]
     },
     {
       "id": "feat-22",
@@ -316,12 +332,17 @@
       "epic_id": "epic-7",
       "title": "Commit-time per-US cost attribution",
       "description": "Every git commit flushes the main-thread cost since the last commit to the US that commit delivers — automatic, mandatory, per-US.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:38:07.918853+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:50:13.177820+00:00"
         }
       ]
     }
@@ -4472,7 +4493,7 @@
       "id": "us-67",
       "feature_id": "feat-21",
       "title": "On epic close, write a retro doc (what worked / didn't / revisit) to docs/delivery-memory/retros/",
-      "status": "todo",
+      "status": "in_progress",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4482,12 +4503,32 @@
         "retro file per closed epic",
         "not in MEMORY.md; revisitable"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 2665,
+          "output_tokens": 91428,
+          "cache_write_tokens": 104118,
+          "cache_read_tokens": 15896387,
+          "cost_usd": 11.288398,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T16:59:40.397179+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:47.261082+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:59:37.332182+00:00"
         }
       ]
     },
@@ -4622,7 +4663,7 @@
       "id": "us-72",
       "feature_id": "feat-25",
       "title": "Attribute commit cost to its US automatically (PostToolUse hook + engine)",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "",
@@ -4643,6 +4684,34 @@
           "source": "telemetry-main",
           "note": "backfill: epic-7 stretch main-cost split by commit-diff effort (pre commit-time attribution)",
           "at": "2026-06-28T16:45:39.586150+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 8754,
+          "output_tokens": 4095,
+          "cache_write_tokens": 15375,
+          "cache_read_tokens": 932166,
+          "cost_usd": 0.765978,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T16:48:13.118419+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 826,
+          "output_tokens": 23500,
+          "cache_write_tokens": 26780,
+          "cache_read_tokens": 4259617,
+          "cost_usd": 2.989239,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T16:51:12.457531+00:00"
         }
       ],
       "transitions": [
@@ -4650,6 +4719,11 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:38:07.918853+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:50:13.177820+00:00"
         }
       ]
     }
