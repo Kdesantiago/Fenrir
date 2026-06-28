@@ -31,7 +31,7 @@ If `$ARGUMENTS` is empty, ask what they want to build before anything else.
 ## Gear 2 — Spec & decision record
 1. Write the spec to `docs/specs/<slug>.md` (the artifact `/fenrir:deliver` consumes): problem, users, **acceptance criteria**, scope / out-of-scope, chosen stack, the **v1 cut**, risks + riskiest assumption.
 2. Record the key decisions and any **deferred scope** to delivery-memory via `memory-keeper` (so the cut is remembered, not silently re-expanded).
-3. **Spec red-team (recommended; do it unless the change is trivial):** run `red-team-destroyer` on the spec. If you run it, honor its `VERDICT:` — `REDESIGN` → back to Gear 1; `FIX-FIRST` → fold findings into the spec; `SHIP` → proceed. (The Gear-3 build still has its own gates regardless.)
+3. **Spec red-team (recommended; do it unless the change is trivial):** run `red-team-destroyer` on the spec. If you run it, honor its `VERDICT:` — `REDESIGN` → back to Gear 1; `FIX-FIRST` → fold findings into the spec; `SHIP` → proceed. (The Gear-3 build still has its own gates regardless.) **Dedup:** if this spec red-team already covered the design decision, the `adr-redteam` pass inside `/fenrir:deliver` can be skipped — don't red-team the same decision twice; the final `diff-redteam` on the actual change always runs.
 
 ## Gear 3 — Build via the existing skills (deterministic routing)
 Route by what the spec actually needs — do not run everything blindly.
@@ -42,8 +42,8 @@ Route by what the spec actually needs — do not run everything blindly.
    - HTTP API → `api-first` (contract-first).
    - Deploy target → `iac-gen` (aks/webapp/…).
    - Auth → `auth-gen`. Logs/metrics → `observability-gen`. UI → `frontend-gen`. LLM → `llm-gen`. Scheduled work → `cronjob`.
-5. **Design**: `architect` writes the ADR for the load-bearing decisions (the spec links it).
-6. **Deliver the first slice**: `/fenrir:deliver` (architect→coder→qa→review→gates) on the v1 cut, building the US one at a time, then `/fenrir:ship` (runs the automated pre-PR review).
+5. **Design**: the **pertinent specialist** writes the ADR for the load-bearing decisions (`azure-architect` for Azure, `dat-architect` for a full architecture doc, `api-first`/`data-model`/`iac-gen`… by topic; generic `architect` only as fallback — see `/fenrir:deliver` §2b). The spec links it.
+6. **Deliver the first slice**: `/fenrir:deliver` on the v1 cut, building the US one at a time. It routes to the relevant specialist and ends every route with the **mandatory qa-tester + red-team-destroyer validation gate** before `/fenrir:ship`.
 
 ## Stop conditions
 - Idea rejected or deferred in Gear 1 → stop with the recommendation; do not build.
