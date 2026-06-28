@@ -20,6 +20,8 @@ Commands
   collect-run      --session ID --run RUN_ID [--type T]       -> ledger a finished subagent run
   attribute-commit --session ID [--id US]                     -> at a git commit, flush the cost since the
                                                                  last commit to the US that commit delivers
+  focus            --session ID [--trigger T] [--instructions] -> snapshot the current dev subject (active US +
+                                                                 git) so a compaction can be re-focused on it
   finalize         --session ID [--summary TXT]               -> ensure-us + attribute real cost
   check            --session ID                               -> exit 0 if the session is traced, 3 if not
   status           [--session ID]                             -> print the current tracking state (JSON)
@@ -107,6 +109,12 @@ def _watermark_path(session: str) -> str:
     return os.path.join(_state_dir(), f"{_safe(session)}.main.json")
 
 
+def _focus_path() -> str:
+    """The compaction-focus snapshot: the current dev subject, written before a compaction so
+    the post-compaction session (SessionStart source=compact) can re-seed it. Per-repo, one file."""
+    return os.path.join(_state_dir(), "compact-focus.md")
+
+
 # --------------------------------------------------------------------------- git
 def _branch() -> str:
     for args in (["git", "symbolic-ref", "--short", "HEAD"],
@@ -119,6 +127,15 @@ def _branch() -> str:
         except Exception:
             pass
     return "detached"
+
+
+def _git(*args: str) -> str:
+    try:
+        r = subprocess.run(["git", *args], cwd=_root(),
+                           capture_output=True, text=True, timeout=4)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
 
 
 _US_RE = re.compile(r"\bus-\d+\b", re.IGNORECASE)
@@ -387,6 +404,81 @@ def cmd_attribute_commit(a) -> int:
     return 0
 
 
+def cmd_focus(a) -> int:
+    """Snapshot the CURRENT development subject to a focus file, so a compaction can be steered
+    back onto it. PreCompact can't edit the summary, but SessionStart(source=compact) re-injects
+    this — giving a working summary FOR THE DEV IN PROGRESS, not a generic global recap. Captures
+    the active US (title/acceptance/goal, its feature+epic) + live git context (branch, recent
+    commits, changed files) + any manual `/compact` instructions. Fail-open; writes best-effort."""
+    session = a.session or _read_active().get("session_id", "")
+    active = _read_active()
+    us_id = (active.get("us_id", "") if active.get("session_id") == session else "") or active.get("us_id", "")
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD") or _branch()
+
+    title = accept = so_that = feat_title = epic_title = ""
+    dash = _dash_dir()
+    if dash and us_id:
+        board = _load_board(dash)
+        st = next((s for s in board.get("stories", []) if s.get("id") == us_id), None)
+        if st:
+            title = st.get("title", "")
+            ac = st.get("acceptance_criteria") or []
+            accept = "; ".join(ac) if isinstance(ac, list) else str(ac)
+            so_that = st.get("so_that", "")
+            fe = next((f for f in board.get("features", []) if f.get("id") == st.get("feature_id")), None)
+            if fe:
+                feat_title = fe.get("title", "")
+                ep = next((e for e in board.get("epics", []) if e.get("id") == fe.get("epic_id")), None)
+                epic_title = ep.get("title", "") if ep else ""
+
+    commits = _git("log", "-3", "--pretty=- %s")
+    changed = _git("status", "--porcelain")
+    # strip the 1-2 char XY status + spaces (robust even if the leading line got whitespace-trimmed)
+    files = [re.sub(r"^[ MADRCU?!]{1,2}\s+", "", ln) for ln in changed.splitlines() if ln.strip()][:12]
+    trigger = getattr(a, "trigger", "") or "manual"
+    instr = (getattr(a, "instructions", "") or "").strip()
+
+    subject = f"`{us_id}` — {title}" if us_id and title else (f"`{us_id}`" if us_id else f"branch `{branch}`")
+    L: list[str] = []
+    L.append("# Active development subject (compaction focus)")
+    L.append("")
+    L.append(f"> Snapshot taken before a **{trigger}** compaction. After compaction, continue THIS — "
+             "it is the work in progress, not a global recap. Treat unrelated history as compressible.")
+    L.append("")
+    L.append(f"**Working on:** {subject}")
+    if feat_title or epic_title:
+        L.append(f"**Feature / Epic:** {feat_title or '?'} / {epic_title or '?'}")
+    L.append(f"**Branch:** `{branch}`")
+    if so_that:
+        L.append(f"**Goal:** {so_that}")
+    if accept:
+        L.append(f"**Acceptance:** {accept}")
+    L.append("")
+    if commits:
+        L.append("**Recent commits:**")
+        L.append(commits)
+        L.append("")
+    if files:
+        L.append("**Uncommitted / in-flight files:**")
+        L.extend(f"- `{f}`" for f in files)
+        L.append("")
+    L.append("**Preserve in the summary:** the goal + acceptance of the active US, decisions made, "
+             "files touched, what is DONE vs REMAINING, blockers, and the immediate next step.")
+    if instr:
+        L.append("")
+        L.append(f"**Manual /compact instructions:** {instr}")
+    L.append("")
+
+    try:
+        with open(_focus_path(), "w") as f:
+            f.write("\n".join(L))
+    except Exception as e:
+        return _skip(f"focus write failed: {e}")
+    print(json.dumps({"tracking": "focus", "us_id": us_id or None,
+                      "subject": subject, "path": _focus_path(), "trigger": trigger}))
+    return 0
+
+
 def cmd_check(a) -> int:
     """Exit 0 if traced, 3 if not. Used by the guard. Fail-open (0) when no dashboard."""
     dash = _dash_dir()
@@ -432,6 +524,10 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("attribute-commit"); a.add_argument("--session", default="")
     a.add_argument("--id", default=""); a.add_argument("--summary", default="")
     a.add_argument("--branch", default=""); a.set_defaults(fn=cmd_attribute_commit)
+
+    a = sub.add_parser("focus"); a.add_argument("--session", default="")
+    a.add_argument("--trigger", default=""); a.add_argument("--instructions", default="")
+    a.set_defaults(fn=cmd_focus)
 
     a = sub.add_parser("finalize"); a.add_argument("--session", default="")
     a.add_argument("--summary", default=""); a.add_argument("--branch", default="")

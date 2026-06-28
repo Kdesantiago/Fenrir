@@ -96,6 +96,16 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:59:37.332182+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T17:02:41.503109+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:10:53.863114+00:00"
         }
       ]
     }
@@ -283,12 +293,17 @@
       "epic_id": "epic-7",
       "title": "Epic-close retrospective → memory doc",
       "description": "",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:59:37.332182+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:02:41.503109+00:00"
         }
       ]
     },
@@ -297,8 +312,14 @@
       "epic_id": "epic-7",
       "title": "Subject-focused context-compression hook",
       "description": "",
-      "status": "backlog",
-      "transitions": []
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:10:53.863114+00:00"
+        }
+      ]
     },
     {
       "id": "feat-23",
@@ -4493,7 +4514,7 @@
       "id": "us-67",
       "feature_id": "feat-21",
       "title": "On epic close, write a retro doc (what worked / didn't / revisit) to docs/delivery-memory/retros/",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4517,6 +4538,20 @@
           "source": "telemetry-main",
           "note": "main-thread delta",
           "at": "2026-06-28T16:59:40.397179+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 419,
+          "output_tokens": 7730,
+          "cache_write_tokens": 12916,
+          "cache_read_tokens": 3518585,
+          "cost_usd": 2.083798,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:01:51.371060+00:00"
         }
       ],
       "transitions": [
@@ -4529,6 +4564,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T16:59:37.332182+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:02:41.503109+00:00"
         }
       ]
     },
@@ -4536,7 +4576,7 @@
       "id": "us-68",
       "feature_id": "feat-22",
       "title": "PreCompact hook at ~250-300K tokens: compact toward the CURRENT dev subject, not a global summary",
-      "status": "todo",
+      "status": "in_progress",
       "assignee": "coder",
       "points": 5,
       "as_a": "",
@@ -4552,6 +4592,11 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:47.746315+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:10:53.863114+00:00"
         }
       ]
     },
