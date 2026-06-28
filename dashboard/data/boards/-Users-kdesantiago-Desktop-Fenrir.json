@@ -22,10 +22,16 @@
       "id": "epic-3",
       "title": "Monitoring dashboard",
       "description": "Local telemetry + agent-driven Agile board.",
-      "status": "in_progress",
+      "status": "backlog",
       "color": "#6366f1",
       "created": "2026-06-27T21:00:22.980071+00:00",
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T19:10:13.169773+00:00"
+        }
+      ]
     },
     {
       "id": "epic-4",
@@ -221,6 +227,16 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:58:31.489005+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T19:08:30.959139+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:10:32.248190+00:00"
         }
       ]
     }
@@ -647,8 +663,14 @@
       "epic_id": "epic-9",
       "title": "New AI-architect & tech-lead skills",
       "description": "Design-time AI threat-model + tech-debt/drift tracker — the role's missing specialist skills, grouped.",
-      "status": "backlog",
-      "transitions": []
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:10:32.248190+00:00"
+        }
+      ]
     },
     {
       "id": "feat-34",
@@ -671,7 +693,7 @@
       "epic_id": "epic-9",
       "title": "Planning granularity + delegated, announced specialists",
       "description": "Decomposition yields multi-US Features (not one feature per US); commands announce which specialist they delegate to and run that work as subagents to keep the main context lean.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -682,6 +704,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:58:31.489005+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T19:08:30.959139+00:00"
         }
       ]
     }
@@ -1028,7 +1055,7 @@
       "id": "us-21",
       "feature_id": "feat-8",
       "title": "Live auto-refresh",
-      "status": "backlog",
+      "status": "done",
       "assignee": "",
       "points": 2,
       "as_a": "",
@@ -1036,7 +1063,13 @@
       "so_that": "",
       "acceptance_criteria": [],
       "work_log": [],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T19:10:13.169773+00:00"
+        }
+      ]
     },
     {
       "id": "us-22",
@@ -5184,34 +5217,6 @@
       ]
     },
     {
-      "id": "us-73",
-      "feature_id": "feat-16",
-      "title": "main — 2026-06-28",
-      "status": "backlog",
-      "assignee": "coder",
-      "points": 0,
-      "as_a": "",
-      "i_want": "",
-      "so_that": "the work is traced",
-      "acceptance_criteria": [],
-      "work_log": [],
-      "transitions": []
-    },
-    {
-      "id": "us-74",
-      "feature_id": "feat-16",
-      "title": "main — 2026-06-28",
-      "status": "backlog",
-      "assignee": "coder",
-      "points": 0,
-      "as_a": "",
-      "i_want": "",
-      "so_that": "the work is traced",
-      "acceptance_criteria": [],
-      "work_log": [],
-      "transitions": []
-    },
-    {
       "id": "us-75",
       "feature_id": "feat-26",
       "title": "Filter the cost view by epic and feature",
@@ -5846,7 +5851,7 @@
       "id": "us-85",
       "feature_id": "feat-32",
       "title": "ai-threat-model skill (design-time LLM security)",
-      "status": "backlog",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "AI architect",
@@ -5855,14 +5860,68 @@
       "acceptance_criteria": [
         "new skill ai-threat-model: enumerates LLM threats (injection, data-exfil, tool-abuse, jailbreak, excessive-agency) for a described system + writes findings; carves vs runtime security-guardrail"
       ],
-      "work_log": [],
-      "transitions": []
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-ab35d31272c2d15c3",
+          "input_tokens": 18913,
+          "output_tokens": 6998,
+          "cache_write_tokens": 153284,
+          "cache_read_tokens": 499323,
+          "cost_usd": 1.4772,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T19:19:25.568743+00:00"
+        },
+        {
+          "agent": "fenrir:coder",
+          "subagent_type": "fenrir:coder",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-abdc1871046e451d8",
+          "input_tokens": 12742,
+          "output_tokens": 10201,
+          "cache_write_tokens": 188086,
+          "cache_read_tokens": 627466,
+          "cost_usd": 1.808,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T19:19:25.568743+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 865,
+          "output_tokens": 33059,
+          "cache_write_tokens": 669977,
+          "cache_read_tokens": 11707016,
+          "cost_usd": 13.384077,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T19:19:25.568743+00:00"
+        }
+      ],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:10:32.248190+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T19:22:47.771016+00:00"
+        }
+      ]
     },
     {
       "id": "us-86",
       "feature_id": "feat-32",
       "title": "tech-debt skill (catalog + drift vs DAT/ADR → board)",
-      "status": "backlog",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5872,7 +5931,18 @@
         "new skill tech-debt: catalogs debt + flags drift vs docs/dat + docs/adr; files items onto the board"
       ],
       "work_log": [],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:10:32.439152+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T19:22:47.937402+00:00"
+        }
+      ]
     },
     {
       "id": "us-87",
@@ -5926,7 +5996,7 @@
       "id": "us-90",
       "feature_id": "feat-36",
       "title": "Decomposition yields multi-US Features (group related US, not 1 feature per US)",
-      "status": "review",
+      "status": "done",
       "assignee": "",
       "points": 0,
       "as_a": "tech lead",
@@ -5935,7 +6005,36 @@
       "acceptance_criteria": [
         "/fenrir:plan + delivery-tracker doctrine require a Feature to be a business capability holding its atomic US; cli audit flags a Feature whose only US isn't genuinely a standalone capability (thin-feature smell)"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1848,
+          "output_tokens": 61765,
+          "cache_write_tokens": 85435,
+          "cache_read_tokens": 35129556,
+          "cost_usd": 19.972493,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T19:07:35.973239+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 141,
+          "output_tokens": 4800,
+          "cache_write_tokens": 4154,
+          "cache_read_tokens": 3626127,
+          "cost_usd": 1.975309,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T19:08:53.894751+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5951,6 +6050,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T19:07:12.974501+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T19:08:30.628280+00:00"
         }
       ]
     },
@@ -5958,7 +6062,7 @@
       "id": "us-91",
       "feature_id": "feat-36",
       "title": "Commands announce the chosen specialist agent + why, in the thread",
-      "status": "review",
+      "status": "done",
       "assignee": "",
       "points": 0,
       "as_a": "developer",
@@ -5967,7 +6071,36 @@
       "acceptance_criteria": [
         "/fenrir:plan, /fenrir:challenge-me and /fenrir:deliver print a one-line 'delegating to <agent> because <reason>' before delegating"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-ac19469e1e6bf354d",
+          "input_tokens": 10334,
+          "output_tokens": 10589,
+          "cache_write_tokens": 103846,
+          "cache_read_tokens": 696423,
+          "cost_usd": 1.3136,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T19:07:35.973239+00:00"
+        },
+        {
+          "agent": "fenrir:qa-tester",
+          "subagent_type": "fenrir:qa-tester",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a6d1bfe06d21bc706",
+          "input_tokens": 5114,
+          "output_tokens": 2627,
+          "cache_write_tokens": 48078,
+          "cache_read_tokens": 279658,
+          "cost_usd": 0.5316,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T19:07:35.973239+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5983,6 +6116,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T19:07:13.142352+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T19:08:30.794861+00:00"
         }
       ]
     },
@@ -5990,7 +6128,7 @@
       "id": "us-92",
       "feature_id": "feat-36",
       "title": "Commands delegate substantive work to subagents to keep main context lean",
-      "status": "review",
+      "status": "done",
       "assignee": "",
       "points": 0,
       "as_a": "tech lead",
@@ -6015,6 +6153,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T19:07:13.306988+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T19:08:30.959139+00:00"
         }
       ]
     }
