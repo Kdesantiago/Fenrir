@@ -232,8 +232,23 @@
               <label><input type="checkbox" data-col="cost_usd" checked> Cost</label>
             </span>
             <label class="field-inline">
+              <span class="vh">Filter by epic</span>
+              <select id="trace-epic" aria-label="Filter cost by epic"><option value="">All epics</option></select>
+            </label>
+            <label class="field-inline">
+              <span class="vh">Filter by feature</span>
+              <select id="trace-feature" aria-label="Filter cost by feature"><option value="">All features</option></select>
+            </label>
+            <label class="field-inline">
               <span class="vh">Filter by user story</span>
               <select id="trace-us" aria-label="Filter cost trace by user story"><option value="">All stories</option></select>
+            </label>
+            <label class="field-inline">
+              <span class="vh">Sort arrivals</span>
+              <select id="trace-sort" aria-label="Sort cost arrivals">
+                <option value="date">Newest first</option>
+                <option value="cost">Highest cost</option>
+              </select>
             </label>
           </div>
         </header>

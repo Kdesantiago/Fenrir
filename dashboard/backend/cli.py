@@ -283,7 +283,8 @@ def _cmd_attribute(s: BoardStore, a) -> None:
 
 
 def _cmd_trace(s: BoardStore, a) -> None:
-    rows = s.trace(a.us or None)
+    rows = s.trace(a.us or None, getattr(a, "feature", "") or None,
+                   getattr(a, "epic", "") or None, not getattr(a, "oldest_first", False))
     total = round(sum(r.get("cost_usd", 0) for r in rows), 4)
     tin = sum(r.get("input_tokens", 0) for r in rows)
     tout = sum(r.get("output_tokens", 0) for r in rows)
@@ -407,8 +408,12 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--project", default=None); a.add_argument("--agent", default="")
     a.add_argument("--note", default=""); a.set_defaults(fn=_cmd_attribute)
 
-    a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
-    a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)
+    a = sub.add_parser("trace", help="print the cost trace (flattened work_log), newest-first")
+    a.add_argument("--us", default="", help="filter to one story id")
+    a.add_argument("--feature", default="", help="filter to one feature id")
+    a.add_argument("--epic", default="", help="filter to one epic id")
+    a.add_argument("--oldest-first", action="store_true", help="oldest→newest (default is newest first)")
+    a.set_defaults(fn=_cmd_trace)
 
     a = sub.add_parser("retro", help="write/print an epic's retrospective (auto-runs on epic close)")
     a.add_argument("--epic", required=True); a.add_argument("--out", default="")

@@ -499,28 +499,48 @@ class BoardStore:
             "ok": not (coarse or orphans or empty_features),
         }
 
-    def trace(self, us_id: str | None = None) -> list[dict]:
-        """Flatten every work_log entry into a chronological cost trace (optionally one US)."""
+    def trace(self, us_id: str | None = None, feature_id: str | None = None,
+              epic_id: str | None = None, newest_first: bool = True) -> list[dict]:
+        """Flatten every work_log entry into a cost trace, optionally scoped to one US / Feature /
+        Epic. Each row carries its `us_id`/`feature_id`/`epic_id` so the UI can filter + group.
+        Sorted by date, **newest first by default** (the arrivals view — recent work is what you
+        look at; sort-by-cost is a UI toggle, not the default)."""
         b = self.load()
         title = {s.id: s.title for s in b.stories}
+        feat_of = {s.id: s.feature_id for s in b.stories}
+        epic_of_feat = {f.id: f.epic_id for f in b.features}
+
+        def epic_of(uid: str) -> str:
+            return epic_of_feat.get(feat_of.get(uid, ""), "")
+
+        def keep(uid: str) -> bool:
+            if us_id and uid != us_id:
+                return False
+            if feature_id and feat_of.get(uid, "") != feature_id:
+                return False
+            if epic_id and epic_of(uid) != epic_id:
+                return False
+            return True
+
         rows: list[dict] = []
 
         def row(uid: str, kind: str, e: WorkLogEntry, task_id: str = "") -> dict:
             d = e.model_dump()
-            d.update({"us_id": uid, "title": title.get(uid, uid), "kind": kind})
+            d.update({"us_id": uid, "title": title.get(uid, uid), "kind": kind,
+                      "feature_id": feat_of.get(uid, ""), "epic_id": epic_of(uid)})
             if task_id:
                 d["task_id"] = task_id
             return d
 
         for s in b.stories:
-            if us_id and s.id != us_id:
+            if not keep(s.id):
                 continue
             rows.extend(row(s.id, "story", e) for e in s.work_log)
         for t in b.tasks:
-            if us_id and t.story_id != us_id:
+            if not keep(t.story_id):
                 continue
             rows.extend(row(t.story_id, "task", e, t.id) for e in t.work_log)
-        rows.sort(key=lambda r: r.get("at") or "")
+        rows.sort(key=lambda r: r.get("at") or "", reverse=newest_first)
         return rows
 
     # --- flow metrics (derived from status transitions) ---------------------------------

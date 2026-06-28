@@ -122,8 +122,9 @@ def board_audit(project: str | None = None, coarse_usd: float = 50.0, dominance:
 
 
 @app.get("/api/trace")
-def trace(us: str | None = None, project: str | None = None) -> list[dict]:
-    return _store(project).trace(us or None)
+def trace(us: str | None = None, feature: str | None = None, epic: str | None = None,
+          newest_first: bool = True, project: str | None = None) -> list[dict]:
+    return _store(project).trace(us or None, feature or None, epic or None, newest_first)
 
 
 @app.post("/api/epics")

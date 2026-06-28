@@ -156,6 +156,16 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:38:32.110407+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T18:01:06.888130+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:01:36.283782+00:00"
         }
       ]
     }
@@ -443,12 +453,17 @@
       "epic_id": "epic-8",
       "title": "Cost view: scope + sane default ordering",
       "description": "Filter spend by epic/feature; default-sort by date, price opt-in.",
-      "status": "todo",
+      "status": "in_progress",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.263451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:01:36.283782+00:00"
         }
       ]
     },
@@ -471,7 +486,7 @@
       "epic_id": "epic-8",
       "title": "Merged branches are deleted",
       "description": "No stale branches: remote auto-delete + local cleanup on merge + remove the current leftovers.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -482,6 +497,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:38:32.110407+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:01:06.888130+00:00"
         }
       ]
     },
@@ -5053,7 +5073,7 @@
       "id": "us-75",
       "feature_id": "feat-26",
       "title": "Filter the cost view by epic and feature",
-      "status": "todo",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5068,6 +5088,16 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.263451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:01:36.283782+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:13:11.157841+00:00"
         }
       ]
     },
@@ -5075,7 +5105,7 @@
       "id": "us-76",
       "feature_id": "feat-26",
       "title": "Default cost ordering by date (newest→oldest); price is opt-in",
-      "status": "todo",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5090,6 +5120,16 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.424755+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:01:36.446412+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:13:11.326375+00:00"
         }
       ]
     },
@@ -5141,7 +5181,7 @@
       "id": "us-79",
       "feature_id": "feat-28",
       "title": "Delete merged branches automatically (remote + local) and clean leftovers",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "maintainer",
@@ -5156,14 +5196,28 @@
           "subagent_type": "fenrir:red-team-destroyer",
           "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
           "run_id": "agent-ab6d52aa200d73433",
-          "input_tokens": 22318,
-          "output_tokens": 1963,
-          "cache_write_tokens": 86163,
-          "cache_read_tokens": 115917,
-          "cost_usd": 0.7571,
+          "input_tokens": 22569,
+          "output_tokens": 5973,
+          "cache_write_tokens": 103035,
+          "cache_read_tokens": 258892,
+          "cost_usd": 1.0356,
           "source": "telemetry-run",
           "note": "auto per-US (reconcile)",
           "at": "2026-06-28T17:54:05.062035+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 413,
+          "output_tokens": 11813,
+          "cache_write_tokens": 22101,
+          "cache_read_tokens": 4672308,
+          "cost_usd": 2.854554,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:59:59.839856+00:00"
         }
       ],
       "transitions": [
@@ -5176,6 +5230,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:38:32.110407+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:01:06.888130+00:00"
         }
       ]
     },
