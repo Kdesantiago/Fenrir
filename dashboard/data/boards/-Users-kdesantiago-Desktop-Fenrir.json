@@ -193,6 +193,21 @@
           "at": "2026-06-28T18:30:37.319245+00:00"
         }
       ]
+    },
+    {
+      "id": "epic-9",
+      "title": "Tech-lead & AI-architect workflow completion",
+      "description": "Self-documenting dashboard (agent/hook/skill catalog + live orchestration), AI threat-model + tech-debt skills, safe automation glue, and a meta-orchestrator — automate the chores, keep the human merge gate.",
+      "status": "in_progress",
+      "color": "#a855f7",
+      "created": "",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:40:58.243590+00:00"
+        }
+      ]
     }
   ],
   "features": [
@@ -592,6 +607,52 @@
           "at": "2026-06-28T17:37:57.286890+00:00"
         }
       ]
+    },
+    {
+      "id": "feat-31",
+      "epic_id": "epic-9",
+      "title": "Dashboard: Agents & workflow view",
+      "description": "Catalog (agents/hooks/skills + descriptions) + live orchestration of subagent runs.",
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:40:58.243590+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-32",
+      "epic_id": "epic-9",
+      "title": "AI threat-model skill",
+      "description": "Design-time LLM-system threat modeling.",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-33",
+      "epic_id": "epic-9",
+      "title": "Tech-debt / architecture-drift tracker",
+      "description": "Catalog debt + detect drift vs DAT/ADR onto the board.",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-34",
+      "epic_id": "epic-9",
+      "title": "Safe automation glue",
+      "description": "Auto-compaction threshold + branch-create auto-plan.",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-35",
+      "epic_id": "epic-9",
+      "title": "Meta-orchestrator command",
+      "description": "Chain plan→deliver→ship, stop on gate, never auto-merge.",
+      "status": "backlog",
+      "transitions": []
     }
   ],
   "stories": [
@@ -5174,6 +5235,34 @@
           "source": "telemetry-main",
           "note": "main-thread delta",
           "at": "2026-06-28T18:13:35.242599+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 544,
+          "output_tokens": 9917,
+          "cache_write_tokens": 8659,
+          "cache_read_tokens": 6632119,
+          "cost_usd": 3.653295,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:32:01.865615+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 14,
+          "output_tokens": 5344,
+          "cache_write_tokens": 4482,
+          "cache_read_tokens": 3345468,
+          "cost_usd": 1.851224,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:33:43.805463+00:00"
         }
       ],
       "transitions": [
@@ -5540,6 +5629,167 @@
           "at": "2026-06-28T17:37:57.286890+00:00"
         }
       ]
+    },
+    {
+      "id": "us-82",
+      "feature_id": "feat-31",
+      "title": "Agent/hook/skill catalog API + view",
+      "status": "review",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "one place describing every agent, hook and skill",
+      "so_that": "a newcomer understands the pack with zero code reading",
+      "acceptance_criteria": [
+        "GET /api/catalog reads agents/hooks/skills from disk (name/kind/description; hooks incl. fire-event); a searchable dashboard view groups them by kind"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:40:58.243590+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:52:14.377374+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-83",
+      "feature_id": "feat-31",
+      "title": "Live agent-orchestration section (what they do, auto-refresh)",
+      "status": "review",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "to watch which agents executed and what they did",
+      "so_that": "I can see the orchestration live, not guess",
+      "acceptance_criteria": [
+        "the Agents view shows recent subagent runs (type, description, when, cost) and auto-refreshes"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:40:58.399611+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:52:14.544074+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-84",
+      "feature_id": "feat-31",
+      "title": "Command-prefix audit + auto-compaction doc",
+      "status": "review",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "maintainer",
+      "i_want": "commands always shown as fenrir: and compaction explained",
+      "so_that": "onboarding isn't tripped by stray refs or a 'broken' compaction",
+      "acceptance_criteria": [
+        "every command cross-ref uses fenrir: (or confirmed false-positive); a doc explains enabling auto-compaction at a threshold + that our hook only focuses it"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:40:58.555576+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:52:14.708020+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-85",
+      "feature_id": "feat-32",
+      "title": "ai-threat-model skill (design-time LLM security)",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "AI architect",
+      "i_want": "to threat-model an LLM system before building it",
+      "so_that": "injection/exfil/tool-abuse risks are caught at design",
+      "acceptance_criteria": [
+        "new skill ai-threat-model: enumerates LLM threats (injection, data-exfil, tool-abuse, jailbreak, excessive-agency) for a described system + writes findings; carves vs runtime security-guardrail"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-86",
+      "feature_id": "feat-33",
+      "title": "tech-debt skill (catalog + drift vs DAT/ADR → board)",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "debt and architecture drift tracked, not lost",
+      "so_that": "I can prioritize paying it down",
+      "acceptance_criteria": [
+        "new skill tech-debt: catalogs debt + flags drift vs docs/dat + docs/adr; files items onto the board"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-87",
+      "feature_id": "feat-34",
+      "title": "Enable + document auto-compaction at a token threshold",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "compaction to fire automatically near the limit, subject-focused",
+      "so_that": "I don't manually /compact",
+      "acceptance_criteria": [
+        "documents the Claude Code auto-compact setting + verifies the precompact-focus hook engages; the threshold is a client setting, our hook focuses it"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-88",
+      "feature_id": "feat-34",
+      "title": "branch-create → auto-plan hook",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "developer",
+      "i_want": "starting a feat/ branch to auto-create its board plan",
+      "so_that": "work is tracked from the first commit with no manual step",
+      "acceptance_criteria": [
+        "a hook detects a new feat/ branch and ensures a Feature+US plan exists (delegates to the plan path)"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-89",
+      "feature_id": "feat-35",
+      "title": "/fenrir:auto — chain plan→deliver→ship with checkpoints",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "one command to drive a feature through the whole pipeline",
+      "so_that": "near-zero manual steps, but the human still merges",
+      "acceptance_criteria": [
+        "new command /fenrir:auto: runs plan→deliver→ship with per-stage checkpoints, STOPS on any gate/validation failure, never auto-merges (human gate is terminal)"
+      ],
+      "work_log": [],
+      "transitions": []
     }
   ],
   "tasks": []

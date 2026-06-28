@@ -153,6 +153,7 @@ function switchView(view) {
   });
   // the cost trace is fetched lazily the first time (and refreshed on each visit)
   if (view === "trace") loadTrace();
+  if (view === "reference") loadCatalog();
   // charts need a resize nudge when revealed
   requestAnimationFrame(() => Object.values(charts).forEach((c) => c && c.resize()));
 }
@@ -960,6 +961,58 @@ function renderStoryCost(target, r) {
   }
 }
 
+/* ------------------------------------------------------------------ REFERENCE CATALOG */
+let catalog = null;  // cached /api/catalog (static — fetched once)
+
+async function loadCatalog() {
+  const body = $("#catalog-body");
+  if (!body) return;
+  if (!catalog) {
+    try { catalog = await apiGet("/api/catalog"); }
+    catch (e) { stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load the catalog", msg: e.message, error: true }); return; }
+  }
+  renderCatalog($("#catalog-search") ? $("#catalog-search").value.trim().toLowerCase() : "");
+}
+
+const CATALOG_KINDS = [
+  { key: "commands", label: "Commands", hint: "what you invoke" },
+  { key: "agents", label: "Subagents", hint: "delegated personas" },
+  { key: "skills", label: "Skills", hint: "capabilities triggered by intent" },
+  { key: "hooks", label: "Hooks", hint: "deterministic automation (safety + delivery-tracking)" },
+];
+
+function renderCatalog(q) {
+  const body = $("#catalog-body");
+  if (!body || !catalog) return;
+  body.innerHTML = "";
+  const match = (it) => !q || (it.name || "").toLowerCase().includes(q) || (it.description || "").toLowerCase().includes(q);
+  let shown = 0;
+  CATALOG_KINDS.forEach(({ key, label, hint }) => {
+    const items = (catalog[key] || []).filter(match);
+    if (!items.length) return;
+    shown += items.length;
+    const list = el("div", { class: "catalog-list" });
+    items.forEach((it) => {
+      const tags = [];
+      if (key === "hooks" && it.events && it.events.length) tags.push(it.events.join(", ") + (it.matchers && it.matchers.length ? ` · ${it.matchers.join(", ")}` : ""));
+      if (key === "hooks" && !it.wired) tags.push("not wired");
+      if (key === "agents" && it.tools) tags.push(it.tools);
+      list.append(el("div", { class: "card", style: "padding:12px 14px" }, [
+        el("div", { style: "display:flex;gap:8px;align-items:baseline;flex-wrap:wrap" }, [
+          el("span", { class: "k", style: "font-weight:600;color:var(--txt)", text: it.name }),
+          ...tags.map((t) => el("span", { class: "chip", style: "font-size:11px", text: t })),
+        ]),
+        el("div", { class: "muted", style: "font-size:12.5px;line-height:1.5;margin-top:4px", text: it.description || "—" }),
+      ]));
+    });
+    body.append(el("section", { class: "panel" }, [
+      el("header", { class: "panel-head" }, [el("h2", { text: `${label} (${items.length})` }), el("span", { class: "muted", style: "font-size:12px", text: hint })]),
+      list,
+    ]));
+  });
+  if (!shown) body.append(el("section", { class: "panel" }, el("div", { class: "muted", style: "padding:18px;text-align:center", text: `No agent/hook/skill/command matches “${q}”.` })));
+}
+
 /* ------------------------------------------------------------------ COST TRACE */
 // Resolve a story's epic id (reuses the object-based epicOfStory defined above).
 function epicIdOfStory(s) { const e = epicOfStory(s); return e ? e.id : ""; }
@@ -1279,6 +1332,24 @@ function initControls() {
   });
   $("#trace-us").addEventListener("change", (e) => { traceUs = e.target.value; loadTrace(); });
   $("#trace-sort").addEventListener("change", (e) => { traceSort = e.target.value; loadTrace(); });
+
+  const catSearch = $("#catalog-search");
+  if (catSearch) catSearch.addEventListener("input", (e) => renderCatalog(e.target.value.trim().toLowerCase()));
+
+  // Live orchestration: while on Agents/Overview, refresh the telemetry (subagent runs) so you
+  // can watch agents execute without a manual reload. Skipped when the tab is hidden; an
+  // in-flight guard coalesces overlapping refreshes so a slow backend can't stack requests or
+  // render stale-over-fresh.
+  let liveRefreshing = false;
+  setInterval(async () => {
+    if (document.hidden || liveRefreshing) return;
+    const a = $(".nav-item.is-active");
+    const active = a && a.dataset.view;
+    if (active !== "agents" && active !== "overview") return;
+    liveRefreshing = true;
+    try { await (active === "agents" ? loadAgents() : loadOverview()); }
+    finally { liveRefreshing = false; }
+  }, 20000);
 
   $("#add-epic-btn").addEventListener("click", openAddEpic);
   $("#add-feature-btn").addEventListener("click", openAddFeature);

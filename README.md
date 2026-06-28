@@ -85,7 +85,7 @@ Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub),
 
 ## Companion: monitoring dashboard
 
-A local web app under **[dashboard/](dashboard/README.md)** — real token/cost/agent telemetry parsed from `~/.claude` + an **agent-driven Agile board** (Epic → Feature → User Story → Task) with a kanban, charts, and a CLI the agents use to manage the board. Plus **cost accounting**: per-US (per-agent) token/USD cost, a cost trace you can **filter by epic/feature/US** (newest-first by default, sort-by-cost optional), and **subagent attribution** (which named subagent ran, when, how much — reconciled, no double-count). Companion app, not a plugin component. `cd dashboard && uv sync --extra dev && uv run uvicorn backend.app:app`.
+A local web app under **[dashboard/](dashboard/README.md)** — real token/cost/agent telemetry parsed from `~/.claude` + an **agent-driven Agile board** (Epic → Feature → User Story → Task) with a kanban, charts, and a CLI the agents use to manage the board. A **Reference** tab self-documents the whole pack — every agent/hook/skill/command + description, searchable — and the Agents view auto-refreshes so you can watch subagents execute live. Plus **cost accounting**: per-US (per-agent) token/USD cost, a cost trace you can **filter by epic/feature/US** (newest-first by default, sort-by-cost optional), and **subagent attribution** (which named subagent ran, when, how much — reconciled, no double-count). Companion app, not a plugin component. `cd dashboard && uv sync --extra dev && uv run uvicorn backend.app:app`.
 
 ## Docs
 

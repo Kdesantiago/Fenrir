@@ -4,6 +4,9 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Dashboard "Reference" view — self-documenting catalog** (epic-9) — a new tab listing **every agent, hook, skill, and command with its description** read straight from the plugin's own files (frontmatter / docstrings), grouped by kind and **searchable** — so the pack is understandable with zero code reading. Hooks show **when they fire** (event + matcher) and whether they're wired; agents show their tools. Backed by a new `GET /api/catalog` (`backend/catalog.py`, pure-stdlib, fail-soft; plugin root resolved from `FENRIR_PLUGIN_ROOT` / the dashboard's own location — deliberately **not** `CLAUDE_PROJECT_DIR`, which is the user's repo). The **Agents** and **Overview** views now **auto-refresh** (20s, in-flight-guarded, pauses when hidden) so you can watch subagents execute live. Also: command-prefix audit (all refs confirmed `fenrir:`-namespaced) + a GETTING-STARTED FAQ explaining why context-compaction is a Claude Code client setting (our hook *focuses* it, doesn't *trigger* it). 14 catalog tests.
+
 ## [1.6.0] — 2026-06-28
 
 > **Epic 8 — Delivery-flow & board refinements.** Minor bump (an epic finished, per the cadence rule). Cost view scopes by epic/feature + defaults to newest-first; specialist agents are the delivery default with a mandatory QA + red-team validation gate on every route; merged branches auto-delete (remote + local); cache-read is now explained (re-read/call, no bug); and the epic-7 loop is closed. Five feature PRs (#14–#18) patch-bumped 1.5.1→1.5.4; this minor closes the epic. See `docs/delivery-memory/retros/epic-8-*.md`.
