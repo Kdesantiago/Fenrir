@@ -1,5 +1,5 @@
 ---
-description: Plan-first — the FIRST step of any feature. Decompose the work into Epic → Feature → atomic User Stories on the dashboard board (reusing existing items, never an umbrella US), then create the feat/<feature> branch. Writes the plan only; NO code. /fenrir:deliver then builds the US one at a time with per-US cost tracking. Fuzzy idea? run /fenrir:challenge-me first to scope it.
+description: Plan-first — the FIRST step of any feature. Decompose the work into Epic → Feature → atomic User Stories on the dashboard board (reusing existing items, never an umbrella US), have the architect frame the load-bearing design + ADR, then create the feat/<feature> branch. Writes the plan + ADR only; NO code. /fenrir:deliver then builds the US one at a time with per-US cost tracking. Fuzzy idea? run /fenrir:challenge-me first to scope it.
 ---
 
 # /fenrir:plan
@@ -27,10 +27,11 @@ branch = one PR.
 ## Steps
 1. **Read the board first.** `cd dashboard && python -m backend.cli list`. Reuse an existing Epic/Feature if the work belongs there; never duplicate.
 2. **Decompose — delegate to the `delivery-tracker` subagent (announce it).** Print one line first — `→ delegating decomposition to delivery-tracker (owns board structure; runs as a subagent so its CLI churn stays out of the main context)` — then invoke it via the Task tool with the exact Feature + atomic US to create. Work → ONE Feature (a capability a stakeholder would name) **grouping several atomic US** → its US. Apply the doctrine — no per-session/umbrella US, no one-US-per-feature fragmentation; if a US would do more than one thing or carry an outsized share of its epic, split it. Give each US `--as-a/--i-want/--so-that` + one `--ac`. Doing this as a subagent keeps the main thread lean (see the delegation rule below).
-3. **Check granularity.** `python -m backend.cli audit` — fix any US it flags as an umbrella (`coarse_us`, decompose it) and inspect **`thin_features`**: if your new Feature is flagged (an open epic fragmented into single-US features), regroup the US under one Feature before continuing. Atomic-but-expensive US are fine (`expensive_us`).
-4. **Commit the planned US to `todo`.** `cli story add` defaults to `backlog` (= a maybe-someday idea); the work you just planned is committed, so move each planned US to **todo**: `python -m backend.cli move --kind story --id <us> --status todo`. Leave only genuine later-ideas in backlog.
-5. **Branch.** `git checkout -b feat/<feature-slug>` — one Feature, one branch, one PR.
-6. **Print the plan** — the Feature id + its US ids in build order — and STOP. No code at this stage.
+3. **Frame the design — architect co-leads (announce it).** Delegate to the **pertinent designer** (`architect`, or the §2b specialist — `azure-architect`/`dat-architect`/…): `→ delegating design framing to <architect> because the feature has load-bearing decisions`. It states the key decisions + **stubs** the ADR (`docs/adr/NNNN-*.md`) the US build against, so architecture leads development. `delivery-tracker` owns the *board structure*; the architect owns the *design*. **`/fenrir:deliver` then reuses/extends this ADR — it never writes a second one.** **Skip this step** when the work would route **`light`** per deliver §2 (RISK==0 AND ≤5 files AND ≤80 LOC) or is a docs/config/refactor change — same boundary deliver uses, so plan and deliver agree on who gets an architect (no architect-on-everything).
+4. **Check granularity.** `python -m backend.cli audit` — fix any US it flags as an umbrella (`coarse_us`, decompose it) and inspect **`thin_features`**: if your new Feature is flagged (an open epic fragmented into single-US features), regroup the US under one Feature before continuing. Atomic-but-expensive US are fine (`expensive_us`).
+5. **Commit the planned US to `todo`.** `cli story add` defaults to `backlog` (= a maybe-someday idea); the work you just planned is committed, so move each planned US to **todo**: `python -m backend.cli move --kind story --id <us> --status todo`. Leave only genuine later-ideas in backlog.
+6. **Branch.** `git checkout -b feat/<feature-slug>` — one Feature, one branch, one PR.
+7. **Print the plan** — the Feature id + its US ids in build order (+ the ADR path) — and STOP. No code at this stage.
 
 ## Then
 - `/fenrir:deliver` builds the US **one at a time**: `python3 scripts/track_session.py set-us --id <us>` before each, so its real cost lands on that US (Epic = Σ Features = Σ US).
