@@ -9,9 +9,11 @@ session — deriving USD cost from the price book. Read-only; never mutates the 
 from __future__ import annotations
 
 import json
+import subprocess
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
 from . import pricing
@@ -33,11 +35,33 @@ def list_projects(claude_dir: Path) -> list[str]:
     return sorted(p.name for p in base.iterdir() if p.is_dir())
 
 
+@lru_cache(maxsize=64)
+def _git_root(cwd: Path) -> Path | None:
+    """The git repo root containing `cwd`, or None. So a subdir (e.g. dashboard/) maps to the
+    repo, not to a phantom project created by an accidental subdir invocation. Cached — a server
+    process's cwd is constant, so this must not fork `git` on every HTTP request."""
+    try:
+        r = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+                           capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            return Path(r.stdout.strip())
+    except Exception:
+        pass
+    return None
+
+
 def current_project_slug(claude_dir: Path, cwd: Path | None = None) -> str | None:
-    """Best-match the project for `cwd` (default: real cwd). Picks the longest available
-    project slug that prefixes the cwd encoding, so running from a subdir (e.g. dashboard/)
-    still resolves to the repo's project. None if nothing matches."""
-    enc = encode_project(cwd or Path.cwd())
+    """Best-match the project for `cwd` (default: real cwd). When `cwd` is inside a git repo it
+    resolves to the **repo root** first, so running from a subdir (e.g. `dashboard/`) maps to the
+    repo's project rather than a phantom `<repo>-dashboard` project an accidental subdir
+    invocation may have created in ~/.claude/projects (that bug once mis-resolved the board).
+    Then picks the longest available slug that prefixes the (root-resolved) encoding. NOTE: only
+    holds when `git` is available; otherwise it falls back to longest-prefix on the raw cwd. If
+    you genuinely run a subdir AS its own project, pin it with the `project=` param / the
+    `FENRIR_DASH_BOARD` env. None if nothing matches."""
+    base = cwd or Path.cwd()
+    root = _git_root(base) or base
+    enc = encode_project(root)
     candidates = [p for p in list_projects(claude_dir) if enc == p or enc.startswith(p)]
     return max(candidates, key=len) if candidates else None
 

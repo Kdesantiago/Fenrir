@@ -991,23 +991,31 @@ function renderCatalog(q) {
     const items = (catalog[key] || []).filter(match);
     if (!items.length) return;
     shown += items.length;
-    const list = el("div", { class: "catalog-list" });
+    const grid = el("div", { class: "cat-grid" });
     items.forEach((it) => {
-      const tags = [];
-      if (key === "hooks" && it.events && it.events.length) tags.push(it.events.join(", ") + (it.matchers && it.matchers.length ? ` · ${it.matchers.join(", ")}` : ""));
-      if (key === "hooks" && !it.wired) tags.push("not wired");
-      if (key === "agents" && it.tools) tags.push(it.tools);
-      list.append(el("div", { class: "card", style: "padding:12px 14px" }, [
-        el("div", { style: "display:flex;gap:8px;align-items:baseline;flex-wrap:wrap" }, [
-          el("span", { class: "k", style: "font-weight:600;color:var(--txt)", text: it.name }),
-          ...tags.map((t) => el("span", { class: "chip", style: "font-size:11px", text: t })),
-        ]),
-        el("div", { class: "muted", style: "font-size:12.5px;line-height:1.5;margin-top:4px", text: it.description || "—" }),
+      // metadata → subtle, labelled chips (not a wall of text)
+      const meta = [];
+      if (key === "hooks") {
+        if (it.events && it.events.length) meta.push(el("span", { class: "cat-badge" }, [el("span", { class: "cat-badge-k", text: "on" }), it.events.join(", ")]));
+        if (it.matchers && it.matchers.length) meta.push(el("span", { class: "cat-badge" }, [el("span", { class: "cat-badge-k", text: "match" }), it.matchers.join(", ")]));
+        if (!it.wired) meta.push(el("span", { class: "cat-badge is-warn", text: "not wired" }));
+      }
+      if (key === "agents") {
+        if (it.model) meta.push(el("span", { class: "cat-badge" }, [el("span", { class: "cat-badge-k", text: "model" }), it.model]));
+        if (it.tools) meta.push(el("span", { class: "cat-badge" }, [el("span", { class: "cat-badge-k", text: "tools" }), it.tools]));
+      }
+      grid.append(el("article", { class: "cat-card" }, [
+        el("div", { class: "cat-card-head" }, [el("span", { class: "cat-name", text: it.name })]),
+        el("p", { class: "cat-desc", text: it.description || "—" }),
+        meta.length ? el("div", { class: "cat-meta" }, meta) : null,
       ]));
     });
-    body.append(el("section", { class: "panel" }, [
-      el("header", { class: "panel-head" }, [el("h2", { text: `${label} (${items.length})` }), el("span", { class: "muted", style: "font-size:12px", text: hint })]),
-      list,
+    body.append(el("section", { class: "panel cat-section", "data-kind": key }, [
+      el("header", { class: "panel-head cat-head" }, [
+        el("h2", {}, [el("span", { class: "cat-dot", "aria-hidden": "true" }), label, el("span", { class: "cat-count", text: ` (${items.length})` })]),
+        el("span", { class: "muted", style: "font-size:12px", text: hint }),
+      ]),
+      grid,
     ]));
   });
   if (!shown) body.append(el("section", { class: "panel" }, el("div", { class: "muted", style: "padding:18px;text-align:center", text: `No agent/hook/skill/command matches “${q}”.` })));
