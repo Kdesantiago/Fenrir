@@ -1,8 +1,10 @@
-"""Agile board store — Epic → Feature → User Story → Task over a git-tracked JSON file.
+"""Agile board store — Epic → Feature → User Story → Task over a plain JSON file.
 
-LifeOS spirit: the board is plain, reviewable, version-controlled data (`data/board.json`),
-not a hidden DB. Both the web API and the CLI (which the agents drive) go through this one
-module, so there is a single source of truth.
+LifeOS spirit: the board is plain, human-readable JSON, not a hidden DB — inspect it via the
+dashboard or `cli list`. The per-project boards (`data/boards/<slug>.json`) are **local runtime
+state**, NOT committed: costs derive from each developer's own `~/.claude` telemetry and the
+tracking hook re-saves after every commit, so they're git-ignored (see repo `.gitignore`). Both
+the web API and the CLI (which the agents drive) go through this one module — one source of truth.
 """
 from __future__ import annotations
 
