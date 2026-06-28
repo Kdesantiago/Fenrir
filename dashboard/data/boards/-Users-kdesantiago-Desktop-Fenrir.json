@@ -58,7 +58,7 @@
       "id": "epic-7",
       "title": "Board automation, governance & process v1.5",
       "description": "Status rollup + draggable epic/feature, epic-close retrospectives, subject-focused context compaction, DAT agent, versioning rule (feature→patch, epic→minor).",
-      "status": "todo",
+      "status": "done",
       "color": "#a855f7",
       "created": "2026-06-28T16:16:45.948910+00:00",
       "transitions": [
@@ -121,6 +121,31 @@
           "from_status": "in_progress",
           "to_status": "todo",
           "at": "2026-06-28T17:16:01.033411+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "done",
+          "at": "2026-06-28T17:19:25.852393+00:00"
+        }
+      ]
+    },
+    {
+      "id": "epic-8",
+      "title": "Delivery-flow & board refinements",
+      "description": "Post-v1.5 refinements: cost-view scoping + sane ordering, specialized-agent-by-default delivery with a mandatory QA+red-team gate, merged-branch hygiene, cache-read transparency, and closing the epic-7 loop.",
+      "status": "in_progress",
+      "color": "#0ea5e9",
+      "created": "",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.263451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:35:30.892774+00:00"
         }
       ]
     }
@@ -365,7 +390,7 @@
       "epic_id": "epic-7",
       "title": "Versioning rule (feature→patch, epic→minor) + bump v1.5",
       "description": "",
-      "status": "todo",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -376,6 +401,11 @@
           "from_status": "in_progress",
           "to_status": "todo",
           "at": "2026-06-28T17:16:01.033411+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "done",
+          "at": "2026-06-28T17:19:25.852393+00:00"
         }
       ]
     },
@@ -395,6 +425,81 @@
           "from_status": "in_progress",
           "to_status": "done",
           "at": "2026-06-28T16:50:13.177820+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-26",
+      "epic_id": "epic-8",
+      "title": "Cost view: scope + sane default ordering",
+      "description": "Filter spend by epic/feature; default-sort by date, price opt-in.",
+      "status": "todo",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.263451+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-27",
+      "epic_id": "epic-8",
+      "title": "Specialized-agent-by-default delivery + mandatory QA & red-team gate",
+      "description": "Fenrir commands route to the pertinent specialist; QA + red-team always validate before ship.",
+      "status": "todo",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.587257+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-28",
+      "epic_id": "epic-8",
+      "title": "Merged branches are deleted",
+      "description": "No stale branches: remote auto-delete + local cleanup on merge + remove the current leftovers.",
+      "status": "todo",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.916512+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-29",
+      "epic_id": "epic-8",
+      "title": "Cache-read transparency",
+      "description": "Surface why cache-read is large (context re-reads) — confirmed not a bug.",
+      "status": "todo",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:08.080352+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-30",
+      "epic_id": "epic-8",
+      "title": "Close the epic-7 loop",
+      "description": "Refine + commit the epic-7 retro and sync the dogfood board.",
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:08.247536+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:35:30.892774+00:00"
         }
       ]
     }
@@ -2428,6 +2533,20 @@
           "source": "telemetry-run",
           "note": "auto per-US (reconcile)",
           "at": "2026-06-28T13:11:20.651650+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 54913,
+          "output_tokens": 59692,
+          "cache_write_tokens": 1193173,
+          "cache_read_tokens": 3520131,
+          "cost_usd": 15.45866,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:33:00.298357+00:00"
         }
       ],
       "transitions": []
@@ -4778,19 +4897,39 @@
       "id": "us-71",
       "feature_id": "feat-24",
       "title": "Cut v1.5.0 once the epic completes",
-      "status": "todo",
+      "status": "done",
       "assignee": "architect",
       "points": 1,
       "as_a": "",
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 411,
+          "output_tokens": 13268,
+          "cache_write_tokens": 12434,
+          "cache_read_tokens": 3428755,
+          "cost_usd": 2.172472,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:20:23.657084+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:49.052278+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "done",
+          "at": "2026-06-28T17:19:25.852393+00:00"
         }
       ]
     },
@@ -4859,6 +4998,193 @@
           "from_status": "in_progress",
           "to_status": "done",
           "at": "2026-06-28T16:50:13.177820+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-73",
+      "feature_id": "feat-16",
+      "title": "main — 2026-06-28",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "the work is traced",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-74",
+      "feature_id": "feat-16",
+      "title": "main — 2026-06-28",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "the work is traced",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-75",
+      "feature_id": "feat-26",
+      "title": "Filter the cost view by epic and feature",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "scope the cost trace + breakdown to one epic or feature",
+      "so_that": "I read spend for one area without noise",
+      "acceptance_criteria": [
+        "cost-breakdown + trace can filter by epic and by feature, independent of the kanban granularity"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.263451+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-76",
+      "feature_id": "feat-26",
+      "title": "Default cost ordering by date (newest→oldest); price is opt-in",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "see newest arrivals first by default",
+      "so_that": "recent work is what I look at, not the most expensive",
+      "acceptance_criteria": [
+        "cost arrivals sort by date desc by default; sort-by-price is an explicit toggle, not the default"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.424755+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-77",
+      "feature_id": "feat-27",
+      "title": "Fenrir commands route to the relevant specialized agent by default",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "developer",
+      "i_want": "the right specialist agent picked automatically for my request",
+      "so_that": "I get expert handling without naming the agent",
+      "acceptance_criteria": [
+        "/deliver + /challenge-me select the pertinent agent (architect/dat-architect/azure-*/iac/coder…) by request type; documented in the commands"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.587257+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-78",
+      "feature_id": "feat-27",
+      "title": "Always run qa-tester + red-team-destroyer to validate before ship",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "every delivery end with a QA + adversarial pass",
+      "so_that": "no feature ships unvalidated",
+      "acceptance_criteria": [
+        "the delivery pipeline ends with a mandatory qa-tester (tests) + red-team-destroyer (adversarial) stage; unaddressed criticals block /ship (advisory) + documented"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.752830+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-79",
+      "feature_id": "feat-28",
+      "title": "Delete merged branches automatically (remote + local) and clean leftovers",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "maintainer",
+      "i_want": "merged branches removed, not piling up",
+      "so_that": "the repo stays clean",
+      "acceptance_criteria": [
+        "GH auto-delete-head-branches enabled; /ship (or merge step) deletes the LOCAL branch too; existing stale local branches removed; doctrine documented"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:07.916512+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-80",
+      "feature_id": "feat-29",
+      "title": "Surface cache-read as context re-reads so spend is intelligible",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "the dashboard to explain cache-read",
+      "so_that": "a big cache-read number stops looking like a leak",
+      "acceptance_criteria": [
+        "dashboard shows cache-read as context re-reads (per-call avg + that loaded tools/history drive it); short doc; confirmed not a telemetry bug"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:08.080352+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-81",
+      "feature_id": "feat-30",
+      "title": "Refine + commit the epic-7 retrospective and sync the board",
+      "status": "in_progress",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "maintainer",
+      "i_want": "the epic-7 retro refined and committed with the board",
+      "so_that": "the delivery memory is durable + accurate",
+      "acceptance_criteria": [
+        "retro qualitative sections refined from what actually happened; retro doc + board JSON committed via a docs PR; README touched if needed"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T17:32:08.247536+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:35:30.892774+00:00"
         }
       ]
     }
