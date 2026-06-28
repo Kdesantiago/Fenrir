@@ -190,6 +190,7 @@ async function loadOverview() {
     renderByDay(byday);
     renderByModel(bymodel);
     renderSource(agents.by_source);
+    try { await ensureCosts(); renderTopSpenders(); } catch { /* top-spenders stays empty if costs unavailable */ }
   } catch (e) {
     stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load telemetry", msg: e.message, error: true });
   }
@@ -318,6 +319,32 @@ function renderSource(rows) {
 }
 
 const shortModel = (m) => (m || "").replace(/^.*?(claude|gpt|gemini)/i, "$1").replace(/-\d{8}$/, "").slice(0, 28) || m;
+
+// Top-spenders (US-105): the 10 costliest user stories, descending, from the existing
+// /api/board/costs rollup (costs.stories[<id>].cost_usd). No new endpoint; row → openStoryDetail.
+function renderTopSpenders() {
+  const tbody = $("#tbl-top-spenders tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const perUs = (costs && costs.stories) || {};
+  const rows = Object.entries(perUs)
+    .map(([id, c]) => ({ id, cost: (c && c.cost_usd) || 0 }))
+    .filter((r) => r.cost > 0)
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 10);
+  if (!rows.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: "3", class: "muted", style: "text-align:center;padding:24px", text: "No per-story cost recorded yet" })));
+    return;
+  }
+  rows.forEach((r) => {
+    const story = board && board.stories.find((s) => s.id === r.id);
+    tbody.append(el("tr", { style: "cursor:pointer", onclick: () => { if (story) openStoryDetail(story); } }, [
+      el("td", { class: "k", text: r.id }),
+      el("td", { text: (story && story.title) || "—" }),
+      el("td", { class: "num cost", text: fmtUsd4(r.cost) }),
+    ]));
+  });
+}
 
 /* ------------------------------------------------------------------ AGENTS */
 async function loadAgents() {
@@ -571,6 +598,7 @@ async function loadBoard() {
     populateFilters();
     populateTraceFilter();
     renderKanban();
+    renderTopSpenders();  // board+costs just refreshed → keep Overview's top-spenders in sync
   } catch (e) {
     stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load board", msg: e.message, error: true });
   }
