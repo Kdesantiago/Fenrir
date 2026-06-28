@@ -849,12 +849,16 @@ function openStoryDetail(s) {
     const table = el("table", { class: "wl-table" }, [
       el("thead", {}, el("tr", {}, [
         el("th", { text: "Agent" }), el("th", { class: "num", text: "In" }),
-        el("th", { class: "num", text: "Out" }), el("th", { class: "num", text: "Cost" }),
+        el("th", { class: "num", text: "Out" }),
+        el("th", { class: "num", text: "Cache W" }), el("th", { class: "num", text: "Cache R" }),
+        el("th", { class: "num", text: "Cost" }),
       ])),
       el("tbody", {}, wl.map((w) => el("tr", {}, [
         el("td", { text: w.agent || "—" }),
         el("td", { class: "num", text: fmtTok(w.input_tokens) }),
         el("td", { class: "num", text: fmtTok(w.output_tokens) }),
+        el("td", { class: "num", text: fmtTok(w.cache_write_tokens) }),
+        el("td", { class: "num", text: fmtTok(w.cache_read_tokens) }),
         el("td", { class: "num", text: fmtUsd4(w.cost_usd) }),
       ]))),
     ]);
