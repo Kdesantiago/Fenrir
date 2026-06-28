@@ -135,6 +135,16 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hooks/precompact-focus.py\""
+          }
+        ]
+      }
     ]
   }
 }

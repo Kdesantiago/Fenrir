@@ -67,6 +67,19 @@ def _flat_yaml(path):
     return out
 
 
+def _compact_focus(root):
+    """The dev-subject snapshot written by precompact-focus.py before a compaction. Returned to
+    re-seed a session that was JUST compacted, so the post-compaction context is about the work in
+    progress (active US goal/acceptance, branch, in-flight files), not a flat global recap.
+    '' if absent/unreadable."""
+    fp = os.path.join(root, ".claude", "tracking", "compact-focus.md")
+    try:
+        with open(fp) as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
 def _open_exceptions(root):
     fp = os.path.join(root, "docs", "delivery-memory", "gate-exceptions.jsonl")
     today = date.today()
@@ -96,7 +109,18 @@ def _open_exceptions(root):
 
 def main():
     root = _root()
+    try:
+        source = (json.load(sys.stdin) or {}).get("source", "")
+    except Exception:
+        source = ""
     parts = []
+
+    # Just compacted? Lead with the dev-subject snapshot so the model re-grounds on the work in
+    # progress (PreCompact can't steer the summary; this re-injects the focus right after).
+    focus = _compact_focus(root) if source == "compact" else ""
+    if focus:
+        parts.append("RESUMING AFTER COMPACTION — focus on the active development below; treat "
+                     "unrelated history as compressed:\n" + focus)
 
     prof = _flat_yaml(os.path.join(root, "org-profile.yaml"))
     if prof:
