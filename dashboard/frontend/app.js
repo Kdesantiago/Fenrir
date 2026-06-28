@@ -399,7 +399,7 @@ function renderEfficiency(eff) {
   const cards = [
     { label: "Actual cost", value: fmtUsd(t.actual_cost || 0), sub: "with prompt caching" },
     { label: "If uncached", value: fmtUsd(t.uncached_cost || 0), sub: "every input token at full price" },
-    { label: "Saved by cache", value: fmtUsd(t.savings || 0), sub: (t.savings || 0) >= 0 ? "caching is paying off" : "writes exceed reads — waste" },
+    { label: "Saved by cache", value: fmtUsd(t.savings || 0), sub: (t.savings || 0) >= 0 ? "caching is paying off" : "cache-warming — writes amortize over later reads" },
     { label: "Cache hit ratio", value: pct + "%", sub: "input served cheap from cache" },
   ];
   cards.forEach((c) => sumEl.append(el("div", { class: "kpi" }, [

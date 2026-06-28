@@ -6,6 +6,7 @@ module, so there is a single source of truth.
 """
 from __future__ import annotations
 
+import os
 from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -32,8 +33,12 @@ class BoardStore:
             return Board()
 
     def save(self, board: Board) -> None:
+        # Atomic write: a crash mid-write (or a racing reader) never sees a half-written /
+        # corrupt board — we write a temp file and os.replace (atomic on POSIX).
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(board.model_dump_json(indent=2) + "\n")
+        tmp = self.path.with_suffix(self.path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(board.model_dump_json(indent=2) + "\n")
+        os.replace(tmp, self.path)
 
     # --- id generation (collision-safe: max numeric suffix + 1) ------------------------
     def _next_id(self, kind: str, existing: list[str]) -> str:
@@ -235,10 +240,18 @@ class BoardStore:
         feat_ids = {f.id for f in b.features}
         epic_ids = {e.id for e in b.epics}
         stories_of_feat: dict[str, int] = defaultdict(int)
+        us_per_epic: dict[str, int] = defaultdict(int)
         for s in b.stories:
             stories_of_feat[s.feature_id] += 1
+            us_per_epic[feat_epic.get(s.feature_id, "")] += 1
 
+        # An UMBRELLA US dominates a MULTI-US epic (≥3 US) — that is the non-atomic anti-pattern.
+        # Dominance alone in a 1-2 US epic is meaningless (a lone US is trivially 100%), and high
+        # COST alone is not non-atomicity (one hard migration / a deep research run is atomic but
+        # expensive) — that's surfaced separately as `expensive_us` (informational: optimize, not
+        # necessarily decompose).
         coarse: list[dict] = []
+        expensive: list[dict] = []
         orphans: list[dict] = []
         for s in b.stories:
             cost = c["stories"].get(s.id, {}).get("cost_usd", 0.0)
@@ -247,23 +260,26 @@ class BoardStore:
             epic_id = feat_epic.get(s.feature_id, "")
             epic_cost = c["epics"].get(epic_id, {}).get("cost_usd", 0.0)
             share = (cost / epic_cost) if epic_cost > 0 else 0.0
-            reasons = []
-            if cost > coarse_usd:
-                reasons.append(f"cost ${round(cost, 2)} > ${coarse_usd} (likely an umbrella)")
-            if share > dominance:
-                reasons.append(f"holds {round(share * 100)}% of its epic's cost — not atomic")
-            if reasons:
+            if share > dominance and us_per_epic[epic_id] >= 3:
                 coarse.append({"id": s.id, "title": s.title, "cost_usd": round(cost, 4),
-                               "epic_share": round(share, 3), "reasons": reasons,
+                               "epic_share": round(share, 3),
+                               "reason": f"holds {round(share * 100)}% of a {us_per_epic[epic_id]}-US "
+                                         "epic's cost — likely an umbrella, not atomic",
                                "fix": "decompose into the real atomic US (one per thing done) "
                                       "and re-attribute"})
+            elif cost > coarse_usd:
+                expensive.append({"id": s.id, "title": s.title, "cost_usd": round(cost, 4),
+                                  "note": "expensive but may be atomic — optimize (see cache "
+                                          "efficiency), only decompose if it does >1 thing"})
         empty_features = [{"id": f.id, "title": f.title} for f in b.features
                           if stories_of_feat[f.id] == 0]
         empty_features += [{"id": f.id, "title": f.title, "issue": "feature has no parent epic"}
                            for f in b.features if f.epic_id not in epic_ids]
         coarse.sort(key=lambda x: -x["cost_usd"])
+        expensive.sort(key=lambda x: -x["cost_usd"])
         return {
-            "coarse_us": coarse, "orphan_us": orphans, "empty_features": empty_features,
+            "coarse_us": coarse, "expensive_us": expensive, "orphan_us": orphans,
+            "empty_features": empty_features,
             "thresholds": {"coarse_usd": coarse_usd, "dominance": dominance},
             "ok": not (coarse or orphans or empty_features),
         }
