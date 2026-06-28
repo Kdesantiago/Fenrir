@@ -63,17 +63,26 @@ const fmtRel = (iso) => {
   if (s < 0) return fmtWhen(iso);            // future/clock-skew -> show absolute
   if (s < 45) return "just now";
   if (s < 90) return "1m ago";
-  const m = s / 60;
-  if (m < 60) return Math.round(m) + "m ago";
-  const h = m / 60;
-  if (h < 24) return Math.round(h) + "h ago";
-  const days = h / 24;
-  if (days < 7) return Math.round(days) + "d ago";
-  return fmtWhen(iso);                        // older than a week -> absolute date
+  // Round each unit, but NEVER emit an overflowed unit: if the rounded value reaches the
+  // unit ceiling (60m, 24h, 7d) it rolls up to the next unit (e.g. 59.6m -> "1h ago",
+  // ~23.6h -> "1d ago", ~6.6d -> absolute date). Avoids "60m/24h/7d ago" at boundaries.
+  const m = Math.round(s / 60);
+  if (m < 60) return m + "m ago";
+  const h = Math.round(s / 3600);
+  if (h < 24) return h + "h ago";
+  const days = Math.round(s / 86400);
+  if (days < 7) return days + "d ago";
+  return fmtWhen(iso);                        // a week or older -> absolute date
 };
 // Build a timestamp cell span: relative text + absolute datetime on `title` hover.
 // Single render path for every timestamp in the UI (US-106 / spec dashboard-ux-evolve US-3).
-const whenEl = (iso) => el("span", { class: "when", title: iso ? fmtWhen(iso) : null, text: fmtRel(iso) });
+// FIX 2 (degenerate tooltip): parse the iso ONCE here. The absolute datetime only lands on
+// `title` when the date is valid; a truthy-but-unparseable iso gets NO tooltip (null) instead
+// of a useless "—" hover over a "—" cell. Relative text still falls back to "—" via fmtRel.
+const whenEl = (iso) => {
+  const valid = iso && !isNaN(new Date(iso));
+  return el("span", { class: "when", title: valid ? fmtWhen(iso) : null, text: fmtRel(iso) });
+};
 
 const PALETTE = ["#6366f1", "#22d3ee", "#34d399", "#fbbf24", "#f87171", "#c084fc", "#f472b6", "#38bdf8", "#a3e635", "#fb923c"];
 const colorFor = (str) => {
@@ -211,7 +220,12 @@ async function loadOverview() {
     renderByDay(byday);
     renderByModel(bymodel);
     renderSource(agents.by_source);
-    try { await ensureCosts(); renderTopSpenders(); } catch { /* top-spenders stays empty if costs unavailable */ }
+    // FIX 3 (us-105 staleness): loadOverview() re-runs every 20s with the live-refresh
+    // interval, but ensureCosts() is a no-op once costs is cached → Top-spenders froze while
+    // the KPIs on the same refresh tracked live spend. Use the FRESH cost path (refreshCosts
+    // invalidates + refetches) so Top-spenders moves with the KPIs. No EXTRA fetch beyond the
+    // existing 20s Overview cadence — it's one /api/board/costs per Overview load, same as before.
+    try { await refreshCosts(); renderTopSpenders(); } catch { /* top-spenders stays empty if costs unavailable */ }
   } catch (e) {
     stateMsg(body, { icon: ICON_ERR, title: "Couldn’t load telemetry", msg: e.message, error: true });
   }
