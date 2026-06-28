@@ -4,6 +4,10 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-06-28
+
+> **Epic 7 — Board automation, governance & process.** Minor bump per the new cadence: an epic finished. Per-US cost is now automatic + mandatory (commit-time attribution), the board auto-rolls status + writes an epic-close retrospective, compaction is subject-focused, the DAT agent landed, and the release cadence is encoded. See `docs/delivery-memory/retros/epic-7-*.md`.
+
 ### Changed
 - **`release` skill — versioning cadence rule** — the SemVer bump now follows **delivery**, not a raw commit-type tally: a **feature PR merged → patch +1**; an **epic finished** (its last US reaches `done`) **→ minor +1, patch → 0**; a **breaking change → major**. A minor line accumulates one patch per feature PR and graduates to the next minor when its epic completes (the epic's retro is that minor's "what shipped"). The skill consults the board (an epic with a `→ done` transition after the last tag's date = minor) and commits (breaking detection); SKILL + VERIFY updated.
 
