@@ -1,6 +1,6 @@
 ---
 name: caching
-description: Use when adding a cache layer — pick the pattern (cache-aside/read-through), design keys + TTL, and wire the invalidation, stampede protection, and stale-data safeguards a naive cache omits. Triggers — "add caching", "cache this query/response", "Redis cache", "reduce DB/LLM load", "cache invalidation", "why is cached data stale". NOT for runtime feature flags (feature-flags), NOT for the vector store (retriever), NOT for a CDN/edge cache, NOT for a messaging idempotency-key store (event-driven). Reads org-profile.yaml `platform`/`framework`; refuses on mismatch.
+description: Use when adding a cache layer — pick the pattern (cache-aside/read-through), design keys + TTL, and wire the invalidation, stampede protection, and stale-data safeguards a naive cache omits. Triggers — "add caching", "cache this query/response", "Redis cache", "reduce DB/LLM load", "cache invalidation", "why is cached data stale". NOT for runtime feature flags (feature-flags), NOT for the vector store (retriever), NOT for a CDN/edge cache, NOT for messaging dedup keys/lookup (event-driven). Reads org-profile.yaml `platform`/`framework`; refuses on mismatch.
 ---
 
 # Caching — the defenses a naive cache forgets
@@ -17,7 +17,7 @@ This skill is advisory — it designs the cache (pattern, key/TTL scheme, invali
 - Runtime feature flags / config that flips at runtime → `feature-flags` (a config store with a different consistency model, not a TTL cache)
 - Vector / embedding / semantic store → `retriever` (similarity search, not key→value caching)
 - CDN / static-asset / edge caching → out of scope (different layer; say so and stop)
-- An idempotency-key / dedup store for messaging → `event-driven` (owns consumer dedup; this is not a message cache)
+- The dedup KEY + lookup-on-consume for messaging → `event-driven` (it owns the key + the dedup decision; THIS skill owns that store's TTL / eviction / stampede mechanics)
 
 ## Inputs
 - `org-profile.yaml` → `platform` and `framework` — REQUIRED. `platform` picks the backing store + auth wiring (Azure → Azure Cache for Redis via managed identity); `framework` picks the client integration (fastapi → async client + dependency; streamlit → cached resource). Refuse on mismatch/unset.
