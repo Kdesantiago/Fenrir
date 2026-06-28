@@ -692,16 +692,20 @@ function storyCard(s) {
   ]));
   card.append(meta);
 
+  // US cost — the authoritative rollup from /api/board/costs (own work_log + its tasks, with
+  // cache), so the card matches the cost table and modal exactly. ALWAYS shown (incl. $0) so a
+  // missing cost reads as a gap to fix, not a hidden value. Falls back to work_log if costs
+  // aren't loaded yet.
+  const cs = costs && costs.stories && costs.stories[s.id];
   const wl = s.work_log || [];
-  if (wl.length) {
-    const tok = wl.reduce((a, w) => a + (w.input_tokens || 0) + (w.output_tokens || 0), 0);
-    const cost = wl.reduce((a, w) => a + (w.cost_usd || 0), 0);
-    card.append(el("div", { class: "card-worklog" }, [
-      el("span", { class: "muted", text: "US cost" }),
-      el("span", { class: "cost", style: "color:var(--good)", text: fmtUsd4(cost) }),
-      el("span", { class: "muted", text: `· ${fmtTok(tok)} tok` }),
-    ]));
-  }
+  const cost = cs ? cs.cost_usd : wl.reduce((a, w) => a + (w.cost_usd || 0), 0);
+  const tok = cs ? (cs.input_tokens + cs.output_tokens)
+    : wl.reduce((a, w) => a + (w.input_tokens || 0) + (w.output_tokens || 0), 0);
+  card.append(el("div", { class: "card-worklog" }, [
+    el("span", { class: "muted", text: "US cost" }),
+    el("span", { class: "cost", style: `color:${cost > 0 ? "var(--good)" : "var(--muted)"}`, text: fmtUsd4(cost) }),
+    el("span", { class: "muted", text: `· ${fmtTok(tok)} tok` }),
+  ]));
 
   const open = () => openStoryDetail(s);
   card.addEventListener("click", open);

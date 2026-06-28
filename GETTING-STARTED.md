@@ -109,7 +109,8 @@ local       delivery-gates skill   →   pre-commit hooks (commit/push)
                                        + in-session .claude hooks (agent guard + security:
                                          deny --no-verify/secret-exfil/zero-access, injection scans)
                                        + delivery-tracking hooks (auto-trace work to a US +
-                                         attribute cost; tracking-guard gates git commit)
+                                         attribute each commit's cost to its US; tracking-guard
+                                         gates git commit, tracking-attribute charges it)
 merge       reviewer subagent      →   CI required-checks (incl. delivery-trace)
             /fenrir:ship pre-PR review        + branch-protection-as-code  ← the real block
 ```

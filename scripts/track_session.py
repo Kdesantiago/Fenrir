@@ -15,11 +15,14 @@ Tracking must never block delivery by accident. The only place that can DENY is 
 and only in opt-in strict mode (see tracking-guard.py).
 
 Commands
-  ensure-us   --session ID [--summary TXT] [--branch B]   -> ensure an active US exists; print it
-  collect-run --session ID --run RUN_ID [--type T]        -> ledger a finished subagent run
-  finalize    --session ID [--summary TXT]                -> ensure-us + attribute real cost
-  check       --session ID                                -> exit 0 if the session is traced, 3 if not
-  status      [--session ID]                              -> print the current tracking state (JSON)
+  ensure-us        --session ID [--summary TXT] [--branch B]  -> ensure an active US exists; print it
+  set-us           --id US --session ID                       -> steer the active US (records a uslog point)
+  collect-run      --session ID --run RUN_ID [--type T]       -> ledger a finished subagent run
+  attribute-commit --session ID [--id US]                     -> at a git commit, flush the cost since the
+                                                                 last commit to the US that commit delivers
+  finalize         --session ID [--summary TXT]               -> ensure-us + attribute real cost
+  check            --session ID                               -> exit 0 if the session is traced, 3 if not
+  status           [--session ID]                             -> print the current tracking state (JSON)
 
 Pure stdlib.
 """
@@ -28,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import date, datetime
@@ -115,6 +119,24 @@ def _branch() -> str:
         except Exception:
             pass
     return "detached"
+
+
+_US_RE = re.compile(r"\bus-\d+\b", re.IGNORECASE)
+
+
+def _head_commit_us() -> str:
+    """The US the HEAD commit declares (first `us-N` in its message), '' if none.
+    The delivery-trace gate already pushes work to reference a US, so commits usually carry one."""
+    try:
+        r = subprocess.run(["git", "log", "-1", "--pretty=%B"],
+                           cwd=_root(), capture_output=True, text=True, timeout=3)
+        if r.returncode == 0:
+            m = _US_RE.search(r.stdout or "")
+            if m:
+                return m.group(0).lower()
+    except Exception:
+        pass
+    return ""
 
 
 # --------------------------------------------------------------------------- board CLI
@@ -326,6 +348,45 @@ def cmd_finalize(a) -> int:
     return 0
 
 
+def cmd_attribute_commit(a) -> int:
+    """At a git commit, charge the cost accrued SINCE THE LAST COMMIT to the US that commit
+    delivers. The commit is the unit of attribution: "work since the previous commit → THIS
+    commit's US". The US is resolved in order: --id, the first `us-N` in the HEAD commit message
+    (the delivery-trace gate makes commits reference one), the current active US, else a
+    catch-all. It sets that US active (recording a uslog boundary), then reconciles — the
+    main-thread watermark delta lands on THIS US, subagent runs on the US active when each ran.
+    Idempotent (watermark + per-run keys) and fail-open. This is the half that makes per-US cost
+    AUTOMATIC + MANDATORY: it fires on every commit (a PostToolUse hook), no manual step."""
+    dash = _dash_dir()
+    if not dash:
+        return _skip("no dashboard companion app (tracking disabled)")
+    session = a.session or _read_active().get("session_id", "")
+    if not session:
+        return _skip("no session id")
+    us = (getattr(a, "id", "") or "").strip().lower() or _head_commit_us()
+    if not us:
+        us = _read_active().get("us_id", "")
+    if not us:  # nothing active and the commit names no US → guarantee a catch-all, then use it
+        cmd_ensure_us(a)
+        us = _read_active().get("us_id", "")
+    if not us:
+        return _skip("no US to attribute the commit to")
+    ids = {s.get("id") for s in _load_board(dash).get("stories", [])}
+    if ids and us not in ids:
+        return _skip(f"US {us} not on the board")
+    # set active (records the commit boundary in the uslog) then reconcile the delta onto it
+    cur = _read_active()
+    cur.update({"session_id": session, "us_id": us,
+                "at": datetime.now().astimezone().isoformat()})
+    _write_active(cur)
+    _append_uslog(session, us)
+    res = _cli(dash, "reconcile", "--session", session, "--current-us", us,
+               "--uslog", _uslog_path(session), "--watermark", _watermark_path(session))
+    print(json.dumps({"tracking": "commit-attributed", "session_id": session,
+                      "us_id": us, "result": res or "skipped (CLI unavailable)"}))
+    return 0
+
+
 def cmd_check(a) -> int:
     """Exit 0 if traced, 3 if not. Used by the guard. Fail-open (0) when no dashboard."""
     dash = _dash_dir()
@@ -367,6 +428,10 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("collect-run"); a.add_argument("--session", default="")
     a.add_argument("--run", default=""); a.add_argument("--type", default="")
     a.set_defaults(fn=cmd_collect_run)
+
+    a = sub.add_parser("attribute-commit"); a.add_argument("--session", default="")
+    a.add_argument("--id", default=""); a.add_argument("--summary", default="")
+    a.add_argument("--branch", default=""); a.set_defaults(fn=cmd_attribute_commit)
 
     a = sub.add_parser("finalize"); a.add_argument("--session", default="")
     a.add_argument("--summary", default=""); a.add_argument("--branch", default="")
