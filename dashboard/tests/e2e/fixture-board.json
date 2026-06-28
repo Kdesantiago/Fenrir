@@ -1,0 +1,98 @@
+{
+  "epics": [
+    {
+      "id": "epic-1",
+      "title": "Authentication platform",
+      "description": "",
+      "status": "backlog",
+      "color": "#6366f1",
+      "created": "2026-06-28T21:40:18.894691+00:00",
+      "transitions": []
+    }
+  ],
+  "features": [
+    {
+      "id": "feat-1",
+      "epic_id": "epic-1",
+      "title": "Login and sessions",
+      "description": "",
+      "status": "backlog",
+      "transitions": []
+    }
+  ],
+  "stories": [
+    {
+      "id": "us-1",
+      "feature_id": "feat-1",
+      "title": "Password reset flow",
+      "status": "backlog",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "coder",
+          "subagent_type": "",
+          "session_id": "",
+          "run_id": "",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cache_write_tokens": 0,
+          "cache_read_tokens": 0,
+          "cost_usd": 12.5,
+          "source": "manual",
+          "note": "fixture spend us-1",
+          "at": "2026-06-28T19:40:26.880616+00:00"
+        }
+      ],
+      "transitions": []
+    },
+    {
+      "id": "us-2",
+      "feature_id": "feat-1",
+      "title": "OAuth single sign-on",
+      "status": "backlog",
+      "assignee": "architect",
+      "points": 8,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "architect",
+          "subagent_type": "",
+          "session_id": "",
+          "run_id": "",
+          "input_tokens": 3000,
+          "output_tokens": 1000,
+          "cache_write_tokens": 0,
+          "cache_read_tokens": 0,
+          "cost_usd": 3.25,
+          "source": "manual",
+          "note": "fixture spend us-2",
+          "at": "2026-06-28T21:25:26.908996+00:00"
+        }
+      ],
+      "transitions": []
+    },
+    {
+      "id": "us-3",
+      "feature_id": "feat-1",
+      "title": "Logout button widget",
+      "status": "backlog",
+      "assignee": "reviewer",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    }
+  ],
+  "tasks": []
+}
