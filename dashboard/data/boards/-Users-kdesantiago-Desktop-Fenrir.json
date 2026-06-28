@@ -166,6 +166,16 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:01:36.283782+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T18:14:38.277668+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:14:59.909377+00:00"
         }
       ]
     }
@@ -453,7 +463,7 @@
       "epic_id": "epic-8",
       "title": "Cost view: scope + sane default ordering",
       "description": "Filter spend by epic/feature; default-sort by date, price opt-in.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -464,6 +474,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:01:36.283782+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:14:38.277668+00:00"
         }
       ]
     },
@@ -472,12 +487,17 @@
       "epic_id": "epic-8",
       "title": "Specialized-agent-by-default delivery + mandatory QA & red-team gate",
       "description": "Fenrir commands route to the pertinent specialist; QA + red-team always validate before ship.",
-      "status": "todo",
+      "status": "in_progress",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.587257+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:14:59.909377+00:00"
         }
       ]
     },
@@ -5073,7 +5093,7 @@
       "id": "us-75",
       "feature_id": "feat-26",
       "title": "Filter the cost view by epic and feature",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5082,7 +5102,50 @@
       "acceptance_criteria": [
         "cost-breakdown + trace can filter by epic and by feature, independent of the kanban granularity"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a12796e7a8fbd520f",
+          "input_tokens": 5176,
+          "output_tokens": 14661,
+          "cache_write_tokens": 81269,
+          "cache_read_tokens": 1366328,
+          "cost_usd": 1.5835,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:13:35.242599+00:00"
+        },
+        {
+          "agent": "fenrir:qa-tester",
+          "subagent_type": "fenrir:qa-tester",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a2ae390fdcdddc4b1",
+          "input_tokens": 7632,
+          "output_tokens": 3458,
+          "cache_write_tokens": 87395,
+          "cache_read_tokens": 237364,
+          "cost_usd": 0.7895,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:13:35.242599+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 2067,
+          "output_tokens": 77280,
+          "cache_write_tokens": 104459,
+          "cache_read_tokens": 34830712,
+          "cost_usd": 20.40228,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:13:35.242599+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5098,6 +5161,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:13:11.157841+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:14:38.092448+00:00"
         }
       ]
     },
@@ -5105,7 +5173,7 @@
       "id": "us-76",
       "feature_id": "feat-26",
       "title": "Default cost ordering by date (newest→oldest); price is opt-in",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5130,6 +5198,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:13:11.326375+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:14:38.277668+00:00"
         }
       ]
     },
@@ -5137,7 +5210,7 @@
       "id": "us-77",
       "feature_id": "feat-27",
       "title": "Fenrir commands route to the relevant specialized agent by default",
-      "status": "todo",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "developer",
@@ -5152,6 +5225,16 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.587257+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:14:59.909377+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:21:45.165570+00:00"
         }
       ]
     },
@@ -5159,7 +5242,7 @@
       "id": "us-78",
       "feature_id": "feat-27",
       "title": "Always run qa-tester + red-team-destroyer to validate before ship",
-      "status": "todo",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5174,6 +5257,16 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.752830+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:15:00.075790+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:21:45.390330+00:00"
         }
       ]
     },

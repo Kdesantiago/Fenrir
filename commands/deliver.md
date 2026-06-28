@@ -1,10 +1,10 @@
 ---
-description: Orchestrate the full delivery pipeline (architect → coder → qa-tester → reviewer → delivery-gates → PR) adaptively, routing light vs full by a deterministic diff/risk computation, with a disk spec artifact as ground truth and a git checkpoint per stage.
+description: Orchestrate the full delivery pipeline adaptively — route the design/build to the PERTINENT specialist agent by request type (azure-architect, dat-architect, api-first, data-model, iac-gen…; generic architect/coder only as fallback), with a MANDATORY qa-tester + red-team-destroyer validation gate at the end of EVERY route, a disk spec artifact as ground truth, and a git checkpoint per stage. Light vs full (diff/risk-computed) only changes design/review overhead, never whether the change is validated.
 ---
 
 # /fenrir:deliver
 
-Orchestrate a change from intent to a ready-to-open PR. Routing and gating are **deterministic** (computed by shell/git), never an LLM vibe. Every subagent has ISOLATED context, so the **spec artifact on disk is the single source of truth** they each re-read. This command does NOT enforce merge — the real gate is CI required-checks + branch-protection (infra). It prepares the PR; infra decides if it merges.
+Orchestrate a change from intent to a ready-to-open PR. **Route selection** (light vs full) is **deterministic** (computed by shell/git, never an LLM vibe); the **validation-gate verdict** (qa + red-team) is an LLM judgment, advisory-with-stop. Every subagent has ISOLATED context, so the **spec artifact on disk is the single source of truth** they each re-read. This command does NOT enforce merge — the real gate is CI required-checks + branch-protection (infra). It prepares the PR; infra decides if it merges.
 
 ## 0. Preconditions
 - Confirm `org-profile.yaml` exists at repo root and a clean-enough working tree. If no profile, STOP and route to `repo-bootstrap`.
@@ -36,27 +36,59 @@ For a not-yet-coded feature with no diff, derive FILES/LOC/RISK from the spec's 
 
 **Route by rule:**
 - **`light` (hotfix)** when `RISK == 0` AND `FILES <= 5` AND `LOC <= 80`.
-  Pipeline: **coder → delivery-gates → ship**. (No architect/qa-tester/reviewer overhead.)
+  Pipeline: **(specialist) coder → qa-tester → red-team-destroyer → delivery-gates → ship**. (Skips the architect/ADR + reviewer-hygiene overhead — but NOT validation.)
 - **`full` (feature)** otherwise — any risk-path hit, OR larger diff.
-  Pipeline: **architect → coder → qa-tester → reviewer → delivery-gates → ship**.
+  Pipeline: **(specialist) architect → coder → qa-tester → /code-review → reviewer → red-team-destroyer → delivery-gates → ship**.
 
-Record the chosen route + the three numbers in the spec ledger. Routing is reproducible: same diff → same route.
+**The QA + red-team validation at the end runs on BOTH routes** — `qa-tester` then `red-team-destroyer` review the *actual change* before ship. Routing decides the *design/review* overhead (architect, ADR, hygiene reviewer), never whether the change is looked at. Two right-sizing rules so this doesn't gut `light`:
+- **Proportionality (`light` only):** when the change is **≤20 LOC or has no executable lines** (typo / version bump / comment / docs / config), `qa-tester` is **skipped** and `red-team-destroyer` runs **advisory** (log its verdict, do NOT stop). A `light` change with real logic gets the full blocking gate.
+- **Severity threshold:** only **critical/high** findings (or a `REDESIGN`/`FIX-FIRST` driven by them) block; medium/low from any reviewer are advisory.
+
+**Route selection (light/full) is deterministic** (the shell numbers above — same diff → same route). The validation-gate *verdict* is an LLM judgment, intentionally advisory-with-stop, not a deterministic computation. Record the chosen route + the three numbers in the spec ledger.
+
+## 2b. Pick the SPECIALIST agent (by request type — default, not opt-in)
+Specialized subagents are the **default** for Fenrir commands: route the design/build stages to the *pertinent* specialist instead of always the generic `architect`/`coder`. Decide from the request + the spec's affected paths + `org-profile.yaml`:
+
+| The work is about… | Design/build via |
+|---|---|
+| Azure infra/sizing/region/SKU decision | `azure-architect` (ADR) → `iac-gen` |
+| A full technical-architecture doc | `dat-architect` |
+| An API contract / endpoint | `api-first` |
+| DB schema / query / index | `data-model` → `db-migration` |
+| IaC / Helm / App Service | `iac-gen` (via `stack-adapter` if `stack-interface.yaml`) |
+| Auth / OIDC wiring | `auth-gen` |
+| Observability / SLO / alerts | `observability-gen` |
+| LLM client / RAG / LangGraph | `llm-gen` / `retriever` / `langgraph-workflow` |
+| Context-window / prompt design | `context-engineering` |
+| Live Azure incident / cost / WAF | `azure-sre` / `azure-cost` / `azure-waf` |
+| Frontend / UI component or page | `frontend-gen` |
+| Scheduled / recurring job | `cronjob` |
+| Security review / hardening of a diff | `security-review` (skill) / `security-guardrail` |
+| Refactor / simplify — no behavior change | `coder` directly (no architect/ADR) |
+| Docs / config / process / prompt-only change | no architect — `coder` or a direct edit; `qa-tester` skipped (§3) |
+| Generic app feature / fix, no specialist fits | `architect` (full) → `coder` |
+
+Record the chosen specialist in the spec ledger. The generic `architect`/`coder` is the **fallback** for a genuine feature with no matching specialist — when **no row matches at all, route to plain `coder`, do NOT force-fit a specialist**. (A docs/config/refactor change routed `light` by §2 must NOT be dragged into the full architect pipeline by this table — the §2 route wins.)
 
 ## 3. Run the pipeline with a CHECKPOINT per stage
 Work on a dedicated branch: `git switch -c deliver/<slug>` (or reuse if resuming).
 Before each stage, snapshot: commit WIP or `git stash push -m "deliver:<slug>:<stage>"`, and record the ref in the ledger.
 
-- **architect** (full only): reads spec → writes `docs/adr/NNNN-*.md`, sets the decision the coder builds against.
-- **red-team** (full + risk-path diffs only): `red-team-destroyer` attacks the ADR before any code is written. Parse its final `VERDICT:` line — `REDESIGN` is treated like reviewer=BLOCK (STOP, loop back to architect); `FIX-FIRST` means fold its findings into the spec before coding; `SHIP` proceeds.
-- **coder**: delegate to the **`coder` subagent** to implement against the spec + ADR. Running it as a subagent means its token spend lands in `toolUseResult` and is attributable to the US (see §6). It returns files touched + what it ran.
-- **qa-tester** (full only): reads spec/ADR → writes new tests + any bug repro; must run them and report real results.
+- **architect / specialist** (full only): the §2b specialist (or generic `architect`) reads spec → writes `docs/adr/NNNN-*.md`, sets the decision the build stage implements against.
+- **ADR red-team** — ledger stage `adr-redteam` (full + risk-path diffs only): `red-team-destroyer` attacks the **ADR** *before* code is written; its verdict line must name the stage (`VERDICT(adr): …`). `REDESIGN` = STOP, loop to architect; `FIX-FIRST` = fold into the spec before coding; `SHIP` proceeds. Distinct from the final `diff-redteam` below (different artifact, different ledger entry — resume can tell them apart).
+- **coder / specialist generator**: delegate to the §2b build agent (the `coder` subagent, or the matching generator skill) to implement against the spec + ADR. Running it as a subagent means its token spend lands in `toolUseResult` and is attributable to the US (see §6). It returns files touched + what it ran.
 - **doc-keeper** (both): syncs `CHANGELOG.md` + affected README(s)/API-docs to the diff BEFORE review (so the changelog entry reviewer checks for already exists). Idempotent.
 - **native correctness review** (full only): run `/code-review` **from this command body** (the main thread can use SlashCommand; a subagent cannot). Capture its findings as text.
 - **reviewer** (full only): pass it the captured `/code-review` findings + the diff → it adds org PR-hygiene (conventional title, ADR link, changelog, profile) and returns a single advisory merge-ready verdict. It does NOT re-run `/code-review` itself.
+
+### Validation gate — runs LAST before ship (right-sized per §2)
+- **qa-tester** — ledger stage `qa` (both routes, unless skipped by §2 proportionality): writes new tests + any bug repro for the change and runs them. **Pass criterion:** the *new-coverage* tests are green AND any bug-repro **passes after the fix** — a repro that fails *before* the fix is qa's expected output, NOT a gate failure. Report real results.
+- **diff red-team** — ledger stage `diff-redteam` (both routes; advisory-only on a `light` proportional change): `red-team-destroyer` adversarially reviews the **actual diff** — every bug, footgun, data-loss path, gate weakening; verdict line names the stage (`VERDICT(diff): …`). A `REDESIGN`/`FIX-FIRST` driven by **critical/high** findings is a hard failure (STOP per §4); medium/low are advisory; `SHIP` proceeds.
 - **delivery-gates** (both): lint/type/test/coverage on the diff for fast local feedback. Advisory.
 
 ## 4. Failure handling — STOP, do not open a PR
-- **Hard failure** (a stage errors, gates fail, reviewer verdict = BLOCK, red-team verdict = REDESIGN, qa repro still failing): STOP immediately. Do NOT proceed to ship/PR. Record the failing stage + checkpoint ref in the ledger and report.
+- **Hard failure** (a stage errors, gates fail, reviewer = BLOCK, either red-team — `adr-redteam` or `diff-redteam` — returns `REDESIGN`/`FIX-FIRST` on **critical/high** findings, or `qa`'s new-coverage tests are red / a repro still fails after the fix): STOP immediately. Do NOT ship/PR. Record the failing stage + checkpoint ref and report. A `FIX-FIRST` means fold the fixes in and re-validate, not ship-anyway.
+- **Bounded re-validation (no infinite loop).** Re-validate at most **twice**; on a 3rd non-`SHIP`, STOP and hand the findings to a human — do not keep looping (the red-team's mandate guarantees it can always find *something*; only critical/high may block, medium/low are advisory). The loop has a hard ceiling.
 - **Resume**: re-invoking `/fenrir:deliver` reads the ledger, restores the last good checkpoint, and re-enters at the first non-passed stage — earlier passed stages are not redone.
 
 ## 5. Hand off to ship (only if every stage passed)
