@@ -58,7 +58,7 @@
       "id": "epic-7",
       "title": "Board automation, governance & process v1.5",
       "description": "Status rollup + draggable epic/feature, epic-close retrospectives, subject-focused context compaction, DAT agent, versioning rule (feature→patch, epic→minor).",
-      "status": "in_progress",
+      "status": "todo",
       "color": "#a855f7",
       "created": "2026-06-28T16:16:45.948910+00:00",
       "transitions": [
@@ -116,6 +116,11 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T17:14:48.568193+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T17:16:01.033411+00:00"
         }
       ]
     }
@@ -360,12 +365,17 @@
       "epic_id": "epic-7",
       "title": "Versioning rule (feature→patch, epic→minor) + bump v1.5",
       "description": "",
-      "status": "in_progress",
+      "status": "todo",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T17:14:48.568193+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T17:16:01.033411+00:00"
         }
       ]
     },
@@ -4721,7 +4731,7 @@
       "id": "us-70",
       "feature_id": "feat-24",
       "title": "release skill: feature-PR→patch+1, epic-done→minor bump; encode + document",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4730,7 +4740,22 @@
       "acceptance_criteria": [
         "rule in release skill"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1227,
+          "output_tokens": 24351,
+          "cache_write_tokens": 32505,
+          "cache_read_tokens": 8879422,
+          "cost_usd": 5.379671,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:15:12.477437+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -4741,6 +4766,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:14:48.568193+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:16:01.033411+00:00"
         }
       ]
     },
