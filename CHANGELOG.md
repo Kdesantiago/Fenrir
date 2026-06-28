@@ -4,6 +4,10 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-06-28
+
+> **Epic 9 — Tech-lead & AI-architect workflow completion.** Minor bump (an epic finished, per the cadence). Self-documenting dashboard (Reference catalog + live orchestration), AI-threat-model + tech-debt skills, multi-US planning + announced/delegated/**caveman-forced** subagents, merged-branch hygiene, the **git-root project fix** (no more phantom `-dashboard` project / board wipes), **time-swept per-US cost** (conserved, no lump/leak), architect-led planning + generators-as-specialized-coders, and the **`/fenrir:auto`** meta-orchestrator (stops at the human merge gate). Eight feature PRs (#20–#27) patch-bumped 1.6.1→1.6.8; this minor closes the epic. See `docs/delivery-memory/retros/epic-9-*.md`.
+
 ### Added
 - **`/fenrir:auto` — autonomous plan→deliver→ship** (7 commands, epic-9 feat-35) — chains the golden path for one feature with a checkpoint per stage, **stopping on any gate/validation failure and NEVER merging** (the human merge is the terminal step, by design — automate the chores, not the judgment). Routes through `/fenrir:plan` (architect ADR) → `/fenrir:deliver` (one US at a time, specialist + qa + red-team gate) → `/fenrir:ship` **PR-open steps only** (explicitly NOT ship's post-merge block). red-teamed FIX-FIRST → **the critical merge-inheritance hole closed** (auto scopes ship to non-merge steps), a testable scope guard (steelman + one acceptance criterion, else challenge-me), `FIX-FIRST`/critical added to the stop list, a **blast-radius announce + >6-US human-ack ceiling**, CI-pending → stop-don't-poll, no re-plan loop, and a gate-armed precheck.
 
