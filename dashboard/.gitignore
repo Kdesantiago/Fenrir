@@ -1,0 +1,7 @@
+# Isolated Node/Playwright harness (ADR 0003) — local-only, never committed.
+node_modules/
+test-results/
+playwright-report/
+.playwright/
+blob-report/
+playwright/.cache/
