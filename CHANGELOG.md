@@ -5,6 +5,7 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 ## [Unreleased]
 
 ### Added
+- **Cost view: scope by epic/feature + sane default ordering** (epic-8) — the Cost-trace view (rollup table + chronological arrivals) can now **filter by epic and by feature** (cascading: feature options scope to the chosen epic, US to the chosen feature), not just by US. `BoardStore.trace()` gained `feature_id`/`epic_id` filters and tags every row with its `feature_id`/`epic_id`; exposed via `/api/trace?feature=&epic=` and `cli trace --feature/--epic`. **Arrivals now default to newest-first by date** (recent work is what you look at) — sort-by-cost is an explicit toggle, not the default (`cli trace --oldest-first` for ascending). At epic grain only the epic filter applies (a feature filter can't meaningfully refine an epic rollup). 7 new tests.
 - **Merged branches are auto-deleted** (epic-8) — no more stale-branch pile-up. The repo's `delete_branch_on_merge` is enabled (and documented in `branch-protection.tf` + armed by `repo-bootstrap`) so the **remote** head branch is removed on merge; `/fenrir:ship` now also deletes the **local** branch after merge (a squash-merge isn't detected by `git branch --merged`, so locals otherwise accumulate) and prunes stragglers. The 6 leftover local branches from the v1.5 cycle were removed.
 
 ## [1.5.0] — 2026-06-28

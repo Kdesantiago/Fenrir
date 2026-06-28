@@ -98,9 +98,10 @@ def test_costs_rollup_with_by_agent(tmp_path):
 
 def test_trace_flatten_and_filter(tmp_path):
     s = _board_with_work(tmp_path)
-    allrows = s.trace()
+    allrows = s.trace(newest_first=False)  # ascending, to assert chronological order explicitly
     assert len(allrows) == 2
-    assert [r["kind"] for r in allrows] == ["story", "task"]  # sorted by `at`
+    assert [r["kind"] for r in allrows] == ["story", "task"]  # sorted by `at` (oldest first)
+    assert [r["kind"] for r in s.trace()] == ["task", "story"]  # default is now newest-first
     only = s.trace("us-1")
     assert len(only) == 2 and all(r["us_id"] == "us-1" for r in only)
 

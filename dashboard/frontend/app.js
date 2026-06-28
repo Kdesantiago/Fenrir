@@ -106,6 +106,9 @@ const filters = { epic: "", assignee: "", granularity: "story" };
 let costs = null;            // cached /api/board/costs for the selected project's board
 let subagentSortByCost = true; // run table sort: true = cost desc, false = chronological (newest first)
 let traceUs = "";           // cost-trace US filter ("" = all)
+let traceEpic = "";         // cost-view epic filter ("" = all)
+let traceFeature = "";      // cost-view feature filter ("" = all)
+let traceSort = "date";     // cost arrivals sort: date (newest first, default) | cost (highest)
 let costGroupBy = "story";  // dynamic cost table: group by story | feature | epic
 
 // readable label from a project slug, e.g. "-Users-kdesantiago-Desktop-Fenrir" -> "Fenrir"
@@ -944,15 +947,44 @@ function renderStoryCost(target, r) {
 }
 
 /* ------------------------------------------------------------------ COST TRACE */
+// Resolve a story's epic id (reuses the object-based epicOfStory defined above).
+function epicIdOfStory(s) { const e = epicOfStory(s); return e ? e.id : ""; }
+function featOfStory(storyId) { const s = board.stories.find((x) => x.id === storyId); return s ? s.feature_id : ""; }
+function epicOfFeature(featureId) { const f = board.features.find((x) => x.id === featureId); return f ? f.epic_id : ""; }
+
 function populateTraceFilter() {
+  if (!board) return;
+  // Epic filter
+  const ep = $("#trace-epic");
+  if (ep) {
+    const prev = ep.value;
+    ep.innerHTML = '<option value="">All epics</option>';
+    board.epics.forEach((e) => ep.append(el("option", { value: e.id, text: `${e.id} · ${e.title}` })));
+    ep.value = board.epics.some((e) => e.id === prev) ? prev : "";
+    traceEpic = ep.value;
+  }
+  // Feature filter — scoped to the chosen epic
+  const fe = $("#trace-feature");
+  if (fe) {
+    const prev = fe.value;
+    fe.innerHTML = '<option value="">All features</option>';
+    board.features.filter((f) => !traceEpic || f.epic_id === traceEpic)
+      .forEach((f) => fe.append(el("option", { value: f.id, text: `${f.id} · ${f.title}` })));
+    fe.value = board.features.some((f) => f.id === prev && (!traceEpic || f.epic_id === traceEpic)) ? prev : "";
+    traceFeature = fe.value;
+  }
+  // User-story filter — scoped to the chosen feature/epic
   const sel = $("#trace-us");
-  if (!sel || !board) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="">All stories</option>';
-  board.stories.forEach((s) => sel.append(el("option", { value: s.id, text: `${s.id} · ${s.title}` })));
-  // keep the prior selection if the story still exists
-  sel.value = board.stories.some((s) => s.id === prev) ? prev : "";
-  traceUs = sel.value;
+  if (sel) {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">All stories</option>';
+    const inScopeUs = (s) => (!traceFeature || s.feature_id === traceFeature) && (!traceEpic || epicIdOfStory(s) === traceEpic);
+    board.stories.filter(inScopeUs)
+      .forEach((s) => sel.append(el("option", { value: s.id, text: `${s.id} · ${s.title}` })));
+    // keep prior selection ONLY if it still exists AND is in the current epic/feature scope
+    sel.value = board.stories.some((s) => s.id === prev && inScopeUs(s)) ? prev : "";
+    traceUs = sel.value;
+  }
 }
 
 const COST_LEVELS = { story: ["stories", "user story"], feature: ["features", "feature"], epic: ["epics", "epic"] };
@@ -989,7 +1021,25 @@ async function renderCostBreakdown() {
     ...cols.map((c) => el("th", { class: "num", text: c.label })),
   ]));
 
+  // Scope the rollup to the chosen epic/feature. At EPIC grain only the epic filter applies — a
+  // feature filter can't meaningfully refine an epic rollup (showing the full epic under a
+  // "feature" label would misrepresent the number), so it's ignored there by design.
+  const inScope = (id) => {
+    if (!traceEpic && !traceFeature) return true;
+    if (costGroupBy === "epic") return !traceEpic || id === traceEpic;
+    if (costGroupBy === "feature") {
+      if (traceEpic && epicOfFeature(id) !== traceEpic) return false;
+      if (traceFeature && id !== traceFeature) return false;
+      return true;
+    }
+    // story grain
+    const fId = featOfStory(id);
+    if (traceEpic && epicOfFeature(fId) !== traceEpic) return false;
+    if (traceFeature && fId !== traceFeature) return false;
+    return true;
+  };
   const rows = Object.entries(data).map(([id, v]) => ({ id, title: titles[id] || id, ...v }))
+    .filter((r) => titles[r.id] !== undefined && inScope(r.id))  // drop orphan/"" rollup keys
     .sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0));
   tbody.innerHTML = "";
   tfoot.innerHTML = "";
@@ -1016,13 +1066,17 @@ async function loadTrace() {
   const tfoot = $("#tbl-trace tfoot");
   tbody.innerHTML = "";
   tfoot.innerHTML = "";
-  tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "Loading…" })));
+  tbody.append(el("tr", {}, el("td", { colspan: "9", class: "muted", style: "text-align:center;padding:24px", text: "Loading…" })));
   try {
     const parts = [];
     if (traceUs) parts.push("us=" + encodeURIComponent(traceUs));
+    if (traceFeature) parts.push("feature=" + encodeURIComponent(traceFeature));
+    if (traceEpic) parts.push("epic=" + encodeURIComponent(traceEpic));
     const pq = projParam();          // "?project=<sel>" or ""
     if (pq) parts.push(pq.slice(1));
     const rows = await apiGet("/api/trace" + (parts.length ? "?" + parts.join("&") : ""));
+    // Backend returns newest-first by date (the default arrivals order); cost sort is opt-in.
+    if (traceSort === "cost") rows.sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0));
     renderTrace(rows);
   } catch (e) {
     tbody.innerHTML = "";
@@ -1201,7 +1255,16 @@ function initControls() {
     renderSubagentRuns();
   });
 
+  $("#trace-epic").addEventListener("change", (e) => {
+    traceEpic = e.target.value; traceFeature = ""; traceUs = "";  // re-scope children
+    populateTraceFilter(); loadTrace();
+  });
+  $("#trace-feature").addEventListener("change", (e) => {
+    traceFeature = e.target.value; traceUs = "";
+    populateTraceFilter(); loadTrace();
+  });
   $("#trace-us").addEventListener("change", (e) => { traceUs = e.target.value; loadTrace(); });
+  $("#trace-sort").addEventListener("change", (e) => { traceSort = e.target.value; loadTrace(); });
 
   $("#add-epic-btn").addEventListener("click", openAddEpic);
   $("#add-feature-btn").addEventListener("click", openAddFeature);
