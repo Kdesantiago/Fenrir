@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 47 skills, 14 subagents, 6 commands, and 15 hooks (safety + delivery-tracking). You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 47 skills, 14 subagents, 6 commands, and 16 hooks (safety + delivery-tracking). You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -69,7 +69,7 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Agents** | `architect`, `coder`, `context-engineering`, `qa-tester`, `reviewer`, `red-team-destroyer`, `doc-keeper`, `stack-adapter`, `security-guardrail`, `delivery-tracker`, `azure-architect`, `azure-sre`, `azure-deploy-verifier`, `dat-architect` |
 | **Commands** | `/fenrir:init` (new uv-workspace repo + gate), `/fenrir:challenge-me`, `/fenrir:plan` (plan-first: board breakdown before code), `/fenrir:deliver`, `/fenrir:ship`, `/fenrir:status` (tech-lead report) |
 | **Safety hooks** | block secret-exfil & gate-bypass, scan prompts/web for injection, keep docs in sync, audit config changes |
-| **Delivery-tracking hooks** | attribute each commit's real cost to the US it delivers (`tracking-attribute`, on every `git commit`), make tracing a commit obligatory (`tracking-guard`), ledger subagent runs + backstop the session tail (`tracking-collect`/`tracking-finalize`) — so **every US carries its real per-US cost automatically**; plus **subject-focused compaction** (`precompact-focus` snapshots the active-US dev subject before a compaction; `session-context` re-injects it after, so the summary serves the work in progress) and an **auto-retrospective** written to `docs/delivery-memory/retros/` when an epic closes; driven by the `delivery-tracker` agent |
+| **Delivery-tracking hooks** | attribute each commit's real cost to the US it delivers (`tracking-attribute`, on every `git commit`), make tracing a commit obligatory (`tracking-guard`), ledger subagent runs + backstop the session tail (`tracking-collect`/`tracking-finalize`) — so **every US carries its real per-US cost automatically**; plus **subject-focused compaction** (`precompact-focus` snapshots the active-US dev subject before a compaction; `session-context` re-injects it after, so the summary serves the work in progress), an **auto-retrospective** written to `docs/delivery-memory/retros/` when an epic closes, and a **branch→plan nudge** (`branch-plan-check` reminds you to `/fenrir:plan` when you create a feature branch with no board plan); driven by the `delivery-tracker` agent |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.
 

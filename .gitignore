@@ -14,3 +14,9 @@ sbom.json
 
 # delivery-tracking session state (not committed)
 .claude/tracking/
+
+# Per-project Agile boards = LOCAL RUNTIME STATE, not source. Costs derive from each
+# developer's own ~/.claude telemetry and the tracking hook re-saves the board after every
+# commit, so committing it just churns/conflicts and leaks one machine's cost data. The
+# dashboard regenerates it on demand; inspect structure via the dashboard / `cli list`, not git.
+dashboard/data/boards/

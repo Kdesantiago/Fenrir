@@ -1,14 +1,16 @@
 # Couche 0 — CI required status check: delivery-trace (GitHub Actions).
 # The AUTHORITATIVE half of "mandatory tracking". The in-session tracking-guard hook gives
-# fast local feedback (auto-creates a US); THIS check is the real gate: a PR cannot merge
-# unless its change is traced to a User Story that exists on the Agile board.
+# fast local feedback (auto-creates a US); THIS check is the merge gate for traceability: a PR
+# cannot merge unless its change REFERENCES a User Story (a `us-N`). Existence-on-board is
+# verified only when a board is committed — but boards are LOCAL runtime state (git-ignored),
+# so in practice this enforces "a US is referenced", not "that US exists" (honest scope).
 #
 # Add `delivery-trace` to branch-protection.tf required_checks to enforce it at merge.
 # Job `name:` MUST equal that required_checks context.
 #
-# Tracing rule: at least one commit message OR the PR body references a `us-<N>` id that
-# EXISTS in dashboard/data/board.json. No dashboard board in the repo → the check PASSES
-# (the board is a companion app; nothing to enforce against).
+# Tracing rule: at least one commit message OR the PR body references a `us-<N>` id. If a
+# committed board is present the id must EXIST in it; normally none is committed (boards are
+# local runtime state), so the check enforces only that a `us-<N>` is referenced.
 name: delivery-trace
 
 on:
