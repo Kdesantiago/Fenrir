@@ -255,7 +255,9 @@ function renderByDay(rows) {
     data: { labels, datasets: [{
       label: isCost ? "Cost (USD)" : "Tokens",
       data, borderColor: "#818cf8", backgroundColor: grad, fill: true,
-      tension: .35, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#818cf8",
+      // few points (esp. a single day) need a visible dot — a 1-point line draws no segment
+      tension: .35, borderWidth: 2, pointRadius: rows.length <= 2 ? 4 : 0,
+      pointBackgroundColor: "#818cf8", pointHoverRadius: 5, pointHoverBackgroundColor: "#818cf8",
     }] },
     options: {
       responsive: true, maintainAspectRatio: false,
