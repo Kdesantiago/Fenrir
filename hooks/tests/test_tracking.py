@@ -1,9 +1,10 @@
 """Tests for the Fenrir delivery-tracking infra.
 
-Covers the deterministic engine (scripts/track_session.py) and the three hooks:
-  - tracking-guard.py    (PreToolUse Bash — make tracing a git commit obligatory)
-  - tracking-collect.py  (SubagentStop — ledger a subagent run)
-  - tracking-finalize.py (SessionEnd — auto-attribute the session cost)
+Covers the deterministic engine (scripts/track_session.py) and the four hooks:
+  - tracking-guard.py     (PreToolUse Bash — make tracing a git commit obligatory)
+  - tracking-attribute.py (PostToolUse Bash — flush the commit's cost to its US)
+  - tracking-collect.py   (SubagentStop — ledger a subagent run)
+  - tracking-finalize.py  (SessionEnd — auto-attribute the session cost)
 
 Two tiers:
   * Safety units (no dashboard needed): the hooks must NEVER brick a session — they fail-open
@@ -27,6 +28,7 @@ ENGINE = ROOT / "scripts" / "track_session.py"
 GUARD = ROOT / "hooks" / "tracking-guard.py"
 COLLECT = ROOT / "hooks" / "tracking-collect.py"
 FINALIZE = ROOT / "hooks" / "tracking-finalize.py"
+ATTRIBUTE = ROOT / "hooks" / "tracking-attribute.py"
 
 DASH = ROOT / "dashboard"
 DASH_PY = DASH / ".venv" / "bin" / "python"
@@ -158,6 +160,70 @@ def test_collect_hook_noop_without_ids(tmp_path):
     p = run_hook(COLLECT, json.dumps({"foo": "bar"}), tmp_path)
     assert p.returncode == 0
     assert not (tmp_path / ".claude" / "tracking").exists()
+
+
+def test_attribute_hook_noop_on_non_commit(tmp_path):
+    # PostToolUse fires on every Bash; only a real `git commit` triggers attribution.
+    p = run_hook(ATTRIBUTE, commit_stdin(cmd="ls -la"), tmp_path)
+    assert p.returncode == 0
+    assert not (tmp_path / ".claude" / "tracking").exists()  # nothing written
+
+
+def test_attribute_hook_noop_on_amend(tmp_path):
+    p = run_hook(ATTRIBUTE, commit_stdin(cmd="git commit --amend --no-edit"), tmp_path)
+    assert p.returncode == 0
+    assert not (tmp_path / ".claude" / "tracking").exists()
+
+
+def test_attribute_hook_survives_junk(tmp_path):
+    p = run_hook(ATTRIBUTE, "}{ not json", tmp_path)
+    assert p.returncode == 0
+
+
+def test_attribute_hook_disabled_env(tmp_path):
+    p = run_hook(ATTRIBUTE, commit_stdin(cmd="git commit -m x"), tmp_path, FENRIR_TRACK_DISABLE="1")
+    assert p.returncode == 0
+    assert not (tmp_path / ".claude" / "tracking").exists()
+
+
+def test_attribute_hook_fail_open_without_dashboard(tmp_path):
+    # real commit, but no dashboard → engine skips, hook still exits 0 (never bricks the commit).
+    p = run_hook(ATTRIBUTE, commit_stdin(session="nodash", cmd="git commit -m work"), tmp_path)
+    assert p.returncode == 0
+
+
+def test_engine_attribute_commit_skips_without_dashboard(tmp_path):
+    p = run_engine(["attribute-commit", "--session", "s1", "--id", "us-7"], tmp_path)
+    assert p.returncode == 0
+    assert json.loads(p.stdout)["tracking"] == "skipped"
+
+
+@needs_dash
+def test_attribute_commit_explicit_id_attributes_main_delta(tmp_path):
+    # explicit --id wins; with a real board + a main-thread watermark delta, the cost lands on
+    # exactly that US. Telemetry comes from ~/.claude so we assert the entry/US, not an amount.
+    board = empty_board(tmp_path)
+    env = {"FENRIR_DASH_DIR": str(DASH), "FENRIR_DASH_BOARD": str(board)}
+    seeded = run_engine(["ensure-us", "--session", "sess-attr"], tmp_path, **env)
+    us = json.loads(seeded.stdout)["us_id"]
+    p = run_engine(["attribute-commit", "--session", "sess-attr", "--id", us], tmp_path, **env)
+    assert p.returncode == 0, p.stderr
+    out = json.loads(p.stdout)
+    assert out["tracking"] == "commit-attributed"
+    assert out["us_id"] == us
+    # a uslog boundary was recorded for the commit
+    uslog = tmp_path / ".claude" / "tracking" / "sess-attr.uslog.jsonl"
+    assert uslog.exists() and us in uslog.read_text()
+
+
+@needs_dash
+def test_attribute_commit_rejects_unknown_us(tmp_path):
+    board = empty_board(tmp_path)
+    env = {"FENRIR_DASH_DIR": str(DASH), "FENRIR_DASH_BOARD": str(board)}
+    run_engine(["ensure-us", "--session", "sess-u"], tmp_path, **env)
+    p = run_engine(["attribute-commit", "--session", "sess-u", "--id", "us-999"], tmp_path, **env)
+    assert p.returncode == 0
+    assert json.loads(p.stdout)["tracking"] == "skipped"  # phantom US not attributed
 
 
 def test_finalize_hook_disabled_env(tmp_path):

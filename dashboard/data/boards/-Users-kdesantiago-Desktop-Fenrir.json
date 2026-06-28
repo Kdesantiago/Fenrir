@@ -76,6 +76,16 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:25:27.941674+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T16:26:35.072485+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:38:07.918853+00:00"
         }
       ]
     }
@@ -279,12 +289,17 @@
       "epic_id": "epic-7",
       "title": "DAT (technical architecture doc) agent",
       "description": "",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T16:25:27.941674+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:26:35.072485+00:00"
         }
       ]
     },
@@ -295,6 +310,20 @@
       "description": "",
       "status": "backlog",
       "transitions": []
+    },
+    {
+      "id": "feat-25",
+      "epic_id": "epic-7",
+      "title": "Commit-time per-US cost attribution",
+      "description": "Every git commit flushes the main-thread cost since the last commit to the US that commit delivers — automatic, mandatory, per-US.",
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:38:07.918853+00:00"
+        }
+      ]
     }
   ],
   "stories": [
@@ -4358,7 +4387,22 @@
         "set_status recomputes parents",
         "epic rolls up from features"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 24988,
+          "output_tokens": 53745,
+          "cache_write_tokens": 1353022,
+          "cache_read_tokens": 18451613,
+          "cost_usd": 24.2246,
+          "source": "telemetry-main",
+          "note": "backfill: epic-7 stretch main-cost split by commit-diff effort (pre commit-time attribution)",
+          "at": "2026-06-28T16:45:39.586150+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -4390,7 +4434,22 @@
       "acceptance_criteria": [
         "drag epic/feature changes its status via API"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 16730,
+          "output_tokens": 35984,
+          "cache_write_tokens": 905886,
+          "cache_read_tokens": 12353870,
+          "cost_usd": 16.219,
+          "source": "telemetry-main",
+          "note": "backfill: epic-7 stretch main-cost split by commit-diff effort (pre commit-time attribution)",
+          "at": "2026-06-28T16:45:39.586150+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -4459,7 +4518,7 @@
       "id": "us-69",
       "feature_id": "feat-23",
       "title": "dat-architect agent — write + audit a DAT (Document d'Architecture Technique)",
-      "status": "review",
+      "status": "done",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4469,7 +4528,36 @@
         "writes a DAT to docs/",
         "audits an existing DAT"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 10939,
+          "output_tokens": 23528,
+          "cache_write_tokens": 592310,
+          "cache_read_tokens": 8077530,
+          "cost_usd": 10.6048,
+          "source": "telemetry-main",
+          "note": "backfill: epic-7 stretch main-cost split by commit-diff effort (pre commit-time attribution)",
+          "at": "2026-06-28T16:45:39.586150+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1837,
+          "output_tokens": 68030,
+          "cache_write_tokens": 110795,
+          "cache_read_tokens": 10609121,
+          "cost_usd": 8.122445,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T16:47:46.979329+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -4480,6 +4568,11 @@
           "from_status": "todo",
           "to_status": "review",
           "at": "2026-06-28T16:25:27.941674+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T16:26:35.072485+00:00"
         }
       ]
     },
@@ -4522,6 +4615,41 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:49.052278+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-72",
+      "feature_id": "feat-25",
+      "title": "Attribute commit cost to its US automatically (PostToolUse hook + engine)",
+      "status": "in_progress",
+      "assignee": "coder",
+      "points": 0,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "every US carries its real cost with zero manual steps",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 51155,
+          "output_tokens": 110028,
+          "cache_write_tokens": 2769921,
+          "cache_read_tokens": 37774333,
+          "cost_usd": 49.5929,
+          "source": "telemetry-main",
+          "note": "backfill: epic-7 stretch main-cost split by commit-diff effort (pre commit-time attribution)",
+          "at": "2026-06-28T16:45:39.586150+00:00"
+        }
+      ],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:38:07.918853+00:00"
         }
       ]
     }
