@@ -102,7 +102,7 @@ let board = null;
 let telemetry = null;
 let bydayMetric = "tokens";
 let selectedProject = "all"; // "all" | "<slug>"; populated from /api/projects on boot
-const filters = { epic: "", assignee: "", granularity: "story" };
+const filters = { epic: "", assignee: "", granularity: "story", q: "" };
 let costs = null;            // cached /api/board/costs for the selected project's board
 let subagentSortByCost = true; // run table sort: true = cost desc, false = chronological (newest first)
 let traceUs = "";           // cost-trace US filter ("" = all)
@@ -615,6 +615,7 @@ function visibleStories() {
   return board.stories.filter((s) => {
     if (filters.assignee && s.assignee !== filters.assignee) return false;
     if (filters.epic) { const ep = epicOfStory(s); if (!ep || ep.id !== filters.epic) return false; }
+    if (filters.q && !`${s.id} ${s.title || ""}`.toLowerCase().includes(filters.q)) return false;
     return true;
   });
 }
@@ -1320,6 +1321,7 @@ function initControls() {
   });
   $("#filter-epic").addEventListener("change", (e) => { filters.epic = e.target.value; renderKanban(); });
   $("#filter-assignee").addEventListener("change", (e) => { filters.assignee = e.target.value; renderKanban(); });
+  $("#board-search").addEventListener("input", (e) => { filters.q = e.target.value.trim().toLowerCase(); renderKanban(); });
   $("#cost-groupby").addEventListener("change", (e) => { costGroupBy = e.target.value; renderCostBreakdown(); });
   $("#cost-cols").addEventListener("change", () => renderCostBreakdown());
 
