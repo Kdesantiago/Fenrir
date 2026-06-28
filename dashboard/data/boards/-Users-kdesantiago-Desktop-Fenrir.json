@@ -106,6 +106,16 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T17:10:53.863114+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T17:12:19.068647+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:14:48.568193+00:00"
         }
       ]
     }
@@ -312,12 +322,17 @@
       "epic_id": "epic-7",
       "title": "Subject-focused context-compression hook",
       "description": "",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T17:10:53.863114+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:12:19.068647+00:00"
         }
       ]
     },
@@ -345,8 +360,14 @@
       "epic_id": "epic-7",
       "title": "Versioning rule (feature→patch, epic→minor) + bump v1.5",
       "description": "",
-      "status": "backlog",
-      "transitions": []
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:14:48.568193+00:00"
+        }
+      ]
     },
     {
       "id": "feat-25",
@@ -4576,7 +4597,7 @@
       "id": "us-68",
       "feature_id": "feat-22",
       "title": "PreCompact hook at ~250-300K tokens: compact toward the CURRENT dev subject, not a global summary",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "coder",
       "points": 5,
       "as_a": "",
@@ -4586,7 +4607,36 @@
         "fires on token threshold",
         "summary scoped to active US/work"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "claude-code-guide",
+          "subagent_type": "claude-code-guide",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a25a6e2d1c2ac0f3c",
+          "input_tokens": 27,
+          "output_tokens": 1570,
+          "cache_write_tokens": 56397,
+          "cache_read_tokens": 127628,
+          "cost_usd": 0.0911,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T17:10:56.974619+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1039,
+          "output_tokens": 72989,
+          "cache_write_tokens": 76551,
+          "cache_read_tokens": 16571443,
+          "cost_usd": 10.881151,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:10:56.974619+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -4597,6 +4647,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:10:53.863114+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:12:19.068647+00:00"
         }
       ]
     },
@@ -4666,7 +4721,7 @@
       "id": "us-70",
       "feature_id": "feat-24",
       "title": "release skill: feature-PR→patch+1, epic-done→minor bump; encode + document",
-      "status": "todo",
+      "status": "in_progress",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
@@ -4681,6 +4736,11 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T16:16:48.728712+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:14:48.568193+00:00"
         }
       ]
     },
