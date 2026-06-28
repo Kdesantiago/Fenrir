@@ -46,6 +46,14 @@ class WorkLogEntry(BaseModel):
     at: str = ""  # ISO timestamp, supplied by caller (no clock in pure model)
 
 
+class Transition(BaseModel):
+    """A timestamped status change — the basis for flow metrics (cycle time, WIP age)."""
+
+    from_status: str = ""
+    to_status: str = ""
+    at: str = ""  # ISO timestamp, supplied by caller (no clock in pure model)
+
+
 class Epic(BaseModel):
     id: str
     title: str
@@ -53,6 +61,7 @@ class Epic(BaseModel):
     status: Status = Status.backlog
     color: str = "#6366f1"
     created: str = ""
+    transitions: list[Transition] = Field(default_factory=list)
 
 
 class Feature(BaseModel):
@@ -61,6 +70,7 @@ class Feature(BaseModel):
     title: str
     description: str = ""
     status: Status = Status.backlog
+    transitions: list[Transition] = Field(default_factory=list)
 
 
 class UserStory(BaseModel):
@@ -76,6 +86,7 @@ class UserStory(BaseModel):
     so_that: str = ""
     acceptance_criteria: list[str] = Field(default_factory=list)
     work_log: list[WorkLogEntry] = Field(default_factory=list)
+    transitions: list[Transition] = Field(default_factory=list)
 
 
 class Task(BaseModel):
@@ -85,6 +96,7 @@ class Task(BaseModel):
     status: Status = Status.backlog
     assignee: str = ""
     work_log: list[WorkLogEntry] = Field(default_factory=list)
+    transitions: list[Transition] = Field(default_factory=list)
 
 
 class Board(BaseModel):

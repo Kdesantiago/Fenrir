@@ -46,7 +46,11 @@ def _cmd_task(s: BoardStore, a) -> None:
 
 
 def _cmd_move(s: BoardStore, a) -> None:
-    _emit(s.set_status(a.kind, a.id, Status(a.status)))
+    _emit(s.set_status(a.kind, a.id, Status(a.status), at=datetime.now(UTC).isoformat()))
+
+
+def _cmd_metrics(s: BoardStore, a) -> None:
+    _emit(s.flow_metrics(now=datetime.now(UTC).isoformat()))
 
 
 def _cmd_assign(s: BoardStore, a) -> None:
@@ -64,8 +68,11 @@ def _cmd_link(s: BoardStore, a) -> None:
     """Pull REAL telemetry (by session and/or skill) into a story/task work_log.
     Idempotent per (session, item); writes one entry per source (main vs subagent)."""
     if a.session and s.has_session_for(a.kind, a.id, a.session):
-        print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
-        return
+        if getattr(a, "refresh", False):
+            s.clear_session_links(a.kind, a.id, a.session)  # re-link with current totals
+        else:
+            print(json.dumps({"skipped": f"session {a.session} already linked to {a.id}"}))
+            return
     if a.session:  # exclusivity: don't lump a session that already has per-run attributions
         runs = [e for e in s.entries_for_session(a.session) if e["source"] == "telemetry-run"]
         if runs:
@@ -201,7 +208,10 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--kind", required=True); a.add_argument("--id", required=True)
     a.add_argument("--session", default=""); a.add_argument("--skill", default="")
     a.add_argument("--project", default=None); a.add_argument("--agent", default="")
-    a.add_argument("--note", default=""); a.set_defaults(fn=_cmd_link)
+    a.add_argument("--note", default="")
+    a.add_argument("--refresh", action="store_true",
+                   help="re-link with current totals (drop+rewrite prior session link entries)")
+    a.set_defaults(fn=_cmd_link)
 
     a = sub.add_parser("delete"); a.add_argument("--kind", required=True)
     a.add_argument("--id", required=True); a.set_defaults(fn=_cmd_delete)
@@ -214,6 +224,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("trace", help="print the cost trace (flattened work_log), chronological")
     a.add_argument("--us", default="", help="filter to one story id"); a.set_defaults(fn=_cmd_trace)
+
+    sub.add_parser("metrics", help="flow metrics: cycle time, throughput, WIP, forecast").set_defaults(fn=_cmd_metrics)
 
     sub.add_parser("list").set_defaults(fn=_cmd_list)
     return p
