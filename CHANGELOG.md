@@ -4,6 +4,8 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-06-28
+
 ### Added
 - **Monitoring dashboard** (`dashboard/`, companion web app — not a plugin component): a local FastAPI + SPA that gives a tech lead a real monitoring surface.
   - **Telemetry** — parses real `~/.claude` transcripts into tokens/cost aggregated by model, skill (`attributionSkill`), day, and source (main thread vs subagent), with USD **derived** from a configurable price book (`backend/pricing.py`). Read-only.
@@ -21,6 +23,7 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 ### Fixed
 - **Dashboard "Usage over time" chart crash** (`Cannot read properties of null (reading 'getContext')`) — a chart's empty-state overwrote its `<canvas>`, so the next render hit a null canvas. Charts now recreate a fresh canvas in a `data-canvas`-anchored wrap each render; empty-states no longer destroy the canvas.
 - **Confusing kanban cost badges** — cards showed two unlabeled epic/feature rollup chips (e.g. `$900.06` on every card of an epic, read as the card's own price). Cards now show one labeled **US cost** line; the Epic/Feature rollups moved to the story modal, labeled.
+- **"Usage over time" empty for a single-day project** — a 1-point line draws no segment and `pointRadius` was 0, so the axes auto-scaled to the data but nothing was drawn. Few-point series (≤2 days) now render a visible point.
 
 ## [1.2.0] — 2026-06-27
 
