@@ -199,6 +199,14 @@
       "description": "Development starts by writing Epic/Feature/US on the board; challenge-me & deliver check for a plan and create/adapt; 1 Feature = 1 branch = 1 PR.",
       "status": "backlog",
       "transitions": []
+    },
+    {
+      "id": "feat-19",
+      "epic_id": "epic-3",
+      "title": "Kanban + cost-trace UX & US lifecycle",
+      "description": "Granularity (epic/feature/US view), active-only epic filter, US status discipline + move-as-you-go, dynamic groupable cost table.",
+      "status": "backlog",
+      "transitions": []
     }
   ],
   "stories": [
@@ -4096,12 +4104,116 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 26860,
+          "output_tokens": 59531,
+          "cache_write_tokens": 90419,
+          "cache_read_tokens": 50729811,
+          "cost_usd": 27.891671,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T14:04:56.508079+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "done",
           "at": "2026-06-28T14:02:49.136582+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-61",
+      "feature_id": "feat-19",
+      "title": "Kanban granularity selector (view board at Epic / Feature / US level)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "to switch the kanban between epic/feature/US cards",
+      "so_that": "I read the board at the altitude I need",
+      "acceptance_criteria": [
+        "selector swaps the card level; statuses still columns"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:08:37.270738+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-62",
+      "feature_id": "feat-19",
+      "title": "Active-only epic filter (hide done/closed epics from the dropdown)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "tech lead",
+      "i_want": "the epic dropdown to list only active epics",
+      "so_that": "closed epics don't clutter the view",
+      "acceptance_criteria": [
+        "epics with status=done excluded from the selector"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:08:37.435852+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-63",
+      "feature_id": "feat-19",
+      "title": "US lifecycle — move-as-you-go (backlog→todo→in_progress→review→done) in deliver/ship + doctrine",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "US to advance status as work progresses and close when their PR merges",
+      "so_that": "the board reflects reality",
+      "acceptance_criteria": [
+        "deliver moves US in_progress; ship moves to review; merged→done"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:11:10.201136+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-64",
+      "feature_id": "feat-19",
+      "title": "Dynamic cost table — group by US/Feature/Epic + customizable columns",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "a pivotable cost table (group-by + pick columns)",
+      "so_that": "I slice cost at any level",
+      "acceptance_criteria": [
+        "group-by US|Feature|Epic toggle",
+        "toggle in/out/cacheR/cacheW/cost columns"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:13:26.330822+00:00"
         }
       ]
     }
