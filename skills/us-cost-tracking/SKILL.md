@@ -1,6 +1,6 @@
 ---
 name: us-cost-tracking
-description: Use when you want delivery work tracked as Agile items with REAL token/cost attribution on the Fenrir dashboard — represent a task as a User Story on the board, then record what each agent/subagent actually spent against it and read the cost trace. Triggers — "track the cost of this US", "how much did this task cost", "log this work to the board", "cost trace", "which subagent spent what". NOT a hard gate (a skill cannot block — couche-0 PreToolUse/CI are the only gates); NOT for fleet/multi-repo cost (out of scope). Needs the companion `dashboard/` app; no org-profile keys required.
+description: Use when you want delivery work tracked as Agile items with REAL token/cost attribution on the Fenrir dashboard — represent a task as a User Story on the board, then record what each agent/subagent actually spent against it and read the cost trace. Triggers — "track the cost of this US", "how much did this task cost", "log this work to the board", "cost trace", "which subagent spent what". NOT a hard gate (a skill cannot block — couche-0 PreToolUse/CI are the only gates); NOT for a prose session digest (use `report`); NOT for fleet/multi-repo cost (out of scope). Needs the companion `dashboard/` app; no org-profile keys required.
 ---
 
 # US Cost Tracking

@@ -109,6 +109,12 @@ def board_costs(project: str | None = None) -> dict:
     return _store(project).costs()
 
 
+@app.get("/api/board/flow")
+def board_flow(project: str | None = None) -> dict:
+    """Flow metrics: cycle time, weekly throughput, current WIP + aging, Monte-Carlo forecast."""
+    return _store(project).flow_metrics(now=_now())
+
+
 @app.get("/api/trace")
 def trace(us: str | None = None, project: str | None = None) -> list[dict]:
     return _store(project).trace(us or None)
@@ -150,7 +156,7 @@ def add_task(body: TaskIn, project: str | None = None) -> dict:
 def set_status(kind: str, item_id: str, body: StatusIn, project: str | None = None) -> dict:
     _check_kind(kind)
     try:
-        return _store(project).set_status(kind, item_id, body.status).model_dump()
+        return _store(project).set_status(kind, item_id, body.status, at=_now()).model_dump()
     except KeyError as e:
         raise HTTPException(404, str(e)) from e
 

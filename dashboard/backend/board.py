@@ -7,10 +7,11 @@ module, so there is a single source of truth.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from .models import Board, Epic, Feature, Status, Task, UserStory, WorkLogEntry
+from .models import Board, Epic, Feature, Status, Task, Transition, UserStory, WorkLogEntry
 
 DEFAULT_BOARD_PATH = Path(__file__).resolve().parent.parent / "data" / "board.json"
 
@@ -103,9 +104,12 @@ class BoardStore:
                 return item
         raise KeyError(f"{kind} {item_id} not found")
 
-    def set_status(self, kind: str, item_id: str, status: Status) -> Any:
+    def set_status(self, kind: str, item_id: str, status: Status, at: str = "") -> Any:
         b = self.load()
         item = self._find(b, kind, item_id)
+        prev = item.status
+        if prev != status:  # only real moves are logged (basis for cycle time / WIP age)
+            item.transitions.append(Transition(from_status=str(prev), to_status=str(status), at=at))
         item.status = status
         self.save(b)
         return item
@@ -127,6 +131,22 @@ class BoardStore:
         item.work_log.append(entry)
         self.save(b)
         return item
+
+    def clear_session_links(self, kind: str, item_id: str, session_id: str) -> int:
+        """Drop this item's whole-session `link` entries for a session, so a refresh can
+        re-link with up-to-date totals (continuous cost logging). Leaves per-run `attribute`
+        entries and manual entries untouched. Returns how many were removed."""
+        if kind not in ("story", "task") or not session_id:
+            return 0
+        b = self.load()
+        item = self._find(b, kind, item_id)
+        before = len(item.work_log)
+        item.work_log = [w for w in item.work_log
+                         if not (w.session_id == session_id and w.source == "telemetry-link")]
+        removed = before - len(item.work_log)
+        if removed:
+            self.save(b)
+        return removed
 
     # --- cost rollups + trace (derived from work_log — the single source) --------------
     def has_session_for(self, kind: str, item_id: str, session_id: str) -> bool:
@@ -219,6 +239,93 @@ class BoardStore:
             rows.extend(row(t.story_id, "task", e, t.id) for e in t.work_log)
         rows.sort(key=lambda r: r.get("at") or "")
         return rows
+
+    # --- flow metrics (derived from status transitions) ---------------------------------
+    def flow_metrics(self, now: str = "", trials: int = 1000, seed: int = 42) -> dict:
+        """DORA/Kanban-style flow metrics over story status transitions: cycle time,
+        weekly throughput, current WIP + aging, and a Monte-Carlo 'when will the backlog be
+        done' forecast. `now` (ISO) anchors WIP aging; `seed` makes the forecast reproducible.
+        Requires a transition history (recorded by set_status) — empty until items have moved."""
+        import math
+        import random as _random
+        from collections import Counter
+        from datetime import datetime
+
+        def parse(s: str):
+            if not s:
+                return None
+            try:
+                return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+            except (ValueError, TypeError):
+                return None
+
+        def pct(xs: Sequence[float], p: float):
+            if not xs:
+                return None
+            xs = sorted(xs)
+            k = (len(xs) - 1) * p
+            f, c = math.floor(k), math.ceil(k)
+            return round(xs[int(k)] if f == c else xs[f] + (xs[c] - xs[f]) * (k - f), 2)
+
+        b = self.load()
+        now_dt = parse(now)
+
+        cycle_days: list[float] = []
+        weeks: Counter = Counter()
+        for s in b.stories:
+            done_t = next((parse(t.at) for t in s.transitions
+                           if t.to_status == "done" and parse(t.at)), None)
+            start_t = (next((parse(t.at) for t in s.transitions
+                             if t.to_status == "in_progress" and parse(t.at)), None)
+                       or next((parse(t.at) for t in s.transitions
+                                if t.to_status == "todo" and parse(t.at)), None))
+            if done_t and start_t and done_t >= start_t:
+                cycle_days.append((done_t - start_t).total_seconds() / 86400.0)
+            if done_t:
+                iso = done_t.isocalendar()
+                weeks[f"{iso[0]}-W{iso[1]:02d}"] += 1
+
+        weekly = list(weeks.values())
+        wip_states = {"in_progress", "review"}
+        wip = [s for s in b.stories if str(s.status) in wip_states]
+        aging: list[dict] = []
+        if now_dt:
+            for s in wip:
+                ent = None
+                for t in s.transitions:
+                    if t.to_status == str(s.status) and parse(t.at):
+                        ent = parse(t.at)
+                if ent:
+                    aging.append({"id": s.id, "status": str(s.status),
+                                  "age_days": round((now_dt - ent).total_seconds() / 86400.0, 2)})
+
+        remaining = [s for s in b.stories if str(s.status) != "done"]
+        forecast: dict = {}
+        if weekly and remaining:
+            rng = _random.Random(seed)
+            n = len(remaining)
+            sims = []
+            for _ in range(trials):
+                done = wk = 0
+                while done < n and wk < 520:
+                    done += rng.choice(weekly)
+                    wk += 1
+                sims.append(wk)
+            forecast = {"items_remaining": n, "weeks_p50": pct(sims, 0.5),
+                        "weeks_p85": pct(sims, 0.85)}
+
+        return {
+            "cycle_time_days": {
+                "count": len(cycle_days),
+                "avg": round(sum(cycle_days) / len(cycle_days), 2) if cycle_days else None,
+                "p50": pct(cycle_days, 0.5), "p85": pct(cycle_days, 0.85)},
+            "throughput_per_week": {
+                "weeks": dict(weeks),
+                "avg": round(sum(weekly) / len(weekly), 2) if weekly else None},
+            "wip": {"count": len(wip), "items": [s.id for s in wip]},
+            "aging_wip": sorted(aging, key=lambda x: -x["age_days"]),
+            "forecast": forecast,
+        }
 
     def delete(self, kind: str, item_id: str) -> None:
         """Delete an item and cascade to its children."""

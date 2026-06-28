@@ -1,6 +1,6 @@
 ---
 name: retriever
-description: Use when scaffolding a RAG retriever — chunking strategy, embeddings via the declared provider, a vector-store adapter, hybrid (BM25 + dense) search with reranking, metadata filtering, and a retrieval-quality eval (recall@k / MRR against a golden set). This is LLM-app product code, NOT couche-0 delivery infra. NOT for generation/prompting (llm-gen / context-engineering). Reads org-profile.yaml llm_provider (embeddings) + a vector_store choice and refuses without an embeddings provider.
+description: Use when scaffolding a RAG retriever — chunking strategy, embeddings via the declared provider, a vector-store adapter, hybrid (BM25 + dense) search with reranking, metadata filtering, and a retrieval-quality eval (recall@k / MRR against a golden set). This is LLM-app product code, NOT couche-0 delivery infra. NOT for generation/prompting (llm-gen / context-engineering), NOT for a TTL/key-value cache (use `caching`). Reads org-profile.yaml llm_provider (embeddings) + a vector_store choice and refuses without an embeddings provider.
 ---
 
 # Retriever (RAG)

@@ -6,7 +6,8 @@
       "description": "Audit Fenrir, compress agents, dogfood couche-0, add delivery skills.",
       "status": "done",
       "color": "#6366f1",
-      "created": "2026-06-27T21:00:22.643786+00:00"
+      "created": "2026-06-27T21:00:22.643786+00:00",
+      "transitions": []
     },
     {
       "id": "epic-2",
@@ -14,7 +15,8 @@
       "description": "Give a tech lead a read/govern surface over the standard.",
       "status": "done",
       "color": "#6366f1",
-      "created": "2026-06-27T21:00:22.805441+00:00"
+      "created": "2026-06-27T21:00:22.805441+00:00",
+      "transitions": []
     },
     {
       "id": "epic-3",
@@ -22,7 +24,26 @@
       "description": "Local telemetry + agent-driven Agile board.",
       "status": "in_progress",
       "color": "#6366f1",
-      "created": "2026-06-27T21:00:22.980071+00:00"
+      "created": "2026-06-27T21:00:22.980071+00:00",
+      "transitions": []
+    },
+    {
+      "id": "epic-4",
+      "title": "Fenrir v1.4 — capability extension",
+      "description": "New generic dev skills + tech-specific skills + Azure live-ops skills/agents + dashboard flow-metrics. Goals: tech-lead time, project mgmt, quality, speed.",
+      "status": "backlog",
+      "color": "#e11d48",
+      "created": "2026-06-28T06:46:06.344285+00:00",
+      "transitions": []
+    },
+    {
+      "id": "epic-5",
+      "title": "Auto-tracked sessions",
+      "description": "Sessions auto-tracked by the delivery-tracking hooks. Re-parent / rename via the delivery-tracker subagent.",
+      "status": "backlog",
+      "color": "#64748b",
+      "created": "2026-06-28T11:24:18.852239+00:00",
+      "transitions": []
     }
   ],
   "features": [
@@ -31,56 +52,128 @@
       "epic_id": "epic-1",
       "title": "Agent & skill quality",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-2",
       "epic_id": "epic-1",
       "title": "Couche-0 self-dogfooding",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-3",
       "epic_id": "epic-1",
       "title": "New delivery skills",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-4",
       "epic_id": "epic-2",
       "title": "/fenrir:status",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-5",
       "epic_id": "epic-2",
       "title": "Governance",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-6",
       "epic_id": "epic-3",
       "title": "Telemetry & cost",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-7",
       "epic_id": "epic-3",
       "title": "Agile board",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
     },
     {
       "id": "feat-8",
       "epic_id": "epic-3",
       "title": "Quality pass",
       "description": "",
-      "status": "backlog"
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-9",
+      "epic_id": "epic-4",
+      "title": "Design & research",
+      "description": "Evidence + dedup'd catalog before building",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-10",
+      "epic_id": "epic-4",
+      "title": "Generic dev-workflow skills",
+      "description": "refactor / simplify / optimize / report / explain",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-11",
+      "epic_id": "epic-4",
+      "title": "Tech-specific skills",
+      "description": "database (bdd) + knowledge-base (kb); api/langgraph already covered",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-12",
+      "epic_id": "epic-4",
+      "title": "Azure live-ops skills",
+      "description": "Operate a LIVE subscription via the az MCP (vs codegen)",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-13",
+      "epic_id": "epic-4",
+      "title": "Azure specialized agents",
+      "description": "Azure-domain experts using the az MCP live",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-14",
+      "epic_id": "epic-4",
+      "title": "Dashboard flow-metrics",
+      "description": "Prereq: board has no status-transition history today",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-15",
+      "epic_id": "epic-4",
+      "title": "Automatic + enforced delivery tracking",
+      "description": "Auto-create Epic/Feature/US + auto-attribute cost via hooks; block commits not traced to a US; subagent does the smart breakdown. skills advise, infra enforces.",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-16",
+      "epic_id": "epic-5",
+      "title": "main",
+      "description": "Auto-tracked work on branch `main`.",
+      "status": "backlog",
+      "transitions": []
     }
   ],
   "stories": [
@@ -95,7 +188,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-2",
@@ -108,7 +202,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-3",
@@ -121,7 +216,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-4",
@@ -134,7 +230,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-5",
@@ -147,7 +244,8 @@
       "i_want": "the 9 hooks tested",
       "so_that": "a regression can't silently disable the gate",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-6",
@@ -160,7 +258,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-7",
@@ -173,7 +272,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-8",
@@ -186,7 +286,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-9",
@@ -199,7 +300,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-10",
@@ -212,7 +314,8 @@
       "i_want": "one honest report per repo",
       "so_that": "I see arming, exceptions and drift at a glance",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-11",
@@ -225,7 +328,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-12",
@@ -238,7 +342,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-13",
@@ -251,7 +356,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-14",
@@ -277,7 +383,8 @@
           "note": "project selector",
           "at": "2026-06-27T21:59:13.483459+00:00"
         }
-      ]
+      ],
+      "transitions": []
     },
     {
       "id": "us-15",
@@ -303,7 +410,8 @@
           "note": "cost-accounting red-team",
           "at": "2026-06-27T21:59:13.819322+00:00"
         }
-      ]
+      ],
+      "transitions": []
     },
     {
       "id": "us-16",
@@ -316,7 +424,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-17",
@@ -329,7 +438,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-18",
@@ -355,7 +465,8 @@
           "note": "SPA subagents/cost/trace views",
           "at": "2026-06-27T21:59:13.144433+00:00"
         }
-      ]
+      ],
+      "transitions": []
     },
     {
       "id": "us-19",
@@ -368,7 +479,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-20",
@@ -381,7 +493,8 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
     },
     {
       "id": "us-21",
@@ -394,7 +507,484 @@
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
-      "work_log": []
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-22",
+      "feature_id": "feat-9",
+      "title": "Deep-research feature gaps",
+      "status": "blocked",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "cited evidence of high-value delivery features",
+      "so_that": "we build what moves DORA/SPACE, not guesses",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-23",
+      "feature_id": "feat-9",
+      "title": "Design & red-team skill catalog",
+      "status": "done",
+      "assignee": "red-team-destroyer",
+      "points": 5,
+      "as_a": "tech lead",
+      "i_want": "a dedup-checked, prioritized catalog",
+      "so_that": "no redundant skills ship (overlaps killed)",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-24",
+      "feature_id": "feat-10",
+      "title": "refactor skill",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "developer",
+      "i_want": "behavior-preserving restructuring with tests green before+after",
+      "so_that": "I change structure without breaking behavior",
+      "acceptance_criteria": [
+        "tests pass pre and post",
+        "no behavior change"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-25",
+      "feature_id": "feat-10",
+      "title": "simplify skill (DRY/KISS)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "developer",
+      "i_want": "DRY+KISS reduction tied to the quality tier",
+      "so_that": "code stays lean",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-26",
+      "feature_id": "feat-10",
+      "title": "optimize skill",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "developer",
+      "i_want": "optimize under a stated constraint, measure-first",
+      "so_that": "perf/cost improves with evidence",
+      "acceptance_criteria": [
+        "benchmark before+after"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-27",
+      "feature_id": "feat-10",
+      "title": "report skill (session report)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "a session report: files/decisions/tests/cost/board",
+      "so_that": "I see what a session produced",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-28",
+      "feature_id": "feat-10",
+      "title": "explain skill (didactic)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "developer",
+      "i_want": "pedagogical code explanation, tunable depth",
+      "so_that": "I learn the codebase fast",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-29",
+      "feature_id": "feat-11",
+      "title": "database skill (modeling/queries/indexing)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "developer",
+      "i_want": "data modeling + query/index design (not migrations)",
+      "so_that": "schemas are sound and fast",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-30",
+      "feature_id": "feat-11",
+      "title": "kb skill (knowledge-base lifecycle)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "developer",
+      "i_want": "ingestion/chunking/freshness/citations atop retriever",
+      "so_that": "the KB stays fresh and cited",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-31",
+      "feature_id": "feat-12",
+      "title": "azure-deploy skill",
+      "status": "done",
+      "assignee": "architect",
+      "points": 5,
+      "as_a": "tech lead",
+      "i_want": "end-to-end live deploy+verify+rollback via az MCP",
+      "so_that": "Azure delivery is one command",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T11:45:11.057151+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-32",
+      "feature_id": "feat-12",
+      "title": "azure-cost skill (FinOps)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-33",
+      "feature_id": "feat-12",
+      "title": "azure-waf skill (Well-Architected review)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-34",
+      "feature_id": "feat-12",
+      "title": "azure-audit skill (azqr/health/policy)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-35",
+      "feature_id": "feat-12",
+      "title": "azure-monitor-ops skill (KQL triage)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-36",
+      "feature_id": "feat-13",
+      "title": "azure-architect agent (WAF-aligned)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-37",
+      "feature_id": "feat-13",
+      "title": "azure-sre agent (live incident triage)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-38",
+      "feature_id": "feat-13",
+      "title": "azure-finops agent (cost optimization)",
+      "status": "blocked",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-39",
+      "feature_id": "feat-14",
+      "title": "Status-transition log on board model",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "every status move timestamped",
+      "so_that": "cycle-time/WIP are computable",
+      "acceptance_criteria": [
+        "transitions persisted with ISO time"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T11:45:11.216577+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-40",
+      "feature_id": "feat-14",
+      "title": "Cycle-time / WIP / throughput metrics",
+      "status": "done",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "tech lead",
+      "i_want": "flow metrics + Monte-Carlo throughput forecast",
+      "so_that": "I forecast delivery honestly",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T11:45:11.375755+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-41",
+      "feature_id": "feat-15",
+      "title": "delivery-tracker subagent (smart breakdown)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "a subagent that turns a diff+telemetry into Epic/Feature/US/Task and attributes cost",
+      "so_that": "tracking is authored well, not by hand",
+      "acceptance_criteria": [
+        "creates/updates board via CLI",
+        "idempotent"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-42",
+      "feature_id": "feat-15",
+      "title": "track_session.py engine (ensure-us/collect/finalize/check)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "developer",
+      "i_want": "a deterministic engine the hooks call",
+      "so_that": "attribution works without the model",
+      "acceptance_criteria": [
+        "fail-open if no dashboard board",
+        "no double-count"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-43",
+      "feature_id": "feat-15",
+      "title": "Auto hooks: SubagentStop + SessionEnd + SessionStart",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "subagent runs + session cost auto-attributed",
+      "so_that": "nothing is untracked",
+      "acceptance_criteria": [
+        "SubagentStop ledgers run id",
+        "SessionEnd attributes to active US"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-44",
+      "feature_id": "feat-15",
+      "title": "tracking-guard.py — block untraced git commit",
+      "status": "done",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "commits refused unless traced to a US",
+      "so_that": "tracking is obligatory",
+      "acceptance_criteria": [
+        "deny on git commit when untraced",
+        "fail-open + env opt-out, scoped to commit"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-45",
+      "feature_id": "feat-15",
+      "title": "CI delivery-trace required check",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "tech lead",
+      "i_want": "PR fails unless change maps to a US",
+      "so_that": "the real gate enforces tracing",
+      "acceptance_criteria": [
+        "required check template"
+      ],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-46",
+      "feature_id": "feat-15",
+      "title": "Hook tests + docs + bookkeeping",
+      "status": "done",
+      "assignee": "qa-tester",
+      "points": 3,
+      "as_a": "maintainer",
+      "i_want": "tests for the new hooks + updated README/CHANGELOG",
+      "so_that": "the infra is trustworthy",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-47",
+      "feature_id": "feat-11",
+      "title": "event-driven skill (producer/consumer discipline)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-48",
+      "feature_id": "feat-11",
+      "title": "caching skill (pattern/TTL/invalidation)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
+    },
+    {
+      "id": "us-49",
+      "feature_id": "feat-9",
+      "title": "v1.4 working session — full real cost (research+design+build)",
+      "status": "in_progress",
+      "assignee": "general-purpose",
+      "points": 0,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "the session's real spend is visible on the board",
+      "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 132350,
+          "output_tokens": 613892,
+          "cost_usd": 69.6651,
+          "source": "telemetry-link",
+          "note": "auto-tracked (live)",
+          "at": "2026-06-28T11:36:51.782754+00:00"
+        },
+        {
+          "agent": "subagent",
+          "subagent_type": "subagent",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 6074000,
+          "output_tokens": 489161,
+          "cost_usd": 156.1574,
+          "source": "telemetry-link",
+          "note": "auto-tracked (live)",
+          "at": "2026-06-28T11:36:51.782754+00:00"
+        }
+      ],
+      "transitions": []
+    },
+    {
+      "id": "us-50",
+      "feature_id": "feat-11",
+      "title": "realtime-transport skill (WebSocket/SSE)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T11:45:10.897782+00:00"
+        }
+      ]
     }
   ],
   "tasks": []

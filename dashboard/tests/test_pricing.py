@@ -36,15 +36,27 @@ def test_rates_for_known_families(model, expected_family):
     assert pricing.rates_for(model) == _expected(expected_family)
 
 
-def test_rates_for_opus_derived_rates():
-    # base (15, 75) + derived cache: 5m=18.75, 1h=30, read=1.5
-    assert pricing.rates_for("claude-opus-4") == {
+def test_rates_for_opus_48_current_rates():
+    # Opus 4.5–4.8 (current): base (5, 25) + derived cache 5m=6.25, 1h=10, read=0.50
+    assert pricing.rates_for("claude-opus-4-8") == {
+        "input": 5.0, "output": 25.0, "w5m": 6.25, "w1h": 10.0, "read": 0.50}
+
+
+def test_rates_for_opus_41_is_the_pricier_legacy_tier():
+    # Opus 4.1 (obsolete): base (15, 75) — version key wins over the generic "opus"
+    assert pricing.rates_for("claude-opus-4-1") == {
         "input": 15.0, "output": 75.0, "w5m": 18.75, "w1h": 30.0, "read": 1.5}
 
 
-def test_rates_for_fable_matches_opus_pricing():
-    # fable is priced identically to opus (top-tier until priced)
-    assert pricing.rates_for("fable") == pricing.rates_for("opus")
+def test_rates_for_fable_is_its_own_tier():
+    # Fable 5 is $10/$50, NOT the opus rate
+    assert pricing.rates_for("claude-fable-5") == {
+        "input": 10.0, "output": 50.0, "w5m": 12.5, "w1h": 20.0, "read": 1.0}
+
+
+def test_rates_for_haiku_35_is_cheaper_than_haiku_45():
+    assert pricing.rates_for("claude-haiku-3-5") == _expected("haiku-3")
+    assert pricing.rates_for("claude-haiku-4-5") == _expected("haiku")
 
 
 def test_rates_for_unknown_returns_default():
@@ -82,9 +94,9 @@ def test_cost_of_full_block_opus():
         "cache_creation_input_tokens": 1_000_000,
         "cache_read_input_tokens": 1_000_000,
     }
-    # opus rates: 15 + 75 + 18.75 + 1.50 per 1M each
-    expected = 15.0 + 75.0 + 18.75 + 1.50
-    assert pricing.cost_of(usage, "claude-opus-4") == pytest.approx(expected)
+    # current Opus (4.5–4.8) rates: 5 + 25 + 6.25 (5m write) + 0.50 (read) per 1M each
+    expected = 5.0 + 25.0 + 6.25 + 0.50
+    assert pricing.cost_of(usage, "claude-opus-4-8") == pytest.approx(expected)
 
 
 def test_cost_of_sonnet_input_only():

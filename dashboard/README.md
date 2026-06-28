@@ -59,6 +59,27 @@ python -m backend.cli trace --us us-1
 
 Cost is a **derived estimate** (token × price book), not an invoice.
 
+## Automatic + enforced tracking (plugin hooks)
+
+The board can be driven by hand (below), but the Fenrir plugin also keeps it populated
+**automatically** so work is never left untracked:
+
+- **Auto-create + auto-attribute.** A `SessionEnd` hook (`tracking-finalize`) ensures the
+  session has a User Story (creating a catch-all under an `Auto-tracked sessions` epic if
+  needed) and links the session's **real** token/USD cost to it. A `SubagentStop` hook
+  (`tracking-collect`) ledgers each subagent run for precise per-run attribution.
+- **Obligatory.** A `PreToolUse` hook (`tracking-guard`) gates `git commit`: by default it
+  auto-creates a US (never blocks); with `FENRIR_TRACK_ENFORCE=strict` it **denies** an
+  untraced commit. The authoritative gate is the CI `delivery-trace` check (a PR can't merge
+  unless it references a US on the board).
+- **Smart breakdown.** The `delivery-tracker` subagent re-parents/re-titles the catch-all US
+  into the right `Epic → Feature → US → Task` structure and splits cost per-run when a session
+  spanned several US.
+
+The deterministic engine is `scripts/track_session.py` (in the plugin); it reads this board
+read-only and mutates it **only** through the CLI below. No `dashboard/` present → the hooks
+fail-open (no-op). Knobs: `FENRIR_TRACK_ENFORCE=strict`, `FENRIR_TRACK_DISABLE=1`.
+
 ## How agents drive the board
 
 Agents mutate the board through the CLI (run from `dashboard/`). It goes through the same `BoardStore` as the web API, so there is one source of truth. Every mutating command prints the resulting object as JSON, so an agent can parse the result.
@@ -135,6 +156,7 @@ Board:
 - `GET  /api/health` — liveness check
 - `GET  /api/board` — full board (epics, features, stories, tasks)
 - `GET  /api/board/costs` — per Epic/Feature/US cost rollup with per-agent breakdown
+- `GET  /api/board/flow` — flow metrics (cycle time, weekly throughput, WIP + aging, Monte-Carlo forecast)
 - `GET  /api/trace?us=<id>` — chronological cost trace (flattened work_log; `us` optional)
 - `POST /api/epics` · `POST /api/features` · `POST /api/stories` · `POST /api/tasks` — create
 - `PATCH /api/{kind}/{id}/status` — move (body: `{"status": ...}`)

@@ -1,0 +1,70 @@
+# Couche 0 — CI required status check: delivery-trace (GitHub Actions).
+# The AUTHORITATIVE half of "mandatory tracking". The in-session tracking-guard hook gives
+# fast local feedback (auto-creates a US); THIS check is the real gate: a PR cannot merge
+# unless its change is traced to a User Story that exists on the Agile board.
+#
+# Add `delivery-trace` to branch-protection.tf required_checks to enforce it at merge.
+# Job `name:` MUST equal that required_checks context.
+#
+# Tracing rule: at least one commit message OR the PR body references a `us-<N>` id that
+# EXISTS in dashboard/data/board.json. No dashboard board in the repo → the check PASSES
+# (the board is a companion app; nothing to enforce against).
+name: delivery-trace
+
+on:
+  pull_request:
+    branches: [main, dev, "release/**"]
+
+jobs:
+  delivery-trace:
+    name: delivery-trace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # need the full range base..head for commit messages
+      - name: every change is traced to a User Story
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          board_path = "dashboard/data/board.json"
+          if not os.path.exists(board_path):
+              print("delivery-trace: no dashboard/data/board.json — nothing to enforce (PASS).")
+              sys.exit(0)
+
+          try:
+              board = json.load(open(board_path))
+              valid = {s.get("id") for s in board.get("stories", []) if s.get("id")}
+          except Exception as e:
+              print(f"delivery-trace: could not read the board ({e}) — failing closed.")
+              sys.exit(1)
+
+          base, head = os.environ.get("BASE_SHA", ""), os.environ.get("HEAD_SHA", "")
+          try:
+              rng = f"{base}..{head}" if base and head else "HEAD~20..HEAD"
+              commits = subprocess.run(["git", "log", "--format=%B", rng],
+                                       capture_output=True, text=True, timeout=30).stdout
+          except Exception:
+              commits = ""
+          haystack = commits + "\n" + (os.environ.get("PR_BODY") or "")
+
+          refs = set(re.findall(r"\bus-\d+\b", haystack, re.IGNORECASE))
+          refs = {r.lower() for r in refs}
+          traced = refs & valid
+
+          if traced:
+              print(f"delivery-trace: PASS — change traced to {sorted(traced)}.")
+              sys.exit(0)
+
+          print("delivery-trace: FAIL — no commit message or PR body references a User Story "
+                "that exists on the board.")
+          print("Fix: reference the US id (e.g. 'us-42') in a commit or the PR body. "
+                "Create/find it via the delivery-tracker subagent or the dashboard board CLI.")
+          if refs:
+              print(f"  (referenced but not on the board: {sorted(refs)})")
+          sys.exit(1)
+          PY
