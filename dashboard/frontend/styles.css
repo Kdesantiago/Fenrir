@@ -164,8 +164,46 @@ textarea { resize: vertical; min-height: 64px; }
   padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px;
 }
 .panel-wide { grid-column: 1 / -1; }
-.catalog-list { display: grid; gap: 8px; margin-top: 10px; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+
+/* ---------- Reference catalog cards ---------- */
+/* per-kind accent is themed via a --cat-accent custom prop set on the section,
+   mapped to the existing theme vars (no hardcoded colors). */
+.cat-section { --cat-accent: var(--accent); --cat-tint: rgba(99,102,241,.14); }
+.cat-section[data-kind="commands"] { --cat-accent: var(--accent);   --cat-tint: rgba(99,102,241,.14); }
+.cat-section[data-kind="agents"]   { --cat-accent: var(--review);   --cat-tint: rgba(192,132,252,.14); }
+.cat-section[data-kind="skills"]   { --cat-accent: var(--good);     --cat-tint: rgba(52,211,153,.14); }
+.cat-section[data-kind="hooks"]    { --cat-accent: var(--accent-2); --cat-tint: rgba(34,211,238,.14); }
+
+.cat-head { z-index: 1; background: var(--panel); padding: 4px 0 12px; margin: -4px 0 0; }
+.cat-head .cat-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--cat-accent); box-shadow: 0 0 8px var(--cat-accent); flex: none; }
+.cat-head h2 { display: inline-flex; align-items: center; gap: 8px; }
+.cat-head .cat-count { color: var(--txt-3); font-weight: 600; }
+
+.cat-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+.cat-card {
+  background: var(--panel-2); border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--cat-accent); border-radius: var(--radius-sm);
+  padding: 13px 15px; transition: border-color .12s, box-shadow .14s, transform .1s;
+}
+.cat-card:hover, .cat-card:focus-within {
+  border-color: var(--line); border-left-color: var(--cat-accent);
+  box-shadow: var(--shadow); transform: translateY(-2px);
+}
+.cat-card-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.cat-name { font-size: 14px; font-weight: 700; color: var(--txt); letter-spacing: -.005em; word-break: break-word; }
+.cat-desc { font-size: 12.5px; line-height: 1.55; color: var(--txt-2); margin-top: 6px; }
+.cat-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.cat-badge {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  padding: 2px 9px; border-radius: 20px;
+  color: var(--cat-accent); background: var(--cat-tint);
+  border: 1px solid color-mix(in srgb, var(--cat-accent) 30%, transparent);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.cat-badge.is-warn { color: var(--warn); background: rgba(251,191,36,.14); border-color: rgba(251,191,36,.32); }
+.cat-badge .cat-badge-k { color: var(--txt-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .chart-wrap { position: relative; height: 280px; }
 .panel .chart-wrap { height: 260px; }
 .panel-wide .chart-wrap { height: 300px; }
