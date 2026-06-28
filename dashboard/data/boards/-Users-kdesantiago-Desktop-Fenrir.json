@@ -44,6 +44,15 @@
       "color": "#64748b",
       "created": "2026-06-28T11:24:18.852239+00:00",
       "transitions": []
+    },
+    {
+      "id": "epic-6",
+      "title": "Multi-agent cost/speed/quality efficiency",
+      "description": "Reduce context volume × model tier (the real cost driver), make waste visible, codify tiering. Cache is already 10x efficient — lever is volume + tier.",
+      "status": "backlog",
+      "color": "#0ea5e9",
+      "created": "2026-06-28T12:33:33.069778+00:00",
+      "transitions": []
     }
   ],
   "features": [
@@ -172,6 +181,14 @@
       "epic_id": "epic-5",
       "title": "main",
       "description": "Auto-tracked work on branch `main`.",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-17",
+      "epic_id": "epic-6",
+      "title": "Cost-efficiency program",
+      "description": "",
       "status": "backlog",
       "transitions": []
     }
@@ -950,14 +967,14 @@
           "subagent_type": "",
           "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
           "run_id": "",
-          "input_tokens": 162722,
-          "output_tokens": 827798,
-          "cache_write_tokens": 3352922,
-          "cache_read_tokens": 164521921,
-          "cost_usd": 137.2987,
+          "input_tokens": 162992,
+          "output_tokens": 831359,
+          "cache_write_tokens": 3357879,
+          "cache_read_tokens": 167526463,
+          "cost_usd": 138.941,
           "source": "telemetry-link",
           "note": "auto-tracked (live)",
-          "at": "2026-06-28T12:19:56.723797+00:00"
+          "at": "2026-06-28T12:23:02.165385+00:00"
         },
         {
           "agent": "subagent",
@@ -971,7 +988,7 @@
           "cost_usd": 195.7265,
           "source": "telemetry-link",
           "note": "auto-tracked (live)",
-          "at": "2026-06-28T12:19:56.723797+00:00"
+          "at": "2026-06-28T12:23:02.165385+00:00"
         }
       ],
       "transitions": []
@@ -993,6 +1010,76 @@
           "from_status": "backlog",
           "to_status": "done",
           "at": "2026-06-28T11:45:10.897782+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-51",
+      "feature_id": "feat-17",
+      "title": "Cache-efficiency dashboard view (savings, hit-ratio, uncached-equiv)",
+      "status": "done",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "tech lead",
+      "i_want": "to see cache hit-ratio + uncached-equivalent savings per model/agent",
+      "so_that": "I target what actually wastes context",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T12:33:33.858736+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T12:40:06.654989+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-52",
+      "feature_id": "feat-17",
+      "title": "workflow-efficiency skill (model tiering + prompt budget + fan-out caps)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T12:40:06.823871+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-53",
+      "feature_id": "feat-17",
+      "title": "ADR: multi-agent cost efficiency",
+      "status": "done",
+      "assignee": "architect",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T12:33:34.013425+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T12:40:06.984138+00:00"
         }
       ]
     }
