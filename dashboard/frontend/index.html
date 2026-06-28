@@ -46,6 +46,10 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
           <span>Cost trace</span>
         </button>
+        <button class="nav-item" role="tab" aria-selected="false" data-view="reference" id="tab-reference" aria-controls="view-reference">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>Reference</span>
+        </button>
       </nav>
 
       <div class="project-picker">
@@ -275,6 +279,21 @@
               </table>
             </div>
           </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-reference" role="tabpanel" aria-labelledby="tab-reference" tabindex="0" hidden>
+        <header class="view-head">
+          <div>
+            <h1>Reference</h1>
+            <p class="muted">What every agent, hook, skill, and command does — read straight from the plugin. Onboarding, zero code reading.</p>
+          </div>
+          <div class="toolbar">
+            <input type="search" id="catalog-search" placeholder="Filter by name or description…" aria-label="Filter the catalog" style="min-width:240px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--txt)">
+          </div>
+        </header>
+        <div id="catalog-body">
+          <section class="panel"><div class="muted" style="padding:18px;text-align:center">Loading…</div></section>
         </div>
       </section>
     </main>

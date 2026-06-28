@@ -164,6 +164,7 @@ textarea { resize: vertical; min-height: 64px; }
   padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px;
 }
 .panel-wide { grid-column: 1 / -1; }
+.catalog-list { display: grid; gap: 8px; margin-top: 10px; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .chart-wrap { position: relative; height: 280px; }
 .panel .chart-wrap { height: 260px; }

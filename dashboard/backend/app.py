@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import catalog as catalog_mod
 from . import config, telemetry
 from .models import Status, WorkLogEntry
 
@@ -238,6 +239,13 @@ def telemetry_efficiency(project: str | None = None) -> dict:
 @app.get("/api/telemetry/subagents")
 def telemetry_subagents(project: str | None = None) -> dict:
     return telemetry.subagent_runs(_claude_dir(), _resolve_project(project))
+
+
+@app.get("/api/catalog")
+def catalog() -> dict:
+    """Self-documenting reference: every agent / hook / skill / command + its description (read
+    from the plugin's own files on disk), so the pack is understandable with zero code reading."""
+    return catalog_mod.catalog()
 
 
 # --- static SPA (mounted last so /api/* wins) -----------------------------------------
