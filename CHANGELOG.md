@@ -4,6 +4,9 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Cache-read transparency** (epic-8) — answers "why is cache-read so big when my context is small?". `telemetry.efficiency()` now reports **`calls`** and **`cache_read_per_call`** (per model + total); the **Cache efficiency** panel gains a **Re-read / call** KPI and an explanatory caption: cache-read is the cached *prefix* (system prompt + every loaded tool/MCP schema + history) re-read on **every** call at 0.1× — total ≈ per-call × calls, so it scales with session length + loaded tools, **not a leak**. The caption is **honest, not reassuring-by-default**: it flips to a warning when savings are negative / hit-ratio low (prefix churn — writes cost 1.25–2× and aren't being amortized by reads), and labels the figure as a blended main+subagent average (cold/first calls pull it down). No telemetry bug was found — this is a transparency surface. Fix to shrink it: disconnect unused MCP servers.
+
 ### Changed
 - **Specialist agents are the default + a mandatory QA/red-team validation gate** (epic-8) — Fenrir commands now route the design/build to the **pertinent specialist by request type** (new `/fenrir:deliver` §2b table: `azure-architect`/`dat-architect`/`api-first`/`data-model`/`iac-gen`/`auth-gen`/`observability-gen`/`llm-gen`/`retriever`/`context-engineering`…), with the generic `architect`/`coder` only as the fallback when nothing matches. And **every** delivery route — `light` and `full` — now ends with a **mandatory `qa-tester` + `red-team-destroyer` validation gate** on the *actual change* before ship: a `REDESIGN`/`FIX-FIRST` verdict or a failing repro is a hard stop (fold fixes in, re-validate), never ship-anyway. Routing (light/full) now only decides design/review *overhead*, never whether the change is validated. `/fenrir:challenge-me` Gear 3 updated to match. (This codifies the workflow used to build epic-8 itself.)
 

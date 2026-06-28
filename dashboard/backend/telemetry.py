@@ -204,13 +204,13 @@ def efficiency(events: list[dict]) -> dict:
     served cheap from cache — a LOW ratio with high spend is the real waste to target."""
     per: dict[str, dict] = defaultdict(
         lambda: {"fresh_input": 0, "cache_read": 0, "cache_write": 0, "output": 0,
-                 "actual_cost": 0.0, "input_rate": 0.0, "output_rate": 0.0})
+                 "actual_cost": 0.0, "input_rate": 0.0, "output_rate": 0.0, "calls": 0})
     for e in events:
         r = pricing.rates_for(e["model"])
         d = per[e["model"]]
         d["fresh_input"] += e["input_tokens"]; d["cache_read"] += e["cache_read"]
         d["cache_write"] += e["cache_creation"]; d["output"] += e["output_tokens"]
-        d["actual_cost"] += e["cost"]
+        d["actual_cost"] += e["cost"]; d["calls"] += 1
         d["input_rate"] = r["input"]; d["output_rate"] = r["output"]
 
     def row(model: str, d: dict) -> dict:
@@ -224,6 +224,11 @@ def efficiency(events: list[dict]) -> dict:
             "uncached_cost": round(uncached, 4),
             "savings": round(uncached - d["actual_cost"], 4),
             "cache_hit_ratio": round(d["cache_read"] / cin, 4) if cin else 0.0,
+            # Cache-read is the cached PREFIX (system + tool schemas + history) re-read on EVERY
+            # call at 0.1× — a big number is "context size × calls", not a leak. The per-call
+            # average makes that legible: it ≈ the live context, not something growing unbounded.
+            "calls": d["calls"],
+            "cache_read_per_call": round(d["cache_read"] / d["calls"]) if d["calls"] else 0,
         }
 
     rows = sorted((row(m, d) for m, d in per.items()),
@@ -232,6 +237,7 @@ def efficiency(events: list[dict]) -> dict:
     tu = sum(r["uncached_cost"] for r in rows)
     tfi = sum(r["fresh_input_tokens"] for r in rows)
     tcr = sum(r["cache_read_tokens"] for r in rows)
+    tcalls = sum(r["calls"] for r in rows)
     return {
         "by_model": rows,
         "total": {
@@ -239,6 +245,8 @@ def efficiency(events: list[dict]) -> dict:
             "savings": round(tu - ta, 4),
             "cache_hit_ratio": round(tcr / (tfi + tcr), 4) if (tfi + tcr) else 0.0,
             "fresh_input_tokens": tfi, "cache_read_tokens": tcr,
+            "calls": tcalls,
+            "cache_read_per_call": round(tcr / tcalls) if tcalls else 0,
         },
     }
 
