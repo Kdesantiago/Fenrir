@@ -197,9 +197,13 @@ test.describe("dashboard SPA smoke (feat-40)", () => {
     const REL = /just now|\d+[mhd] ago|[A-Z][a-z]{2} \d|—/;
     await expect(when).toHaveText(REL);
 
-    // A real timestamp carries the absolute datetime on the title attr (hover tooltip).
+    // A real timestamp carries the REAL absolute datetime on the title attr (hover tooltip) —
+    // not the em-dash placeholder. fmtWhen() emits e.g. "Jun 27, 21:21": a month abbrev, a
+    // day number, and/or an HH:MM clock. Assert it looks like a date AND is not "—" (the
+    // degenerate-tooltip bug fmtRel/whenEl FIX 2 guards against).
     const title = await when.getAttribute("title");
     expect(title, "title attr should hold the absolute datetime").toBeTruthy();
-    expect(title.length).toBeGreaterThan(0);
+    expect(title).not.toBe("—");
+    expect(title).toMatch(/\d{4}|\d{1,2}:\d{2}|[A-Z][a-z]{2}/);
   });
 });
