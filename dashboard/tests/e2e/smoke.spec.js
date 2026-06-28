@@ -7,10 +7,11 @@
 // playwright.config.js webServer. Fixture shape (built via backend.cli):
 //   epic-1 "Authentication platform"
 //     feat-1 "Login and sessions"
-//       us-1 "Password reset flow"   cost $12.50  (top spender)
-//       us-2 "OAuth single sign-on"  cost $3.25
-//       us-3 "Logout button widget"  cost $0      (excluded from top-spenders)
+//       us-1 "Password reset flow"   assignee coder      cost $12.50  (top spender)
+//       us-2 "OAuth single sign-on"  assignee architect  cost $3.25
+//       us-3 "Logout button widget"  assignee coder      cost $0      (excluded from top-spenders)
 // "oauth" is a substring unique to us-2 → a clean single-match search assertion.
+// us-1 + us-3 share assignee "coder" → a 2-card subset for the search-COMPOSES-with-filter test.
 
 const { test, expect } = require("@playwright/test");
 
@@ -79,6 +80,70 @@ test.describe("dashboard SPA smoke (feat-40)", () => {
     // "us-1" is a substring of "us-1" only (ids us-2/us-3 don't contain it).
     await expect(page.locator('#kanban-cols article.card[data-id="us-1"]')).toBeVisible();
     await expect(page.locator("#kanban-cols article.card")).toHaveCount(1);
+  });
+
+  test("US-104 search COMPOSES with the assignee filter (AND, not override)", async ({ page }) => {
+    await page.goto("/");
+    await gotoKanban(page);
+
+    const cards = page.locator("#kanban-cols article.card");
+    const search = page.locator("#board-search");
+
+    // Filter alone: assignee "coder" narrows to a 2-card subset (us-1 + us-3).
+    await page.locator("#filter-assignee").selectOption("coder");
+    await expect(cards).toHaveCount(2);
+    await expect(page.locator('#kanban-cols article.card[data-id="us-1"]')).toBeVisible();
+    await expect(page.locator('#kanban-cols article.card[data-id="us-3"]')).toBeVisible();
+
+    // Now type a substring matching only ONE of that subset → AND, so a single card remains.
+    // "reset" is in us-1 ("Password reset flow") but not us-3 ("Logout button widget").
+    await search.fill("reset");
+    await expect(cards).toHaveCount(1);
+    await expect(page.locator('#kanban-cols article.card[data-id="us-1"]')).toBeVisible();
+    await expect(page.locator('#kanban-cols article.card[data-id="us-3"]')).toHaveCount(0);
+
+    // Composition is a true AND: it differs from filter-alone (2) and from search-alone.
+    // Search alone for "reset" (assignee cleared) also matches us-1 only here, but the KEY
+    // distinction is that the composed result respects BOTH — a substring that the filter
+    // excludes must NOT resurface. "logout" matches us-3, but us-3 is outside no filter now…
+    // assert override would fail: with filter "coder" still active, searching "oauth"
+    // (us-2, an "architect" story) yields ZERO, proving search can't override the filter.
+    await search.fill("oauth");
+    await expect(cards).toHaveCount(0);
+
+    // Clearing search restores the filter-only subset (filter survived the search).
+    await search.fill("");
+    await expect(cards).toHaveCount(2);
+
+    // And search-alone differs from filter-alone: clear the filter, "reset" alone → 1 (us-1),
+    // whereas filter-alone was 2 — confirming the two predicates are independent and AND-composed.
+    await page.locator("#filter-assignee").selectOption("");
+    await expect(cards).toHaveCount(3);
+    await search.fill("reset");
+    await expect(cards).toHaveCount(1);
+    await expect(page.locator('#kanban-cols article.card[data-id="us-1"]')).toBeVisible();
+  });
+
+  test("US-104 search input hides at non-story granularity (no silent no-op)", async ({ page }) => {
+    await page.goto("/");
+    await gotoKanban(page);
+
+    const search = page.locator("#board-search");
+    const gran = page.locator("#filter-granularity");
+
+    // Visible at the default story granularity (where it actually filters).
+    await expect(search).toBeVisible();
+
+    // Hidden at feature/epic granularity — the board shows epics/features that don't
+    // pass through visibleStories(), so the box would be a silent no-op.
+    await gran.selectOption("feature");
+    await expect(search).toBeHidden();
+    await gran.selectOption("epic");
+    await expect(search).toBeHidden();
+
+    // Restored when back at story granularity.
+    await gran.selectOption("story");
+    await expect(search).toBeVisible();
   });
 
   test("modal: clicking a kanban card opens detail; Escape closes it", async ({ page }) => {

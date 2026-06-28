@@ -346,6 +346,10 @@ const shortModel = (m) => (m || "").replace(/^.*?(claude|gpt|gemini)/i, "$1").re
 function renderTopSpenders() {
   const tbody = $("#tbl-top-spenders tbody");
   if (!tbody) return;
+  // FIX 2 (us-105 flicker): on boot loadOverview() can reach here before the board is loaded,
+  // painting "—" titles that then repaint once the board arrives. Require BOTH board + costs;
+  // loadBoard() (which has both) re-invokes us after they resolve, so the panel still fills.
+  if (!board || !costs) return;
   tbody.innerHTML = "";
   const perUs = (costs && costs.stories) || {};
   const rows = Object.entries(perUs)
@@ -603,6 +607,11 @@ async function loadProjects() {
 // project switch: re-fetch & re-render telemetry views only (board is project-independent)
 function onProjectChange() {
   selectedProject = $("#project-select").value || "all";
+  // FIX 3 (us-104 stale query): a search typed under project A must not silently keep
+  // filtering project B's cards. Reset the query + clear the visible input on every switch.
+  filters.q = "";
+  const search = $("#board-search");
+  if (search) search.value = "";
   loadOverview();
   loadAgents();
   loadBoard();   // the kanban is scoped to the selected project too
@@ -669,7 +678,18 @@ function visibleStories() {
   });
 }
 
+// FIX 1 (us-104 search footgun): #board-search only does anything at story granularity —
+// epic/feature levels return items directly from boardItems(), bypassing visibleStories()/
+// filters.q, so a typed query is a silent no-op. Hide the input off story-grain (and re-show
+// it on return) so it can't read as "broken search". Additive: no change to filter logic.
+function syncBoardSearchVisibility() {
+  const input = $("#board-search");
+  if (!input) return;
+  input.hidden = (filters.granularity || "story") !== "story";
+}
+
 function renderKanban() {
+  syncBoardSearchVisibility();
   // empty state may have replaced the grid; rebuild the host every render
   $("#kanban-body").innerHTML = '<div class="kanban" id="kanban-cols"></div>';
 
