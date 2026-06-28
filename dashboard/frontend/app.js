@@ -630,7 +630,7 @@ function renderKanban() {
     ]));
   });
 
-  if (level === "story") initSortable();  // drag only at US level
+  initSortable(level);  // drag at any level — moving a US/feature rolls its status up
 }
 
 // Items shown on the board for the chosen granularity, honoring the epic filter.
@@ -650,7 +650,7 @@ function levelCard(item, level) {
     ? board.features.filter((f) => f.epic_id === item.id).length
     : board.stories.filter((s) => s.feature_id === item.id).length;
   const accent = level === "epic" ? (item.color || "#6366f1") : "#6366f1";
-  const card = el("div", { class: "kcard", style: `border-left:3px solid ${accent}` }, [
+  const card = el("div", { class: "card kcard", "data-id": item.id, "data-status": item.status, tabindex: "0", style: `border-left:3px solid ${accent}` }, [
     el("div", { class: "kcard-title", text: item.title }),
     el("div", { class: "kcard-meta" }, [
       el("span", { class: "chip", text: `${item.id}` }),
@@ -710,26 +710,25 @@ function storyCard(s) {
 }
 
 let sortables = [];
-function initSortable() {
+function initSortable(kind) {
   sortables.forEach((s) => s.destroy());
   sortables = [];
   if (typeof Sortable === "undefined") return;
+  const k = kind || "story";  // story | feature | epic — drag PATCHes that kind's status
   $$(".klist").forEach((list) => {
     sortables.push(new Sortable(list, {
-      group: "stories", animation: 150, ghostClass: "sortable-ghost", dragClass: "sortable-drag",
+      group: "board-" + k, animation: 150, ghostClass: "sortable-ghost", dragClass: "sortable-drag",
       onStart: () => $$(".klist").forEach((l) => l.classList.add("drop-active")),
       onEnd: async (evt) => {
         $$(".klist").forEach((l) => l.classList.remove("drop-active"));
         const newStatus = evt.to.getAttribute("data-status");
         const oldStatus = evt.from.getAttribute("data-status");
         const id = evt.item.getAttribute("data-id");
-        if (newStatus === oldStatus) return;
+        if (newStatus === oldStatus || !id) return;
         try {
-          await apiPatch(`/api/story/${id}/status` + projParam(), { status: newStatus });
-          const st = board.stories.find((x) => x.id === id);
-          if (st) st.status = newStatus;
+          await apiPatch(`/api/${k}/${id}/status` + projParam(), { status: newStatus });
           toast(`Moved to ${COLUMNS.find((c) => c.id === newStatus).label}`, "ok");
-          renderKanban();
+          await loadBoard();  // refetch — a US/feature move rolls its status up to parents
         } catch (e) {
           toast("Update failed: " + e.message, "err");
           renderKanban();

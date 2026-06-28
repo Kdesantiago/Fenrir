@@ -53,6 +53,21 @@
       "color": "#0ea5e9",
       "created": "2026-06-28T12:33:33.069778+00:00",
       "transitions": []
+    },
+    {
+      "id": "epic-7",
+      "title": "Board automation, governance & process v1.5",
+      "description": "Status rollup + draggable epic/feature, epic-close retrospectives, subject-focused context compaction, DAT agent, versioning rule (feature→patch, epic→minor).",
+      "status": "in_progress",
+      "color": "#a855f7",
+      "created": "2026-06-28T16:16:45.948910+00:00",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:21:13.494504+00:00"
+        }
+      ]
     }
   ],
   "features": [
@@ -205,6 +220,58 @@
       "epic_id": "epic-3",
       "title": "Kanban + cost-trace UX & US lifecycle",
       "description": "Granularity (epic/feature/US view), active-only epic filter, US status discipline + move-as-you-go, dynamic groupable cost table.",
+      "status": "done",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:15:05.482380+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-20",
+      "epic_id": "epic-7",
+      "title": "Board status rollup + draggable epic/feature",
+      "description": "",
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "at": "2026-06-28T16:21:13.494504+00:00"
+        }
+      ]
+    },
+    {
+      "id": "feat-21",
+      "epic_id": "epic-7",
+      "title": "Epic-close retrospective → memory doc",
+      "description": "",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-22",
+      "epic_id": "epic-7",
+      "title": "Subject-focused context-compression hook",
+      "description": "",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-23",
+      "epic_id": "epic-7",
+      "title": "DAT (technical architecture doc) agent",
+      "description": "",
+      "status": "backlog",
+      "transitions": []
+    },
+    {
+      "id": "feat-24",
+      "epic_id": "epic-7",
+      "title": "Versioning rule (feature→patch, epic→minor) + bump v1.5",
+      "description": "",
       "status": "backlog",
       "transitions": []
     }
@@ -425,7 +492,7 @@
       "id": "us-15",
       "feature_id": "feat-6",
       "title": "Telemetry -> work_log cross-link",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "coder",
       "points": 3,
       "as_a": "tech lead",
@@ -448,7 +515,13 @@
           "at": "2026-06-27T21:59:13.819322+00:00"
         }
       ],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:15:42.011266+00:00"
+        }
+      ]
     },
     {
       "id": "us-16",
@@ -511,7 +584,7 @@
       "id": "us-19",
       "feature_id": "feat-8",
       "title": "Replace demo seed with the real board",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "architect",
       "points": 2,
       "as_a": "",
@@ -519,7 +592,13 @@
       "so_that": "",
       "acceptance_criteria": [],
       "work_log": [],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:15:42.215755+00:00"
+        }
+      ]
     },
     {
       "id": "us-20",
@@ -2750,7 +2829,7 @@
       "id": "us-38",
       "feature_id": "feat-13",
       "title": "azure-finops agent (cost optimization)",
-      "status": "blocked",
+      "status": "done",
       "assignee": "architect",
       "points": 2,
       "as_a": "",
@@ -2758,7 +2837,13 @@
       "so_that": "",
       "acceptance_criteria": [],
       "work_log": [],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "blocked",
+          "to_status": "done",
+          "at": "2026-06-28T16:15:42.527008+00:00"
+        }
+      ]
     },
     {
       "id": "us-39",
@@ -2932,7 +3017,7 @@
       "id": "us-49",
       "feature_id": "feat-9",
       "title": "v1.4 session — interleaved remainder (build/red-team/main; not atomic)",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "general-purpose",
       "points": 0,
       "as_a": "",
@@ -3767,7 +3852,13 @@
           "at": "2026-06-28T13:11:20.651650+00:00"
         }
       ],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T16:15:42.370605+00:00"
+        }
+      ]
     },
     {
       "id": "us-50",
@@ -4208,12 +4299,193 @@
         "group-by US|Feature|Epic toggle",
         "toggle in/out/cacheR/cacheW/cost columns"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 2034,
+          "output_tokens": 81631,
+          "cache_write_tokens": 102395,
+          "cache_read_tokens": 75110869,
+          "cost_usd": 40.630329,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T14:15:24.968836+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "done",
           "at": "2026-06-28T14:13:26.330822+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-65",
+      "feature_id": "feat-20",
+      "title": "Auto-rollup: feature/epic status derived from children (US in_progress→feature in_progress; all done→done)",
+      "status": "review",
+      "assignee": "coder",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "set_status recomputes parents",
+        "epic rolls up from features"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:46.441516+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "review",
+          "at": "2026-06-28T16:21:13.494504+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-66",
+      "feature_id": "feat-20",
+      "title": "Draggable epic/feature cards on the kanban (manual override)",
+      "status": "review",
+      "assignee": "coder",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "drag epic/feature changes its status via API"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:46.764889+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "review",
+          "at": "2026-06-28T16:21:13.684423+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-67",
+      "feature_id": "feat-21",
+      "title": "On epic close, write a retro doc (what worked / didn't / revisit) to docs/delivery-memory/retros/",
+      "status": "todo",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "retro file per closed epic",
+        "not in MEMORY.md; revisitable"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:47.261082+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-68",
+      "feature_id": "feat-22",
+      "title": "PreCompact hook at ~250-300K tokens: compact toward the CURRENT dev subject, not a global summary",
+      "status": "todo",
+      "assignee": "coder",
+      "points": 5,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "fires on token threshold",
+        "summary scoped to active US/work"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:47.746315+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-69",
+      "feature_id": "feat-23",
+      "title": "dat-architect agent — write + audit a DAT (Document d'Architecture Technique)",
+      "status": "todo",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "writes a DAT to docs/",
+        "audits an existing DAT"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:48.234807+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-70",
+      "feature_id": "feat-24",
+      "title": "release skill: feature-PR→patch+1, epic-done→minor bump; encode + document",
+      "status": "todo",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "rule in release skill"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:48.728712+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-71",
+      "feature_id": "feat-24",
+      "title": "Cut v1.5.0 once the epic completes",
+      "status": "todo",
+      "assignee": "architect",
+      "points": 1,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T16:16:49.052278+00:00"
         }
       ]
     }
