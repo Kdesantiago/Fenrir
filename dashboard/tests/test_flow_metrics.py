@@ -66,6 +66,30 @@ def test_forecast_is_reproducible_with_seed(tmp_path):
     assert m1["forecast"] == m2["forecast"]  # deterministic given the seed
 
 
+def test_status_rolls_up_us_to_feature_to_epic(tmp_path):
+    s = _store(tmp_path)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a = s.add_story(f.id, "A"); b = s.add_story(f.id, "B")
+    # one US active → feature + epic become in_progress
+    s.set_status("story", a.id, Status.in_progress, at="2026-01-01T00:00:00+00:00")
+    bd = s.load()
+    assert next(x for x in bd.features if x.id == f.id).status == Status.in_progress
+    assert next(x for x in bd.epics if x.id == e.id).status == Status.in_progress
+    # all US done → feature + epic close automatically
+    s.set_status("story", a.id, Status.done, at="2026-01-02T00:00:00+00:00")
+    s.set_status("story", b.id, Status.done, at="2026-01-02T00:00:00+00:00")
+    bd = s.load()
+    assert next(x for x in bd.features if x.id == f.id).status == Status.done
+    assert next(x for x in bd.epics if x.id == e.id).status == Status.done
+
+
+def test_manual_feature_drag_rolls_up_to_epic(tmp_path):
+    s = _store(tmp_path)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    s.set_status("feature", f.id, Status.in_progress, at="2026-01-01T00:00:00+00:00")
+    assert next(x for x in s.load().epics if x.id == e.id).status == Status.in_progress
+
+
 def test_empty_board_does_not_crash(tmp_path):
     m = _store(tmp_path).flow_metrics(now="2026-01-01T00:00:00+00:00")
     assert m["cycle_time_days"]["count"] == 0

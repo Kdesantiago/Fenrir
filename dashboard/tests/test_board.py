@@ -96,16 +96,15 @@ def test_set_status(store):
     story = store.add_story(feat.id, "S")
     task = store.add_task(story.id, "T")
 
-    store.set_status("epic", epic.id, Status.in_progress)
-    store.set_status("feature", feat.id, Status.review)
-    store.set_status("story", story.id, Status.done)
+    # set_status sets the item AND rolls the change up (US → feature → epic).
+    store.set_status("story", story.id, Status.in_progress)
     store.set_status("task", task.id, Status.blocked)
 
     b = store.load()
-    assert b.epics[0].status == Status.in_progress
-    assert b.features[0].status == Status.review
-    assert b.stories[0].status == Status.done
+    assert b.stories[0].status == Status.in_progress
     assert b.tasks[0].status == Status.blocked
+    assert b.features[0].status == Status.in_progress  # rolled up from the US
+    assert b.epics[0].status == Status.in_progress     # rolled up from the feature
 
 
 # --- assign (story/task only) ----------------------------------------------------------

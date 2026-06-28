@@ -109,15 +109,54 @@ class BoardStore:
                 return item
         raise KeyError(f"{kind} {item_id} not found")
 
+    @staticmethod
+    def _set_status(item: Any, status: Status, at: str) -> None:
+        if str(item.status) != str(status):
+            item.transitions.append(Transition(from_status=str(item.status), to_status=str(status), at=at))
+            item.status = status
+
+    @staticmethod
+    def _derive(statuses: list) -> Status | None:
+        """Parent status rolled up from its children: all done → done; any active
+        (in_progress/review) → in_progress; any todo → todo; else backlog. None if no children
+        (keep whatever it has)."""
+        s = {str(x) for x in statuses}
+        if not s:
+            return None
+        if s == {"done"}:
+            return Status.done
+        if "in_progress" in s or "review" in s:
+            return Status.in_progress
+        if "todo" in s:
+            return Status.todo
+        return Status.backlog
+
     def set_status(self, kind: str, item_id: str, status: Status, at: str = "") -> Any:
         b = self.load()
         item = self._find(b, kind, item_id)
-        prev = item.status
-        if prev != status:  # only real moves are logged (basis for cycle time / WIP age)
-            item.transitions.append(Transition(from_status=str(prev), to_status=str(status), at=at))
-        item.status = status
+        self._set_status(item, status, at)
+        # Roll the change UP: a US drives its feature + epic; a (manually-dragged) feature drives
+        # its epic; an epic is terminal. The item just set is respected; parents are derived from
+        # children, so a manual feature/epic status holds until a child US changes again.
+        if kind == "story":
+            feat = next((f for f in b.features if f.id == item.feature_id), None)
+            if feat:
+                d = self._derive([s.status for s in b.stories if s.feature_id == feat.id])
+                if d:
+                    self._set_status(feat, d, at)
+                self._rollup_epic(b, feat.epic_id, at)
+        elif kind == "feature":
+            self._rollup_epic(b, item.epic_id, at)
         self.save(b)
         return item
+
+    def _rollup_epic(self, b: Board, epic_id: str, at: str) -> None:
+        ep = next((e for e in b.epics if e.id == epic_id), None)
+        if not ep:
+            return
+        d = self._derive([f.status for f in b.features if f.epic_id == ep.id])
+        if d:
+            self._set_status(ep, d, at)
 
     def assign(self, kind: str, item_id: str, assignee: str) -> Any:
         if kind not in ("story", "task"):
