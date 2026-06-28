@@ -3782,7 +3782,22 @@
       "i_want": "to see cache hit-ratio + uncached-equivalent savings per model/agent",
       "so_that": "I target what actually wastes context",
       "acceptance_criteria": [],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 832,
+          "output_tokens": 28635,
+          "cache_write_tokens": 47240,
+          "cache_read_tokens": 18242213,
+          "cost_usd": 10.313541,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T13:03:33.112396+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",

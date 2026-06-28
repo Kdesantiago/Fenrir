@@ -115,6 +115,12 @@ def board_flow(project: str | None = None) -> dict:
     return _store(project).flow_metrics(now=_now())
 
 
+@app.get("/api/board/audit")
+def board_audit(project: str | None = None, coarse_usd: float = 50.0, dominance: float = 0.4) -> dict:
+    """Agile hygiene: flag US that aren't atomic (umbrellas) + structural smells."""
+    return _store(project).audit(coarse_usd=coarse_usd, dominance=dominance)
+
+
 @app.get("/api/trace")
 def trace(us: str | None = None, project: str | None = None) -> list[dict]:
     return _store(project).trace(us or None)
