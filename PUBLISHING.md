@@ -51,6 +51,8 @@ git push origin v1.0.0
 
 Replace `OWNER` with your GitHub org/user (or use your Azure Repos / GitLab URL).
 
+**Version cadence** (what bump to cut — the `release` skill applies this automatically): a **feature PR → patch +1**; an **epic finished → minor +1** (patch → 0); a **breaking change → major**. So a minor line accrues one patch per feature PR and graduates to the next minor when its epic closes.
+
 **How the pin works** (read once, saves confusion):
 - The **git tag** (`v1.0.0`) pins the *catalog* — consumers add the marketplace at that ref.
 - `plugin.json`'s **`version`** pins the *plugin* — that string is what an installed user is on.
