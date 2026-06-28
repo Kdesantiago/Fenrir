@@ -27,6 +27,17 @@ def board_path(project: str | None = None) -> Path:
     return _DATA / "boards" / f"{slug}.json"
 
 
+def retro_dir() -> Path | None:
+    """Where epic retrospectives are auto-written on close. `FENRIR_RETRO_DIR` wins; else the
+    in-session repo root (`CLAUDE_PROJECT_DIR`) → docs/delivery-memory/retros. None when neither
+    is known (e.g. the long-running web server outside a repo) → auto-write disabled there."""
+    d = os.environ.get("FENRIR_RETRO_DIR")
+    if d:
+        return Path(d)
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root) / "docs" / "delivery-memory" / "retros" if root else None
+
+
 def store(project: str | None = None) -> BoardStore:
     p = os.environ.get("FENRIR_DASH_BOARD")  # explicit override (tests / pinning) wins
-    return BoardStore(Path(p) if p else board_path(project))
+    return BoardStore(Path(p) if p else board_path(project), retro_dir=retro_dir())
