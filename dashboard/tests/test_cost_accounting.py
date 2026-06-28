@@ -4,6 +4,8 @@ Self-contained; redirects board + ~/.claude via env/args so nothing real is touc
 """
 import json
 
+import pytest
+
 from backend import cli, pricing, telemetry
 from backend.board import BoardStore
 from backend.models import WorkLogEntry
@@ -160,3 +162,48 @@ def test_cli_link_captures_cache_and_refresh_updates(monkeypatch, tmp_path):
               "--project=-proj", "--refresh"])
     wl = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log
     assert len(wl) == 1 and wl[0].cache_read_tokens == 80000  # refreshed, not doubled-up
+
+
+def _subrun(proj, rid, ts, inp, out):
+    (proj / f"{rid}.meta.json").write_text(json.dumps({"agentType": "workflow-subagent"}))
+    (proj / f"{rid}.jsonl").write_text(json.dumps({
+        "timestamp": ts, "sessionId": "S1", "isSidechain": True,
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": inp, "output_tokens": out,
+            "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}}) + "\n")
+
+
+def test_reconcile_attributes_per_us_by_time_and_rolls_up(monkeypatch, tmp_path):
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    (proj / "main.jsonl").write_text(_ev("S1", inp=1000, out=500) + "\n")  # main thread
+    _subrun(proj, "agent-r1", "2026-06-01T08:00:00Z", 1000, 100)  # before noon → us-A
+    _subrun(proj, "agent-r2", "2026-06-01T14:00:00Z", 2000, 200)  # after noon  → us-B
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a_us = s.add_story(f.id, "A"); b_us = s.add_story(f.id, "B")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T00:00:00+00:00","us":"{a_us.id}"}}\n'
+                     f'{{"at":"2026-06-01T12:00:00+00:00","us":"{b_us.id}"}}\n')
+    wm = tmp_path / "wm.json"
+    args = ["reconcile", "--session", "S1", "--current-us", b_us.id,
+            "--uslog", str(uslog), "--watermark", str(wm), "--project=-proj"]
+    assert cli.main(args) == 0
+
+    c = BoardStore(board).costs()
+    ca, cb = c["stories"][a_us.id]["cost_usd"], c["stories"][b_us.id]["cost_usd"]
+    assert ca > 0 and cb > 0                       # r1 → A (before noon), r2 + main → B
+    assert cb > ca                                  # B has the bigger run + main delta
+    # rollup: feature = ΣUS, epic = Σfeatures
+    assert c["features"][f.id]["cost_usd"] == pytest.approx(ca + cb, abs=0.001)
+    assert c["epics"][e.id]["cost_usd"] == pytest.approx(c["features"][f.id]["cost_usd"], abs=0.001)
+
+    # idempotent: re-run adds nothing (runs seen, watermark caught up)
+    assert cli.main(args) == 0
+    c2 = BoardStore(board).costs()
+    assert c2["stories"][a_us.id]["cost_usd"] == pytest.approx(ca, abs=0.001)
+    assert c2["stories"][b_us.id]["cost_usd"] == pytest.approx(cb, abs=0.001)
