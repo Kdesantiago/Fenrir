@@ -200,6 +200,27 @@ def test_by_model_grouping(tmp_path):
     assert costs == sorted(costs, reverse=True)
 
 
+def test_group_rows_expose_cache_columns(tmp_path):
+    events = telemetry.load_events(_build_tree(tmp_path), PROJECT)
+    rows = telemetry.by_model(events)
+    for r in rows:
+        assert "cache_write_tokens" in r and "cache_read_tokens" in r
+    opus = next(r for r in rows if r["key"] == "claude-opus-4")
+    assert opus["cache_read_tokens"] >= 100  # e1 had cache_read=100
+    assert opus["cache_write_tokens"] >= 500  # e1 had cache_creation=500
+
+
+def test_summary_cost_breakdown_reconciles_to_total(tmp_path):
+    import pytest
+    events = telemetry.load_events(_build_tree(tmp_path), PROJECT)
+    s = telemetry.summary(events)
+    assert s["cache_read_tokens"] >= 100 and s["cache_write_tokens"] >= 500
+    b = s["cost_breakdown"]
+    assert set(b) == {"input", "output", "cache_read", "cache_write"}
+    # the four components reconcile to the reported total (cache_write is the remainder)
+    assert sum(b.values()) == pytest.approx(s["cost_usd"], abs=0.001)
+
+
 # --- by_skill -------------------------------------------------------------------------
 
 

@@ -1,11 +1,11 @@
 ---
 name: report
-description: Use when you want a SESSION report — what happened THIS working session: files changed, decisions/ADRs, tests run + result, real tokens/USD from dashboard telemetry, board items touched. Triggers — "session report", "what did we do this session", "recap this session's changes + cost". NOT for repo GATE/governance state (/fenrir:status), NOT for per-User-Story cost attribution (us-cost-tracking — report consumes its numbers), NOT for formatting existing docs (doc-generator). Read-only digest; degrades to git-only with a "cost unavailable" note.
+description: Use when you want a SESSION report — what happened THIS working session: files changed, decisions/ADRs, tests run + result, board items touched + real transitions, cost ONLY when a US is linked (else unavailable). Triggers — "session report", "what did we do this session", "recap this session's changes + cost". NOT for repo GATE/governance state (/fenrir:status), NOT for per-User-Story cost attribution (us-cost-tracking — report consumes its numbers), NOT for formatting existing docs (doc-generator). Read-only digest; degrades to git-only with "cost unavailable".
 ---
 
 # Report — the session digest
 
-A read-only recap of **what happened in THIS working session**: files changed, decisions/ADRs written, tests run and their real result, real tokens/USD from dashboard telemetry, and board items touched. It **reports, it does not enforce or mutate** — it writes nothing to gate-exceptions or branch-protection, and the dollars it shows are a DERIVED estimate from the price book, not billed cost. It is scoped to one session in one repo; cross-session or fleet roll-ups are out of scope.
+A read-only recap of **what happened in THIS working session**: files changed, decisions/ADRs written, tests run and their real result, board items touched (with their real status transitions), and cost — but cost is only a real per-US figure WHEN that story was linked into the board work_log this session (via `us-cost-tracking`); for an unlinked session there is no per-session cost surface, so the Cost section is **unavailable**. It **reports, it does not enforce or mutate** — it writes nothing to gate-exceptions or branch-protection, and any dollars it shows are a DERIVED estimate from the price book, not billed cost. It is scoped to one session in one repo; cross-session or fleet roll-ups are out of scope.
 
 ## When to use
 - "session report", "what did we do this session", "recap this session's changes + cost", "summarize the work + spend"
@@ -20,7 +20,7 @@ A read-only recap of **what happened in THIS working session**: files changed, d
 
 ## Inputs
 - The current Claude Code session id + its transcript under `~/.claude` — the source of files touched, tools/tests run, and tokens/cost.
-- The companion `dashboard/` app for REAL cost: `python -m backend.cli trace` (run from `dashboard/`), `GET /api/trace`, `GET /api/telemetry/subagents`, `GET /api/telemetry/summary` — consumed, never recomputed.
+- The companion `dashboard/` app for cost — consumed, never recomputed. NOTE: there is no per-SESSION cost surface. `python -m backend.cli trace` (run from `dashboard/`) and `GET /api/trace` read the board work_log, which is empty unless `us-cost-tracking` already ran `link`/`attribute`; `--us <id>` filters to a story, never to a session. `GET /api/telemetry/summary` and `/subagents` are board-wide / per-PROJECT, not this session. So real cost is available ONLY for a US that was linked this session; otherwise Cost is unavailable.
 - `git` — working diff + this session's commits for files changed, and any new `docs/adr/` / `docs/specs/` artifacts.
 - The board store `data/boards/<project-slug>.json` (via the CLI) for items created/moved this session.
 - No `org-profile.yaml` keys required.
@@ -30,13 +30,13 @@ A read-only recap of **what happened in THIS working session**: files changed, d
 2. **Changed.** From `git` list files changed this session (`git diff --stat` for the working tree + `git log` for session commits): one line per path → what changed. Note any new `docs/adr/NNNN-*.md` / `docs/specs/*` written this session — these are the Decisions section's source.
 3. **Decisions.** List ADRs/specs/design docs produced this session (path + the decision in one line). Do not invent rationale — link to the artifact; the `architect` agent owns the decision content.
 4. **Tests.** Report which test/gate commands actually ran this session and their real result (from the transcript or `delivery-gates` output) — pass/fail, coverage if printed. Do NOT fabricate a green run; if no tests ran, say so.
-5. **Cost.** Pull REAL session tokens + USD and the subagent breakdown from telemetry — `python -m backend.cli trace` (filter with `--us <id>` when the work maps to a story), `GET /api/trace`, `GET /api/telemetry/subagents`. Label USD as a **DERIVED estimate** (price book in `dashboard/backend/pricing.py`), not billed dollars. Numbers come from telemetry only — never estimated from memory.
-6. **Board.** List board items created/moved/touched this session from `data/boards/<project-slug>.json` (via the CLI). The board stores only CURRENT status — there is no status-transition history — so "items moved" is INFERRED from this session's actions and must be stated as such, never presented as a recorded timeline.
+5. **Cost.** There is NO per-session cost surface, so do not claim a "this session" dollar figure that the tools cannot produce. Report cost ONLY when this session's work maps to a board story that was linked/attributed (via `us-cost-tracking`): then `python -m backend.cli trace --us <id>` (from `dashboard/`) / `GET /api/trace` gives that US's real work_log totals — label USD a **DERIVED estimate** (price book `dashboard/backend/pricing.py`), not billed dollars, and say it is the US's cost, not a session-scoped figure. If no US was linked (or `dashboard/` is absent), state **"Cost: unavailable (no per-session cost surface; link a US via us-cost-tracking)"** — never fabricate, and never relabel board-wide/per-project totals (`/api/telemetry/summary`, `/subagents`) as "this session".
+6. **Board.** List board items created/moved/touched this session from `data/boards/<project-slug>.json` (via the CLI). Every item records a real `transitions[]` timeline (from_status → to_status + `at`, appended by `set_status` on each move — see `dashboard/backend/models.py` `Transition` and `board.py` `set_status`), so "items moved this session" is READ from that recorded timeline (filter transitions whose `at` falls in this session) — report it as the real status history, not an inference.
 7. **Emit one markdown SESSION REPORT** with sections in order: **Changed | Decisions | Tests | Cost | Board**. Close by stating it is a read-only digest — not the gate/governance view (`/fenrir:status`) and not a per-US ledger (`us-cost-tracking`), whose numbers it merely consumes.
 
 ## Output / validation
 - One markdown SESSION REPORT (Changed / Decisions / Tests / Cost / Board), session-scoped.
-- Validate: every cost figure reconciles with `cli trace` / `/api/trace` for the session (USD labeled DERIVED); files/tests/decisions are the session's actual git + transcript record; board moves are honestly tagged as inferred-from-actions.
+- Validate: any cost figure reconciles with `cli trace --us <id>` / `/api/trace` for a linked US (USD labeled DERIVED) and is presented as that US's cost, not a session figure — else Cost reads "unavailable"; files/tests/decisions are the session's actual git + transcript record; board moves are read from each item's real `transitions[]` timeline.
 - This skill REPORTS; it changes nothing. The real gate/governance state is `/fenrir:status`; the only hard gates are couche-0 (PreToolUse hooks + CI required-checks).
 
 ## Refuses when

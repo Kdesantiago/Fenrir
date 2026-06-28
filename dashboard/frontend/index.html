@@ -116,18 +116,18 @@
         <div id="agents-body">
           <section class="panel">
             <header class="panel-head"><h2>By model</h2></header>
-            <div class="table-wrap"><table class="data-table" id="tbl-model"><thead><tr><th>Model</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrap"><table class="data-table" id="tbl-model"><thead><tr><th>Model</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache W</th><th class="num">Cache R</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
           </section>
 
           <section class="panel">
             <header class="panel-head"><h2>By skill</h2></header>
-            <div class="table-wrap"><table class="data-table" id="tbl-skill"><thead><tr><th>Skill</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrap"><table class="data-table" id="tbl-skill"><thead><tr><th>Skill</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache W</th><th class="num">Cache R</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
           </section>
 
           <section class="panel">
             <header class="panel-head"><h2>Main vs subagent</h2></header>
             <div class="chart-wrap chart-bar" data-canvas="chart-source-bar" data-label="Main vs subagent cost bar chart"><canvas id="chart-source-bar" aria-label="Main vs subagent cost bar chart" role="img"></canvas></div>
-            <div class="table-wrap"><table class="data-table" id="tbl-source"><thead><tr><th>Source</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrap"><table class="data-table" id="tbl-source"><thead><tr><th>Source</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache W</th><th class="num">Cache R</th><th class="num">Cost</th></tr></thead><tbody></tbody></table></div>
           </section>
 
           <!-- ===== Subagents ===== -->
@@ -141,7 +141,7 @@
             <div class="chart-wrap chart-bar" data-canvas="chart-subagent-type" data-label="Cost by subagent type bar chart"><canvas id="chart-subagent-type" aria-label="Cost by subagent type bar chart" role="img"></canvas></div>
             <div class="table-wrap">
               <table class="data-table" id="tbl-subagent-type">
-                <thead><tr><th>Agent type</th><th class="num">Runs</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cost</th></tr></thead>
+                <thead><tr><th>Agent type</th><th class="num">Runs</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache W</th><th class="num">Cache R</th><th class="num">Cost</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
@@ -155,6 +155,7 @@
                 <thead><tr>
                   <th>Agent type</th><th>When</th><th>Model</th>
                   <th class="num">Input</th><th class="num">Output</th>
+                  <th class="num">Cache W</th><th class="num">Cache R</th>
                   <th class="num">Cost</th><th class="num">Duration</th><th>Status</th>
                 </tr></thead>
                 <tbody></tbody>
@@ -215,6 +216,7 @@
                 <thead><tr>
                   <th>When</th><th>User story</th><th>Agent</th>
                   <th class="num">Input</th><th class="num">Output</th>
+                  <th class="num">Cache W</th><th class="num">Cache R</th>
                   <th class="num">Cost</th><th>Source</th>
                 </tr></thead>
                 <tbody></tbody>

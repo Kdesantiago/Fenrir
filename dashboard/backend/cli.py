@@ -87,17 +87,20 @@ def _cmd_link(s: BoardStore, a) -> None:
           and (not a.skill or e["skill"] == a.skill)]
     if not ev:
         raise ValueError("no telemetry matched the given --session/--skill/--project")
-    groups: dict[str, dict] = defaultdict(lambda: {"in": 0, "out": 0, "cost": 0.0, "n": 0})
+    groups: dict[str, dict] = defaultdict(
+        lambda: {"in": 0, "out": 0, "cw": 0, "cr": 0, "cost": 0.0, "n": 0})
     for e in ev:
         g = groups[e["source"]]
         g["in"] += e["input_tokens"]; g["out"] += e["output_tokens"]
+        g["cw"] += e["cache_creation"]; g["cr"] += e["cache_read"]
         g["cost"] += e["cost"]; g["n"] += 1
     now = datetime.now(UTC).isoformat()
     for src, g in sorted(groups.items()):
         s.log_work(a.kind, a.id, WorkLogEntry(
             agent=a.agent or src, subagent_type=(src if src == "subagent" else ""),
             session_id=a.session, source="telemetry-link",
-            input_tokens=g["in"], output_tokens=g["out"], cost_usd=round(g["cost"], 4),
+            input_tokens=g["in"], output_tokens=g["out"],
+            cache_write_tokens=g["cw"], cache_read_tokens=g["cr"], cost_usd=round(g["cost"], 4),
             note=a.note or f"linked {g['n']} {src} events", at=now))
     _emit(s.load())
 
@@ -123,6 +126,8 @@ def _cmd_attribute(s: BoardStore, a) -> None:
         agent=a.agent or run["agent_type"], subagent_type=run["agent_type"],
         session_id=sess, run_id=a.run, source="telemetry-run",
         input_tokens=run["input_tokens"], output_tokens=run["output_tokens"],
+        cache_write_tokens=run.get("cache_write_tokens", 0),
+        cache_read_tokens=run.get("cache_read_tokens", 0),
         cost_usd=run["cost_usd"], note=a.note or (run["description"] or "")[:80],
         at=datetime.now(UTC).isoformat())
     _emit(s.log_work(a.kind, a.id, entry))

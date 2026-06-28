@@ -37,8 +37,8 @@ This skill is advisory — it designs the cache (pattern, key/TTL scheme, invali
 
 ## Output / validation
 - A cache design + client wiring: chosen pattern, the key scheme (namespaced + versioned), per-class TTL + invalidation strategy, stampede defense, the fail-open degradation path, and managed-identity/KV-ref Redis auth — plus the hit-ratio/eviction metrics.
-- Validation: warm the cache, mutate the source, and confirm the invalidation path serves fresh data (not the stale TTL value); kill the cache and confirm reads still succeed against the source (fail open); confirm no literal Redis key is present.
-- Boundary: this skill designs and wires the cache; it does not enforce correctness. The teeth are the committed invalidation path + the VERIFY functional check + the hit-ratio alert — not this skill.
+- Validation: warm the cache, mutate the source, and confirm the invalidation path serves fresh data (not the stale TTL value); kill the cache and confirm reads still succeed against the source (fail open); confirm no literal Redis connection string/key is present (hard fail). Managed-identity / KV-ref wiring is the recommended auth and an *advisory* VERIFY note — not a gate, since auth may legitimately resolve through `stack-adapter`/env without an explicit `DefaultAzureCredential` token.
+- Boundary: this skill designs and wires the cache; it does not enforce correctness. The teeth are the committed invalidation path + the VERIFY functional check + the hit-ratio alert. The VERIFY blocking greps are scoped to the cache module and co-located with a cache-client call (a bare `.set(` with no `ex=`/`px=`, a missing cache-client `delete`, etc. fail); they are a backstop, not a proof of correctness — the functional check is.
 
 ## Refuses when
 - `org-profile.yaml` missing, or `platform`/`framework` not the supported (Azure + Python FastAPI/Streamlit) stack.

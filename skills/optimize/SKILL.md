@@ -1,6 +1,6 @@
 ---
 name: optimize
-description: Use when optimizing code under ONE stated constraint — latency, throughput, memory, cost, bundle-size, or cold-start. Measure-first — baseline, change, re-measure, PROVE the delta; refuses an unmeasured "optimization". Triggers — "make this faster/cheaper/smaller", "reduce p99 latency / cold-start". NOT for generating a load profile (load-test feeds the baseline), NOT for behavior-preserving cleanup with no perf goal (fenrir:refactor), NOT for LLM spend (llm-cost-monitor). Reads org-profile.yaml `framework`/`platform`; refuses without a constraint or if behavior changes.
+description: Use when optimizing code under ONE stated constraint — latency, throughput, memory, cost, bundle-size, or cold-start (cost = per-call compute/runtime cost of THIS path; NOT LLM spend → llm-cost-monitor, NOT delivery/agent cost → us-cost-tracking). Measure-first — baseline, change, re-measure, PROVE the delta; refuses an unmeasured "optimization". Triggers — "make this faster/cheaper/smaller", "reduce p99 / cold-start". NOT a load profile (load-test), NOT no-perf-goal cleanup (fenrir:refactor). Reads org-profile.yaml `framework`/`platform`; refuses without a constraint.
 ---
 
 # Optimize — measure, change, prove
@@ -25,6 +25,7 @@ Performance work under **exactly one** stated constraint, proven by a recorded b
   - memory → `memory_profiler` / `tracemalloc`
   - bundle-size (front) → bundler stats (`vite build` / `webpack-bundle-analyzer` / `source-map-explorer`)
   - cold-start (serverless/functions) → a cold-invoke probe on `platform`
+  - cost → per-call compute-cost = measured runtime (from the latency harness above) × the `platform` instance `$`/s (e.g. function GB-s price, vCPU-hour ÷ 3600); or a cloud billing/cost export scoped to the code path when one exists. If neither the runtime nor a `$`/s rate for `platform` can be obtained, refuse — `cost` has no baseline.
 - A representative workload/input (or a `load-test` profile) to measure against — the baseline is meaningless without realistic load.
 
 ## Steps

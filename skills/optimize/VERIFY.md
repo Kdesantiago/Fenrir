@@ -7,8 +7,8 @@ Run after `optimize` has been applied to a repo. All BLOCKING checks must pass.
 - [ ] a BEFORE baseline is recorded with the exact reproducible command and variance (median over N≥5 runs, not a single sample): `grep -aiE 'before|baseline' <report> && echo OK || echo MISSING`
 - [ ] the AFTER measurement uses the SAME harness/command as BEFORE and the report states the measured `%delta`: `grep -aiE 'after|%?delta' <report> && echo OK || echo MISSING`
 - [ ] behavior-unchanged: the test suite passes identically before and after — the report carries the attestation and the runner is green: `pytest -q >/dev/null 2>&1 && echo OK || echo "RUN TEST SUITE"`
-- [ ] no optimization is claimed without a measured improvement beyond noise/variance (a within-variance result was reverted, not shipped) — the delta exceeds the reported stddev
-- [ ] the change is minimal and attributable: one hypothesis, citing the `file:line` / profiler output for the bottleneck, not a blanket rewrite
+- [ ] no optimization is claimed without a measured improvement beyond noise/variance — the report carries a numeric delta AND a numeric stddev, and `|delta| > stddev`: `D=$(grep -aioE 'delta[^0-9.-]*-?[0-9.]+' <report> | grep -oE '\-?[0-9.]+' | tail -1); S=$(grep -aioE '(stddev|std|variance)[^0-9.-]*[0-9.]+' <report> | grep -oE '[0-9.]+' | tail -1); if [ -n "$D" ] && [ -n "$S" ]; then awk -v d="$D" -v s="$S" 'BEGIN{d=(d<0?-d:d); print (d>s)?"OK delta>stddev":"FAIL within variance — revert"}'; else echo "MISSING numeric delta/stddev"; fi
+- [ ] the change is minimal and attributable: the report cites a `file:line` bottleneck and the diff touches ≤ 3 files (one hypothesis, not a blanket rewrite): `grep -aqE '[A-Za-z0-9_./-]+:[0-9]+' <report> && N=$(git diff --name-only HEAD | grep -cvE '\.md$') && [ "$N" -le 3 ] && echo "OK ($N files)" || echo "FAIL — no file:line citation or >3 files changed"`
 - [ ] matches `org-profile.yaml`: the harness chosen fits the declared `framework`/`platform` for the stated metric
 
 ## Informational (tooling presence — does NOT block; note if absent)

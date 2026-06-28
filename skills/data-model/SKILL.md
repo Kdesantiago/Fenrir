@@ -1,6 +1,6 @@
 ---
 name: data-model
-description: Use when DESIGNING or REVIEWING a SQLAlchemy data model / query layer — normalized schema + relationships, indexes from real access patterns, N+1 elimination, keyset pagination, EXPLAIN-backed query review. Triggers — "design this schema", "model these entities", "why is this query slow", "add an index", "fix the N+1". NOT for emitting/applying the Alembic migration (db-migration owns that), NOT for the HTTP layer (api-first), NOT for vector search (retriever). Advisory — every index must name the query it serves. Reads org-profile.yaml `framework`; refuses off-stack.
+description: Use when DESIGNING or REVIEWING a SQLAlchemy data model / query layer — normalized schema + relationships, indexes from real access patterns, N+1 elimination, indexes for keyset, EXPLAIN-backed query review. Triggers — "design this schema", "model these entities", "why is this query slow", "add an index", "fix the N+1". NOT for emitting/applying the Alembic migration (db-migration owns that), NOT for the HTTP layer (api-first), NOT for vector search (retriever). Advisory — every index must name the query it serves. Reads org-profile.yaml `framework`; refuses off-stack.
 ---
 
 # Data Model — schema, indexes, and query-perf design
@@ -28,17 +28,16 @@ This skill **designs and reviews** the ORM model and query layer; it does not au
 2. **Model the schema.** Normalize to the right normal form (3NF default); pick PK/FK, declare each `relationship()` with an explicit `back_populates` and ON DELETE behavior. Denormalize ONLY with a stated read/write justification (e.g. read-heavy, write-rare counter) — never by default.
 3. **Index FROM access patterns, not from columns.** For each hot query name the predicate: composite indexes ordered most-selective-first, covering indexes (`Index(..., postgresql_include=[...])`) for index-only scans, partial indexes for sparse filters. REFUSE to add an index that does not name the query it serves (a write-cost with no read).
 4. **Eliminate N+1.** Choose the loading strategy per relationship: `selectinload` for collections (one extra query, no row fan-out), `joinedload` for many-to-one, `lazy="raise"` on hot paths to make accidental lazy loads fail loud. Show the before/after query count.
-5. **Paginate by keyset, not OFFSET.** Use cursor/keyset pagination (`WHERE (sort_key, id) > (:last_key, :last_id) ORDER BY sort_key, id LIMIT n`) for large collections — OFFSET degrades linearly and skips rows under concurrent writes. Tie cursor shape to the `api-first` list conventions.
+5. **Support keyset pagination with the right index (advisory).** `api-first` owns the list-pagination contract (cursor vs `page`/`size`) — this skill does NOT set or enforce that shape. What it supplies is the index that makes a keyset scan efficient: a `(sort_key, id)` composite ordered to match the `WHERE (sort_key, id) > (:last_key, :last_id) ORDER BY sort_key, id LIMIT n` access path, so the cursor contract `api-first` defines stays index-backed instead of degrading to OFFSET seq scans. Cross-ref `api-first` for the cursor shape; stop at the sort-key/index here.
 6. **Prove it with `EXPLAIN ANALYZE`.** Run every hot query against a representatively-seeded DB; assert the index is used (no unexpected `Seq Scan` on the hot path, no surprise sort/hash-join blowup). Capture the plan as the evidence behind each index.
 7. **Hand the schema delta to `db-migration`.** Produce the model change + index DDL intent and route it to `db-migration` for the reviewed, reversible Alembic revision — do NOT write or run the Alembic script here (that is its carve).
 
 ## Output / validation
-- A reviewed data model (entities, keys, relationships + loading strategy), an index plan where each index cites the query it serves, a keyset-pagination shape for list endpoints, and `EXPLAIN ANALYZE` plans for the hot paths
-- Validate: each hot query's plan shows index usage (no unexpected seq scan); the N+1 fix drops the measured query count; list endpoints use keyset, not unbounded OFFSET
+- A reviewed data model (entities, keys, relationships + loading strategy), an index plan where each index cites the query it serves, the `(sort_key, id)` index that backs whatever keyset cursor `api-first` defines for list endpoints, and `EXPLAIN ANALYZE` plans for the hot paths
+- Validate: each hot query's plan shows index usage (no unexpected seq scan); the N+1 fix drops the measured query count; where `api-first` specifies a keyset cursor, the supporting composite index exists so the scan stays index-backed (the cursor contract itself is `api-first`'s to enforce)
 - This skill advises and reviews; the schema delta becomes real only once `db-migration` writes the revision and CI / the deploy pipeline applies it — not this skill
 
 ## Refuses when
 - `framework` is unset in `org-profile.yaml`, or is a non-SQLAlchemy stack (`express`, `spring`, `streamlit`, `none`)
 - Asked to add an index that does not name a query/access pattern it serves (a pure write-cost)
 - Asked to emit or apply the Alembic migration — that is `db-migration`; this skill stops at the schema delta
-- A list/collection endpoint is requested with unbounded OFFSET pagination on a large table (use keyset)
