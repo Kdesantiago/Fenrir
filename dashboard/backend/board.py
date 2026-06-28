@@ -222,6 +222,52 @@ class BoardStore:
             "total": agg([e for es in story_entries.values() for e in es]),
         }
 
+    def audit(self, coarse_usd: float = 50.0, dominance: float = 0.4) -> dict:
+        """Agile-hygiene check: flag US that are NOT atomic + structural smells.
+
+        A US is COARSE (an umbrella, not one atomic thing) if its real cost exceeds
+        `coarse_usd`, or if it carries more than `dominance` of its whole epic's cost — both
+        signal "decompose me into the real atomic US". Also flags orphan US (no feature),
+        empty features (no US), and epics whose cost sits almost entirely on one US."""
+        b = self.load()
+        c = self.costs()
+        feat_epic = {f.id: f.epic_id for f in b.features}
+        feat_ids = {f.id for f in b.features}
+        epic_ids = {e.id for e in b.epics}
+        stories_of_feat: dict[str, int] = defaultdict(int)
+        for s in b.stories:
+            stories_of_feat[s.feature_id] += 1
+
+        coarse: list[dict] = []
+        orphans: list[dict] = []
+        for s in b.stories:
+            cost = c["stories"].get(s.id, {}).get("cost_usd", 0.0)
+            if s.feature_id not in feat_ids:
+                orphans.append({"id": s.id, "title": s.title, "issue": "US has no parent feature"})
+            epic_id = feat_epic.get(s.feature_id, "")
+            epic_cost = c["epics"].get(epic_id, {}).get("cost_usd", 0.0)
+            share = (cost / epic_cost) if epic_cost > 0 else 0.0
+            reasons = []
+            if cost > coarse_usd:
+                reasons.append(f"cost ${round(cost, 2)} > ${coarse_usd} (likely an umbrella)")
+            if share > dominance:
+                reasons.append(f"holds {round(share * 100)}% of its epic's cost — not atomic")
+            if reasons:
+                coarse.append({"id": s.id, "title": s.title, "cost_usd": round(cost, 4),
+                               "epic_share": round(share, 3), "reasons": reasons,
+                               "fix": "decompose into the real atomic US (one per thing done) "
+                                      "and re-attribute"})
+        empty_features = [{"id": f.id, "title": f.title} for f in b.features
+                          if stories_of_feat[f.id] == 0]
+        empty_features += [{"id": f.id, "title": f.title, "issue": "feature has no parent epic"}
+                           for f in b.features if f.epic_id not in epic_ids]
+        coarse.sort(key=lambda x: -x["cost_usd"])
+        return {
+            "coarse_us": coarse, "orphan_us": orphans, "empty_features": empty_features,
+            "thresholds": {"coarse_usd": coarse_usd, "dominance": dominance},
+            "ok": not (coarse or orphans or empty_features),
+        }
+
     def trace(self, us_id: str | None = None) -> list[dict]:
         """Flatten every work_log entry into a chronological cost trace (optionally one US)."""
         b = self.load()

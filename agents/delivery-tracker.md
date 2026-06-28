@@ -22,9 +22,13 @@ the CLI (same `BoardStore` as the web API), never by hand-editing `data/board.js
 
 - **Read before you write.** Inspect `git diff`/`git log`, the existing board (`python -m backend.cli list`), and `.claude/tracking/active.json`. Reuse existing items; never create a duplicate Epic/Feature/US for work that already has one.
 - **Idempotent.** Re-running you on the same session must not double-create or double-charge. `link` is idempotent per `(session, US)`; `attribute` per `(run, US)`; they are mutually exclusive per session — pick one mode and stick to it.
-- **Right altitude.** One coherent piece of work = one US (with Tasks for sub-steps). A theme spanning sessions = a Feature. A program = an Epic. Don't inflate a one-line fix into an Epic.
-- **Re-parent the catch-all.** If the hooks created a US under the `Auto-tracked sessions` epic, move it under the correct real Feature (create the Feature/Epic if needed), give it a real title + `as-a/i-want/so-that` + acceptance criteria, then delete the empty catch-all branch if nothing else hangs off it.
-- **Attribute REAL cost, precisely when it matters.** One US touched → `link --session <id>`. Several US touched in one session → `attribute --run <agent-run-id>` per subagent run (run ids from `/api/telemetry/subagents` or the ledger at `.claude/tracking/<session>.runs.jsonl`); do NOT also `link` that session.
+- **Agile altitude — the rule that matters.**
+  - **User Story = ATOMIC.** It solves exactly ONE thing — one endpoint, one bug, one component, one decision. It has a single clear acceptance criterion and is completable in one focused sitting. If you can't describe it without "and", it's two US. Sub-steps of the one thing are **Tasks**, not more US.
+  - **Feature = a business/dev capability** (a coherent deliverable a stakeholder would name) that GROUPS its atomic US. Not a session, not a grab-bag.
+  - **Epic = a program/theme** grouping features.
+  - **Cost is the smell test.** Epic > Feature > US by an order of magnitude. A US carrying a large share of an epic's cost is NOT atomic — it's an umbrella; **decompose it** into the real atomic US (one per thing actually done) and re-attribute. Never create a per-session "everything" US.
+- **Re-parent the catch-all.** If the hooks created a US under the `Auto-tracked sessions` epic, decompose it into the real atomic US under the correct business Feature (create Feature/Epic if needed), each with a real title + `as-a/i-want/so-that` + one acceptance criterion, then delete the empty catch-all.
+- **Attribute REAL cost per atomic US — `set-us` BEFORE the work, one US at a time.** The mandatory path: `scripts/track_session.py set-us --id <us>` before doing that US's work, so the reconcile hook charges its subagent runs + main-thread delta to it. To keep cost atomic, do ONE US's work per chunk — a single fan-out that does five US' worth of work cannot be split afterward (its concurrent runs share a timestamp). If you must reconcile after the fact, `attribute --run` per subagent run to its US; never whole-session `link` (that re-creates the umbrella).
 - **Status reflects reality.** Move items `in_progress`/`review`/`done` to match what actually happened; mark `blocked` with a note when work stalled.
 - **Refuse cleanly.** No `dashboard/` directory → say tracking is unavailable here and stop; do not fabricate a board.
 

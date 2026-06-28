@@ -67,6 +67,11 @@ def _cmd_log(s: BoardStore, a) -> None:
     _emit(s.log_work(a.kind, a.id, entry))
 
 
+def _cmd_audit(s: BoardStore, a) -> None:
+    """Agile-hygiene: flag US that aren't atomic (umbrellas) + structural smells."""
+    _emit(s.audit(coarse_usd=a.coarse_usd, dominance=a.dominance))
+
+
 def _cmd_session_runs(s: BoardStore, a) -> None:
     """Read-only: this session's subagent runs (run_id + when + tokens), for the engine to
     map each run to the US that was active when it ran (time-sweep) and attribute it."""
@@ -346,6 +351,11 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("session-runs", help="read-only: a session's subagent runs (run_id+when)")
     a.add_argument("--session", required=True)
     a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_session_runs)
+
+    a = sub.add_parser("audit", help="agile hygiene: flag US that aren't atomic (umbrellas)")
+    a.add_argument("--coarse-usd", dest="coarse_usd", type=float, default=50.0)
+    a.add_argument("--dominance", type=float, default=0.4)
+    a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_audit)
 
     a = sub.add_parser("reconcile", help="attribute a session's real cost per-US in one pass")
     a.add_argument("--session", required=True); a.add_argument("--current-us", dest="current_us", required=True)

@@ -164,6 +164,20 @@ def test_cli_link_captures_cache_and_refresh_updates(monkeypatch, tmp_path):
     assert len(wl) == 1 and wl[0].cache_read_tokens == 80000  # refreshed, not doubled-up
 
 
+def test_audit_flags_non_atomic_us(tmp_path):
+    s = BoardStore(tmp_path / "b.json")
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    big = s.add_story(f.id, "umbrella"); small = s.add_story(f.id, "atomic")
+    s.log_work("story", big.id, WorkLogEntry(agent="x", cost_usd=300.0))
+    s.log_work("story", small.id, WorkLogEntry(agent="x", cost_usd=2.0))
+    a = s.audit(coarse_usd=50.0, dominance=0.4)
+    flagged = {u["id"] for u in a["coarse_us"]}
+    assert big.id in flagged and small.id not in flagged  # only the umbrella is coarse
+    assert a["ok"] is False
+    s.add_feature(e.id, "empty")  # a feature with no US is a structural smell
+    assert any(x["id"] for x in s.audit()["empty_features"])
+
+
 def _subrun(proj, rid, ts, inp, out):
     (proj / f"{rid}.meta.json").write_text(json.dumps({"agentType": "workflow-subagent"}))
     (proj / f"{rid}.jsonl").write_text(json.dumps({
