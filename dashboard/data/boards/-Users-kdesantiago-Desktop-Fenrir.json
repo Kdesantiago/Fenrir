@@ -191,6 +191,14 @@
       "description": "",
       "status": "backlog",
       "transitions": []
+    },
+    {
+      "id": "feat-18",
+      "epic_id": "epic-4",
+      "title": "Plan-first delivery workflow",
+      "description": "Development starts by writing Epic/Feature/US on the board; challenge-me & deliver check for a plan and create/adapt; 1 Feature = 1 branch = 1 PR.",
+      "status": "backlog",
+      "transitions": []
     }
   ],
   "stories": [
@@ -3979,15 +3987,123 @@
       "id": "us-56",
       "feature_id": "feat-15",
       "title": "Arm PR gate on Fenrir repo (public + branch-protection + delivery-trace)",
-      "status": "backlog",
+      "status": "done",
       "assignee": "architect",
       "points": 3,
       "as_a": "",
       "i_want": "",
       "so_that": "",
       "acceptance_criteria": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 2665,
+          "output_tokens": 108151,
+          "cache_write_tokens": 124019,
+          "cache_read_tokens": 62368533,
+          "cost_usd": 35.141556,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T13:55:23.981788+00:00"
+        }
+      ],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T13:55:06.191384+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-57",
+      "feature_id": "feat-18",
+      "title": "/fenrir:plan command (decompose work → board Epic/Feature/US + branch)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "tech lead",
+      "i_want": "to write the board breakdown before any code",
+      "so_that": "work is planned + trackable from the start",
+      "acceptance_criteria": [
+        "creates atomic US under a business Feature",
+        "no code at this stage"
+      ],
       "work_log": [],
-      "transitions": []
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:02:48.635533+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-58",
+      "feature_id": "feat-18",
+      "title": "challenge-me + deliver check-for-plan and adapt (create if missing)",
+      "status": "done",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "developer",
+      "i_want": "the orchestration to ensure a plan exists and create it if not",
+      "so_that": "plan-first is the default without hard-blocking",
+      "acceptance_criteria": [
+        "deliver iterates US-by-US with set-us"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:02:48.800574+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-59",
+      "feature_id": "feat-18",
+      "title": "delivery-tracker plan-first doctrine",
+      "status": "done",
+      "assignee": "architect",
+      "points": 1,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [
+        "doctrine: write Epic/Feature/US before code, 1 Feature=1 branch=1 PR"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:02:48.969131+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-60",
+      "feature_id": "feat-18",
+      "title": "docs + bookkeeping (GETTING-STARTED flow, README commands 5→6, CHANGELOG)",
+      "status": "done",
+      "assignee": "doc-keeper",
+      "points": 2,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "done",
+          "at": "2026-06-28T14:02:49.136582+00:00"
+        }
+      ]
     }
   ],
   "tasks": []

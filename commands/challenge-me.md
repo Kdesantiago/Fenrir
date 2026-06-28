@@ -37,12 +37,13 @@ If `$ARGUMENTS` is empty, ask what they want to build before anything else.
 Route by what the spec actually needs — do not run everything blindly.
 1. **Stack**: write/confirm `org-profile.yaml` from the answers (platform, framework, auth_provider, obs_backend, llm_provider, front). If the company uses Azure wrappers, set up `stack-interface.yaml` (+ `stack-adapter`).
 2. **Gate first**: `repo-bootstrap` → installs couche-0 (pre-commit + in-session hooks + CI + branch-protection + delivery-memory). No project starts without the gate.
-3. **Generators, by need**:
+3. **Plan on the board**: `/fenrir:plan` — decompose the spec's v1 cut into a **Feature + atomic US** on the board (one Feature per branch/PR) before any code, so the work is tracked from the start. If a plan already exists for this work, reuse it. (`/fenrir:deliver` checks for this too and creates it if missing.)
+4. **Generators, by need**:
    - HTTP API → `api-first` (contract-first).
    - Deploy target → `iac-gen` (aks/webapp/…).
    - Auth → `auth-gen`. Logs/metrics → `observability-gen`. UI → `frontend-gen`. LLM → `llm-gen`. Scheduled work → `cronjob`.
-4. **Design**: `architect` writes the ADR for the load-bearing decisions (the spec links it).
-5. **Deliver the first slice**: `/fenrir:deliver` (architect→coder→qa→review→gates) on the v1 cut, then `/fenrir:ship` (runs the automated pre-PR review).
+5. **Design**: `architect` writes the ADR for the load-bearing decisions (the spec links it).
+6. **Deliver the first slice**: `/fenrir:deliver` (architect→coder→qa→review→gates) on the v1 cut, building the US one at a time, then `/fenrir:ship` (runs the automated pre-PR review).
 
 ## Stop conditions
 - Idea rejected or deferred in Gear 1 → stop with the recommendation; do not build.
