@@ -4503,7 +4503,22 @@
         "retro file per closed epic",
         "not in MEMORY.md; revisitable"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 2665,
+          "output_tokens": 91428,
+          "cache_write_tokens": 104118,
+          "cache_read_tokens": 15896387,
+          "cost_usd": 11.288398,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T16:59:40.397179+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",

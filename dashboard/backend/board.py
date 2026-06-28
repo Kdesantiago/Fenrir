@@ -372,8 +372,8 @@ class BoardStore:
         # Timeline (compact)
         lines.append("## Timeline")
         lines.append("")
-        for t in sorted(ep.transitions, key=lambda t: t.at):
-            lines.append(f"- `{t.at[:19]}` epic **{t.from_status} → {t.to_status}**")
+        for tr in sorted(ep.transitions, key=lambda x: x.at):
+            lines.append(f"- `{tr.at[:19]}` epic **{tr.from_status} → {tr.to_status}**")
         lines.append("")
 
         # Seeded qualitative sections from real signals
@@ -388,9 +388,9 @@ class BoardStore:
         lines.append(f"- Delivered {len(stories)} US across {len(feats)} features; status rollup "
                      "auto-closed the epic when the last US merged.")
         if top_us:
-            t = top_us[0]
-            lines.append(f"- Highest-value US: `{t.id}` {t.title} "
-                         f"({usd(c['stories'].get(t.id, {}).get('cost_usd', 0.0))}).")
+            tu = top_us[0]
+            lines.append(f"- Highest-value US: `{tu.id}` {tu.title} "
+                         f"({usd(c['stories'].get(tu.id, {}).get('cost_usd', 0.0))}).")
         lines.append("- _(add: what to repeat — patterns, agents, decisions that paid off)_")
         lines.append("")
 
