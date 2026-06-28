@@ -3937,6 +3937,34 @@
           "source": "telemetry-main",
           "note": "main-thread delta",
           "at": "2026-06-28T13:24:12.113741+00:00"
+        },
+        {
+          "agent": "fenrir:reviewer",
+          "subagent_type": "fenrir:reviewer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-ae9dd3a608b664633",
+          "input_tokens": 12724,
+          "output_tokens": 5649,
+          "cache_write_tokens": 152359,
+          "cache_read_tokens": 545689,
+          "cost_usd": 1.4299,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T13:40:07.850204+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 23309,
+          "output_tokens": 65085,
+          "cache_write_tokens": 95955,
+          "cache_read_tokens": 40418803,
+          "cost_usd": 22.912622,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T13:40:07.850204+00:00"
         }
       ],
       "transitions": [
@@ -3946,6 +3974,20 @@
           "at": "2026-06-28T13:12:13.221852+00:00"
         }
       ]
+    },
+    {
+      "id": "us-56",
+      "feature_id": "feat-15",
+      "title": "Arm PR gate on Fenrir repo (public + branch-protection + delivery-trace)",
+      "status": "backlog",
+      "assignee": "architect",
+      "points": 3,
+      "as_a": "",
+      "i_want": "",
+      "so_that": "",
+      "acceptance_criteria": [],
+      "work_log": [],
+      "transitions": []
     }
   ],
   "tasks": []
