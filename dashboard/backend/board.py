@@ -490,11 +490,33 @@ class BoardStore:
                           if stories_of_feat[f.id] == 0]
         empty_features += [{"id": f.id, "title": f.title, "issue": "feature has no parent epic"}
                            for f in b.features if f.epic_id not in epic_ids]
+        # THIN-feature smell (informational, like expensive_us): a Feature normally groups SEVERAL
+        # atomic US — a Feature with one US is fine in isolation, but an epic split into ≥2 single-US
+        # features is fragmentation. Only flag where regrouping is still ACTIONABLE: the feature's US
+        # is not yet `done` AND it sits in a real epic. So a lone 1-US feature, a closed/merged
+        # feature (history you can't restructure), and orphan/empty-epic features (already reported
+        # under empty_features) are NOT flagged — no false-positive nagging.
+        story_by_feat: dict[str, list] = defaultdict(list)
+        for s in b.stories:
+            story_by_feat[s.feature_id].append(s)
+
+        def _open_single(f: Feature) -> bool:
+            sts = story_by_feat.get(f.id, [])
+            return (len(sts) == 1 and str(sts[0].status) != "done" and f.epic_id in epic_ids)
+
+        single_us = [f for f in b.features if _open_single(f)]
+        thin_by_epic: dict[str, list[str]] = defaultdict(list)
+        for f in single_us:
+            thin_by_epic[f.epic_id].append(f.id)
+        thin_features = [{"id": f.id, "title": f.title,
+                          "note": f"open single-US feature in an epic with {len(thin_by_epic[f.epic_id])} "
+                                  "such features — consider grouping the US under one business Feature"}
+                         for f in single_us if len(thin_by_epic[f.epic_id]) >= 2]
         coarse.sort(key=lambda x: -x["cost_usd"])
         expensive.sort(key=lambda x: -x["cost_usd"])
         return {
             "coarse_us": coarse, "expensive_us": expensive, "orphan_us": orphans,
-            "empty_features": empty_features,
+            "empty_features": empty_features, "thin_features": thin_features,
             "thresholds": {"coarse_usd": coarse_usd, "dominance": dominance},
             "ok": not (coarse or orphans or empty_features),
         }

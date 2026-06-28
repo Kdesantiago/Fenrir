@@ -70,6 +70,11 @@ Specialized subagents are the **default** for Fenrir commands: route the design/
 
 Record the chosen specialist in the spec ledger. The generic `architect`/`coder` is the **fallback** for a genuine feature with no matching specialist — when **no row matches at all, route to plain `coder`, do NOT force-fit a specialist**. (A docs/config/refactor change routed `light` by §2 must NOT be dragged into the full architect pipeline by this table — the §2 route wins.)
 
+**Announce + delegate (transparency + lean context).** Before each delegation, print one line in the thread — `→ delegating to <agent> because <reason>` — so the routing is visible, not guessed. **Delegation is route-aware, not unconditional:**
+- **`full` route:** run each stage as a subagent via the Task tool (architect, coder/generator, qa-tester, reviewer, red-team-destroyer) — the main thread only orchestrates, parses verdicts, and reports, so each subagent's tool churn stays in its own context and the main window doesn't fill (context pressure compounds when auto-compaction hasn't fired).
+- **`light` route / §2 proportional change:** do NOT force a subagent per stage — a 1-line/typo/docs fix shouldn't spawn coder+qa+red-team. Edit inline; honor §2 (qa skipped, red-team advisory) — the validation still *runs*, just right-sized.
+- **No nested delegation:** a subagent does its assigned work **inline** — it cannot spawn further subagents (no Task tool inside a subagent). Only the top-level command thread delegates.
+
 ## 3. Run the pipeline with a CHECKPOINT per stage
 Work on a dedicated branch: `git switch -c deliver/<slug>` (or reuse if resuming).
 Before each stage, snapshot: commit WIP or `git stash push -m "deliver:<slug>:<stage>"`, and record the ref in the ledger.

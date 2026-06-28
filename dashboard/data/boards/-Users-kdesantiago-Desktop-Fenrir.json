@@ -206,6 +206,21 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T18:40:58.243590+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "at": "2026-06-28T18:53:29.456550+00:00"
+        },
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T18:56:45.522451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:58:31.489005+00:00"
         }
       ]
     }
@@ -613,28 +628,25 @@
       "epic_id": "epic-9",
       "title": "Dashboard: Agents & workflow view",
       "description": "Catalog (agents/hooks/skills + descriptions) + live orchestration of subagent runs.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "in_progress",
           "at": "2026-06-28T18:40:58.243590+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:53:29.456550+00:00"
         }
       ]
     },
     {
       "id": "feat-32",
       "epic_id": "epic-9",
-      "title": "AI threat-model skill",
-      "description": "Design-time LLM-system threat modeling.",
-      "status": "backlog",
-      "transitions": []
-    },
-    {
-      "id": "feat-33",
-      "epic_id": "epic-9",
-      "title": "Tech-debt / architecture-drift tracker",
-      "description": "Catalog debt + detect drift vs DAT/ADR onto the board.",
+      "title": "New AI-architect & tech-lead skills",
+      "description": "Design-time AI threat-model + tech-debt/drift tracker — the role's missing specialist skills, grouped.",
       "status": "backlog",
       "transitions": []
     },
@@ -653,6 +665,25 @@
       "description": "Chain plan→deliver→ship, stop on gate, never auto-merge.",
       "status": "backlog",
       "transitions": []
+    },
+    {
+      "id": "feat-36",
+      "epic_id": "epic-9",
+      "title": "Planning granularity + delegated, announced specialists",
+      "description": "Decomposition yields multi-US Features (not one feature per US); commands announce which specialist they delegate to and run that work as subagents to keep the main context lean.",
+      "status": "in_progress",
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T18:56:45.522451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:58:31.489005+00:00"
+        }
+      ]
     }
   ],
   "stories": [
@@ -5634,7 +5665,7 @@
       "id": "us-82",
       "feature_id": "feat-31",
       "title": "Agent/hook/skill catalog API + view",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5643,7 +5674,92 @@
       "acceptance_criteria": [
         "GET /api/catalog reads agents/hooks/skills from disk (name/kind/description; hooks incl. fire-event); a searchable dashboard view groups them by kind"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-afbe0a982b5a5cec7",
+          "input_tokens": 5140,
+          "output_tokens": 8992,
+          "cache_write_tokens": 78383,
+          "cache_read_tokens": 604449,
+          "cost_usd": 1.0426,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:52:37.197319+00:00"
+        },
+        {
+          "agent": "fenrir:qa-tester",
+          "subagent_type": "fenrir:qa-tester",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a84341585a581c217",
+          "input_tokens": 10162,
+          "output_tokens": 4523,
+          "cache_write_tokens": 48619,
+          "cache_read_tokens": 113252,
+          "cost_usd": 0.5244,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:52:37.197319+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 3230,
+          "output_tokens": 133282,
+          "cache_write_tokens": 1547372,
+          "cache_read_tokens": 53990137,
+          "cost_usd": 45.816988,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:52:37.197319+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 270,
+          "output_tokens": 6038,
+          "cache_write_tokens": 4253,
+          "cache_read_tokens": 3314915,
+          "cost_usd": 1.852288,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:54:00.095195+00:00"
+        },
+        {
+          "agent": "fenrir:delivery-tracker",
+          "subagent_type": "fenrir:delivery-tracker",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a2e99bca815a522dd",
+          "input_tokens": 5104,
+          "output_tokens": 2241,
+          "cache_write_tokens": 37993,
+          "cache_read_tokens": 234986,
+          "cost_usd": 0.4365,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:57:30.560237+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 586,
+          "output_tokens": 22797,
+          "cache_write_tokens": 1639211,
+          "cache_read_tokens": 2859707,
+          "cost_usd": 18.394818,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:57:30.560237+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5654,6 +5770,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:52:14.377374+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:53:29.118692+00:00"
         }
       ]
     },
@@ -5661,7 +5782,7 @@
       "id": "us-83",
       "feature_id": "feat-31",
       "title": "Live agent-orchestration section (what they do, auto-refresh)",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5681,6 +5802,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:52:14.544074+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:53:29.290671+00:00"
         }
       ]
     },
@@ -5688,7 +5814,7 @@
       "id": "us-84",
       "feature_id": "feat-31",
       "title": "Command-prefix audit + auto-compaction doc",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "maintainer",
@@ -5708,6 +5834,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:52:14.708020+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:53:29.456550+00:00"
         }
       ]
     },
@@ -5729,7 +5860,7 @@
     },
     {
       "id": "us-86",
-      "feature_id": "feat-33",
+      "feature_id": "feat-32",
       "title": "tech-debt skill (catalog + drift vs DAT/ADR → board)",
       "status": "backlog",
       "assignee": "coder",
@@ -5790,6 +5921,102 @@
       ],
       "work_log": [],
       "transitions": []
+    },
+    {
+      "id": "us-90",
+      "feature_id": "feat-36",
+      "title": "Decomposition yields multi-US Features (group related US, not 1 feature per US)",
+      "status": "review",
+      "assignee": "",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "related user stories grouped under one business Feature",
+      "so_that": "the board is easy to follow, not fragmented into one-US features",
+      "acceptance_criteria": [
+        "/fenrir:plan + delivery-tracker doctrine require a Feature to be a business capability holding its atomic US; cli audit flags a Feature whose only US isn't genuinely a standalone capability (thin-feature smell)"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T18:56:45.522451+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:58:31.489005+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T19:07:12.974501+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-91",
+      "feature_id": "feat-36",
+      "title": "Commands announce the chosen specialist agent + why, in the thread",
+      "status": "review",
+      "assignee": "",
+      "points": 0,
+      "as_a": "developer",
+      "i_want": "each command to state which specialist it is using and why",
+      "so_that": "I can see the routing, not guess",
+      "acceptance_criteria": [
+        "/fenrir:plan, /fenrir:challenge-me and /fenrir:deliver print a one-line 'delegating to <agent> because <reason>' before delegating"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T18:56:45.689337+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:00:33.408995+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T19:07:13.142352+00:00"
+        }
+      ]
+    },
+    {
+      "id": "us-92",
+      "feature_id": "feat-36",
+      "title": "Commands delegate substantive work to subagents to keep main context lean",
+      "status": "review",
+      "assignee": "",
+      "points": 0,
+      "as_a": "tech lead",
+      "i_want": "decomposition/design/build run as delegated subagents",
+      "so_that": "the main context isn't filled (compounding the missing-compaction problem)",
+      "acceptance_criteria": [
+        "plan/challenge-me/deliver doctrine: prefer delegating substantive work (decompose, design, build, validate) to subagents via the Task tool; the main thread orchestrates + announces, keeping its context lean"
+      ],
+      "work_log": [],
+      "transitions": [
+        {
+          "from_status": "backlog",
+          "to_status": "todo",
+          "at": "2026-06-28T18:56:45.855491+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T19:00:33.575235+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T19:07:13.306988+00:00"
+        }
+      ]
     }
   ],
   "tasks": []
