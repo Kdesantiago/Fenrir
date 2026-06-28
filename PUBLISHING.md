@@ -219,4 +219,44 @@ Consumers move up by re-pointing the marketplace at the new tag and updating:
 
 ---
 
+## Arming the PR gate (branch-protection) — dogfooded on this repo
+
+The local hooks (pre-commit + the in-session `.claude` guards) give fast feedback, but the
+**only** thing that truly blocks a non-conforming merge is GitHub **branch-protection**. It is
+available only when the repo is **public** or on **GitHub Pro/Team** (a private free-tier repo
+returns `403` — branch-protection simply can't be set). Fenrir arms it on its own `main`:
+
+**Required status checks** (the job `name:` / status contexts in `.github/workflows/`):
+`dashboard (lint + type + test)`, `lint + type + test hooks`, `validate manifests`, `delivery-trace`.
+
+**Option A — IaC (reproducible):** `branch-protection.tf` at the repo root.
+```bash
+terraform init
+terraform apply -var="repository=Fenrir"   # needs a GitHub token with repo admin (GITHUB_TOKEN)
+```
+
+**Option B — one-shot `gh api`:**
+```bash
+gh api -X PUT repos/<owner>/Fenrir/branches/main/protection --input - <<'JSON'
+{
+  "required_status_checks": { "strict": true,
+    "contexts": ["dashboard (lint + type + test)", "lint + type + test hooks", "validate manifests", "delivery-trace"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": { "required_approving_review_count": 0, "dismiss_stale_reviews": true },
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "restrictions": null
+}
+JSON
+```
+Solo maintainer → `required_approving_review_count: 0` (you can't self-approve); a team raises it
+to ≥1 and turns on code-owner reviews (add a root `CODEOWNERS`). Verify with
+`python3 scripts/techlead_report.py --root .` → "branch-protection: ARMED".
+
+> `delivery-trace` makes every PR reference a User Story on the dashboard board — drop it from
+> the contexts (and the `.tf`) if you don't run the companion board.
+
+---
+
 Design rationale and the 6 red-team iterations: see `DELIVERY-SKILLSET.md` and `CHANGELOG.md`. Solo end-to-end walkthrough: `GETTING-STARTED.md`. Repo layout: `README.md`.
