@@ -133,7 +133,7 @@
       "id": "epic-8",
       "title": "Delivery-flow & board refinements",
       "description": "Post-v1.5 refinements: cost-view scoping + sane ordering, specialized-agent-by-default delivery with a mandatory QA+red-team gate, merged-branch hygiene, cache-read transparency, and closing the epic-7 loop.",
-      "status": "in_progress",
+      "status": "done",
       "color": "#0ea5e9",
       "created": "",
       "transitions": [
@@ -186,6 +186,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:23:30.634592+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:30:37.319245+00:00"
         }
       ]
     }
@@ -545,7 +550,7 @@
       "epic_id": "epic-8",
       "title": "Cache-read transparency",
       "description": "Surface why cache-read is large (context re-reads) — confirmed not a bug.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -556,6 +561,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:23:30.634592+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:30:37.319245+00:00"
         }
       ]
     },
@@ -5394,7 +5404,7 @@
       "id": "us-80",
       "feature_id": "feat-29",
       "title": "Surface cache-read as context re-reads so spend is intelligible",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5403,7 +5413,50 @@
       "acceptance_criteria": [
         "dashboard shows cache-read as context re-reads (per-call avg + that loaded tools/history drive it); short doc; confirmed not a telemetry bug"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a1e9bff742ad7e333",
+          "input_tokens": 5128,
+          "output_tokens": 6112,
+          "cache_write_tokens": 67996,
+          "cache_read_tokens": 482921,
+          "cost_usd": 0.8449,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:29:39.166913+00:00"
+        },
+        {
+          "agent": "fenrir:qa-tester",
+          "subagent_type": "fenrir:qa-tester",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a49b1bc259a591a06",
+          "input_tokens": 7897,
+          "output_tokens": 4211,
+          "cache_write_tokens": 52564,
+          "cache_read_tokens": 217375,
+          "cost_usd": 0.582,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:29:39.166913+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1255,
+          "output_tokens": 45544,
+          "cache_write_tokens": 65649,
+          "cache_read_tokens": 21404253,
+          "cost_usd": 12.503491,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:29:39.166913+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5419,6 +5472,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:29:14.726523+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:30:37.319245+00:00"
         }
       ]
     },

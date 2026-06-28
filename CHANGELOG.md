@@ -4,6 +4,10 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-06-28
+
+> **Epic 8 — Delivery-flow & board refinements.** Minor bump (an epic finished, per the cadence rule). Cost view scopes by epic/feature + defaults to newest-first; specialist agents are the delivery default with a mandatory QA + red-team validation gate on every route; merged branches auto-delete (remote + local); cache-read is now explained (re-read/call, no bug); and the epic-7 loop is closed. Five feature PRs (#14–#18) patch-bumped 1.5.1→1.5.4; this minor closes the epic. See `docs/delivery-memory/retros/epic-8-*.md`.
+
 ### Added
 - **Cache-read transparency** (epic-8) — answers "why is cache-read so big when my context is small?". `telemetry.efficiency()` now reports **`calls`** and **`cache_read_per_call`** (per model + total); the **Cache efficiency** panel gains a **Re-read / call** KPI and an explanatory caption: cache-read is the cached *prefix* (system prompt + every loaded tool/MCP schema + history) re-read on **every** call at 0.1× — total ≈ per-call × calls, so it scales with session length + loaded tools, **not a leak**. The caption is **honest, not reassuring-by-default**: it flips to a warning when savings are negative / hit-ratio low (prefix churn — writes cost 1.25–2× and aren't being amortized by reads), and labels the figure as a blended main+subagent average (cold/first calls pull it down). No telemetry bug was found — this is a transparency surface. Fix to shrink it: disconnect unused MCP servers.
 
