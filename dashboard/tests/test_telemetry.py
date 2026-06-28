@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from backend import telemetry
 
 # --- fixtures-as-helpers --------------------------------------------------------------
@@ -211,7 +213,6 @@ def test_group_rows_expose_cache_columns(tmp_path):
 
 
 def test_summary_cost_breakdown_reconciles_to_total(tmp_path):
-    import pytest
     events = telemetry.load_events(_build_tree(tmp_path), PROJECT)
     s = telemetry.summary(events)
     assert s["cache_read_tokens"] >= 100 and s["cache_write_tokens"] >= 500
@@ -219,6 +220,45 @@ def test_summary_cost_breakdown_reconciles_to_total(tmp_path):
     assert set(b) == {"input", "output", "cache_read", "cache_write"}
     # the four components reconcile to the reported total (cache_write is the remainder)
     assert sum(b.values()) == pytest.approx(s["cost_usd"], abs=0.001)
+
+
+def test_efficiency_shape_and_reconciles(tmp_path):
+    eff = telemetry.efficiency(telemetry.load_events(_build_tree(tmp_path), PROJECT))
+    assert eff["by_model"] and eff["total"]
+    t = eff["total"]
+    assert t["savings"] == pytest.approx(t["uncached_cost"] - t["actual_cost"], abs=0.001)
+    assert 0.0 <= t["cache_hit_ratio"] <= 1.0
+    for r in eff["by_model"]:
+        assert 0.0 <= r["cache_hit_ratio"] <= 1.0
+        assert r["savings"] == pytest.approx(r["uncached_cost"] - r["actual_cost"], abs=0.001)
+
+
+def test_efficiency_positive_savings_when_reads_dominate(tmp_path):
+    # reads >> writes → caching clearly wins (savings > 0, high hit-ratio).
+    cd = tmp_path / "c"
+    proj = cd / "projects" / PROJECT / "s"
+    proj.mkdir(parents=True)
+    ev = json.dumps({"timestamp": "2026-06-01T10:00:00Z", "sessionId": "s",
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": 1000, "output_tokens": 100,
+            "cache_creation_input_tokens": 1000, "cache_read_input_tokens": 1_000_000}}})
+    (proj / "m.jsonl").write_text(ev + "\n")
+    t = telemetry.efficiency(telemetry.load_events(cd, PROJECT))["total"]
+    assert t["savings"] > 0 and t["cache_hit_ratio"] > 0.9
+
+
+def test_efficiency_negative_savings_when_writes_dominate(tmp_path):
+    # writes (1.25x premium) with no reads → caching COSTS more than uncached (the waste signal).
+    cd = tmp_path / "c"
+    proj = cd / "projects" / PROJECT / "s"
+    proj.mkdir(parents=True)
+    ev = json.dumps({"timestamp": "2026-06-01T10:00:00Z", "sessionId": "s",
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": 0, "output_tokens": 0,
+            "cache_creation_input_tokens": 1_000_000, "cache_read_input_tokens": 0}}})
+    (proj / "m.jsonl").write_text(ev + "\n")
+    t = telemetry.efficiency(telemetry.load_events(cd, PROJECT))["total"]
+    assert t["savings"] < 0 and t["cache_hit_ratio"] == 0.0
 
 
 # --- by_skill -------------------------------------------------------------------------

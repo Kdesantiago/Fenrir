@@ -59,9 +59,157 @@ def _cmd_assign(s: BoardStore, a) -> None:
 
 def _cmd_log(s: BoardStore, a) -> None:
     entry = WorkLogEntry(agent=a.agent, session_id=a.session, input_tokens=a.in_tokens,
-                         output_tokens=a.out_tokens, cost_usd=a.cost, note=a.note,
-                         at=a.at or datetime.now(UTC).isoformat())
+                         output_tokens=a.out_tokens,
+                         cache_write_tokens=getattr(a, "cache_write", 0),
+                         cache_read_tokens=getattr(a, "cache_read", 0),
+                         cost_usd=a.cost, source=getattr(a, "source", "") or "manual",
+                         note=a.note, at=a.at or datetime.now(UTC).isoformat())
     _emit(s.log_work(a.kind, a.id, entry))
+
+
+def _cmd_audit(s: BoardStore, a) -> None:
+    """Agile-hygiene: flag US that aren't atomic (umbrellas) + structural smells."""
+    _emit(s.audit(coarse_usd=a.coarse_usd, dominance=a.dominance))
+
+
+def _cmd_session_runs(s: BoardStore, a) -> None:
+    """Read-only: this session's subagent runs (run_id + when + tokens), for the engine to
+    map each run to the US that was active when it ran (time-sweep) and attribute it."""
+    cd = config.claude_dir()
+    project = a.project or telemetry.current_project_slug(cd)
+    runs = telemetry.subagent_runs(cd, project)["runs"]
+    out = [{"run_id": r["run_id"], "when": r["when"], "cost_usd": r["cost_usd"],
+            "total_tokens": r["total_tokens"]}
+           for r in runs if r["session_id"] == a.session and r["run_id"]]
+    _emit({"session": a.session, "runs": out})
+
+
+def _reconcile_parse_ts(x: str) -> float:
+    try:
+        return datetime.fromisoformat((x or "").replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError):
+        return float("-inf")
+
+
+def _cmd_reconcile(s: BoardStore, a) -> None:
+    """Attribute a session's REAL cost PER-US in ONE pass (the engine calls this once per
+    Stop). Subagent runs → the US active when each ran (time-sweep over the uslog); main-thread
+    cost → the current US as a watermark delta. main and subagent are disjoint sources (no
+    double-count); each run is attributed once (idempotent across the whole board)."""
+    cd = config.claude_dir()
+    project = a.project or telemetry.current_project_slug(cd)
+
+    uslog: list[tuple[float, str]] = []
+    try:
+        with open(a.uslog) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    e = json.loads(line)
+                    uslog.append((_reconcile_parse_ts(e.get("at", "")), e.get("us", "")))
+    except (OSError, ValueError):
+        pass
+    uslog.sort()
+
+    def us_at(when: str) -> str:
+        t = _reconcile_parse_ts(when)
+        chosen = a.current_us
+        for at, us in uslog:
+            if at <= t and us:
+                chosen = us
+        return chosen
+
+    b = s.load()
+    story_by = {st.id: st for st in b.stories}
+    # existing per-run entries (across the whole board) so we can TOP UP a run that was
+    # reconciled while still streaming (partial tokens) once its transcript completes —
+    # keyed by run_id, so it stays on its first-assigned US and is never double-counted.
+    existing = {w.run_id: w for coll in (b.stories, b.tasks) for it in coll
+                for w in it.work_log if w.run_id}
+    now = datetime.now(UTC).isoformat()
+
+    n_sub = n_topped = 0
+    for r in telemetry.subagent_runs(cd, project)["runs"]:
+        if r["session_id"] != a.session or not r["run_id"]:
+            continue
+        prev = existing.get(r["run_id"])
+        if prev is not None:
+            # a later reconcile sees a run that finished growing → update in place (no move)
+            if r["cost_usd"] > prev.cost_usd + 1e-9 or r["total_tokens"] > (
+                    prev.input_tokens + prev.output_tokens):
+                prev.input_tokens = r["input_tokens"]; prev.output_tokens = r["output_tokens"]
+                prev.cache_write_tokens = r.get("cache_write_tokens", 0)
+                prev.cache_read_tokens = r.get("cache_read_tokens", 0)
+                prev.cost_usd = r["cost_usd"]; n_topped += 1
+            continue
+        st = story_by.get(us_at(r["when"]))
+        if not st:
+            continue
+        entry = WorkLogEntry(
+            agent=r["agent_type"], subagent_type=r["agent_type"], session_id=a.session,
+            run_id=r["run_id"], source="telemetry-run",
+            input_tokens=r["input_tokens"], output_tokens=r["output_tokens"],
+            cache_write_tokens=r.get("cache_write_tokens", 0),
+            cache_read_tokens=r.get("cache_read_tokens", 0),
+            cost_usd=r["cost_usd"], note="auto per-US (reconcile)", at=now)
+        st.work_log.append(entry)
+        existing[r["run_id"]] = entry
+        n_sub += 1
+
+    # main-thread delta → current US (vs the stored watermark)
+    wm: dict = {}
+    try:
+        with open(a.watermark) as f:
+            wm = json.load(f)
+    except (OSError, ValueError):
+        pass
+    main = [e for e in telemetry.load_events(cd, project)
+            if e["session_id"] == a.session and e["source"] == "main"]
+    mt = {"input_tokens": sum(e["input_tokens"] for e in main),
+          "output_tokens": sum(e["output_tokens"] for e in main),
+          "cache_write_tokens": sum(e["cache_creation"] for e in main),
+          "cache_read_tokens": sum(e["cache_read"] for e in main),
+          "cost_usd": round(sum(e["cost"] for e in main), 6)}
+    d_cost = round(mt["cost_usd"] - float(wm.get("cost_usd", 0)), 6)
+    cur = story_by.get(a.current_us)
+    main_logged = False
+    if cur is not None and d_cost > 1e-6:
+        cur.work_log.append(WorkLogEntry(
+            agent="main", session_id=a.session, source="telemetry-main",
+            input_tokens=max(0, mt["input_tokens"] - int(wm.get("input_tokens", 0))),
+            output_tokens=max(0, mt["output_tokens"] - int(wm.get("output_tokens", 0))),
+            cache_write_tokens=max(0, mt["cache_write_tokens"] - int(wm.get("cache_write_tokens", 0))),
+            cache_read_tokens=max(0, mt["cache_read_tokens"] - int(wm.get("cache_read_tokens", 0))),
+            cost_usd=d_cost, note="main-thread delta", at=now))
+        main_logged = True
+
+    s.save(b)
+    if main_logged and a.watermark:
+        try:
+            with open(a.watermark, "w") as f:
+                json.dump(mt, f)
+        except OSError:
+            pass
+    _emit({"reconciled": True, "session": a.session, "current_us": a.current_us,
+           "subagent_runs_attributed": n_sub, "subagent_runs_topped_up": n_topped,
+           "main_delta_usd": d_cost if main_logged else 0.0})
+
+
+def _cmd_session_cost(s: BoardStore, a) -> None:
+    """Read-only: a session's REAL telemetry totals, optionally one source (main|subagent).
+    Companion to `reconcile` for inspecting/debugging a session's main-thread spend."""
+    cd = config.claude_dir()
+    project = a.project or telemetry.current_project_slug(cd)
+    ev = [e for e in telemetry.load_events(cd, project)
+          if e["session_id"] == a.session and (a.source in ("", "all") or e["source"] == a.source)]
+    _emit({
+        "session": a.session, "source": a.source or "all", "events": len(ev),
+        "input_tokens": sum(e["input_tokens"] for e in ev),
+        "output_tokens": sum(e["output_tokens"] for e in ev),
+        "cache_write_tokens": sum(e["cache_creation"] for e in ev),
+        "cache_read_tokens": sum(e["cache_read"] for e in ev),
+        "cost_usd": round(sum(e["cost"] for e in ev), 6),
+    })
 
 
 def _cmd_link(s: BoardStore, a) -> None:
@@ -206,8 +354,28 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--id", required=True); a.add_argument("--agent", default="")
     a.add_argument("--session", default=""); a.add_argument("--in-tokens", dest="in_tokens", type=int, default=0)
     a.add_argument("--out-tokens", dest="out_tokens", type=int, default=0)
+    a.add_argument("--cache-write", dest="cache_write", type=int, default=0)
+    a.add_argument("--cache-read", dest="cache_read", type=int, default=0)
     a.add_argument("--cost", type=float, default=0.0); a.add_argument("--note", default="")
-    a.add_argument("--at", default=""); a.set_defaults(fn=_cmd_log)
+    a.add_argument("--source", default=""); a.add_argument("--at", default=""); a.set_defaults(fn=_cmd_log)
+
+    a = sub.add_parser("session-cost", help="read-only: a session's real telemetry totals")
+    a.add_argument("--session", required=True); a.add_argument("--source", default="all")
+    a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_session_cost)
+
+    a = sub.add_parser("session-runs", help="read-only: a session's subagent runs (run_id+when)")
+    a.add_argument("--session", required=True)
+    a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_session_runs)
+
+    a = sub.add_parser("audit", help="agile hygiene: flag US that aren't atomic (umbrellas)")
+    a.add_argument("--coarse-usd", dest="coarse_usd", type=float, default=50.0)
+    a.add_argument("--dominance", type=float, default=0.4)
+    a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_audit)
+
+    a = sub.add_parser("reconcile", help="attribute a session's real cost per-US in one pass")
+    a.add_argument("--session", required=True); a.add_argument("--current-us", dest="current_us", required=True)
+    a.add_argument("--uslog", default=""); a.add_argument("--watermark", default="")
+    a.add_argument("--project", default=None); a.set_defaults(fn=_cmd_reconcile)
 
     a = sub.add_parser("link", help="pull real telemetry (by session/skill) into a work_log")
     a.add_argument("--kind", required=True); a.add_argument("--id", required=True)

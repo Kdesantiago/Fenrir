@@ -85,9 +85,22 @@ def _active_path() -> str:
     return os.path.join(_state_dir(), "active.json")
 
 
+def _safe(session: str) -> str:
+    return "".join(c for c in session if c.isalnum() or c in "-_") or "session"
+
+
 def _runs_path(session: str) -> str:
-    safe = "".join(c for c in session if c.isalnum() or c in "-_") or "session"
-    return os.path.join(_state_dir(), f"{safe}.runs.jsonl")
+    return os.path.join(_state_dir(), f"{_safe(session)}.runs.jsonl")
+
+
+def _uslog_path(session: str) -> str:
+    """Ledger of (at, us) active-US changes — lets reconcile map each run to the US that was
+    active when it ran (time-sweep), so per-US cost is correct without relying on SubagentStop."""
+    return os.path.join(_state_dir(), f"{_safe(session)}.uslog.jsonl")
+
+
+def _watermark_path(session: str) -> str:
+    return os.path.join(_state_dir(), f"{_safe(session)}.main.json")
 
 
 # --------------------------------------------------------------------------- git
@@ -183,6 +196,17 @@ def _write_active(d: dict) -> None:
         pass
 
 
+def _append_uslog(session: str, us: str) -> None:
+    """Record (at, us) so reconcile can map each run to the US active when it ran."""
+    if not session or not us:
+        return
+    try:
+        with open(_uslog_path(session), "a") as f:
+            f.write(json.dumps({"at": datetime.now().astimezone().isoformat(), "us": us}) + "\n")
+    except Exception:
+        pass
+
+
 def _skip(reason: str) -> int:
     print(json.dumps({"tracking": "skipped", "reason": reason}))
     return 0
@@ -232,6 +256,7 @@ def cmd_ensure_us(a) -> int:
 
     _write_active({"session_id": session, "us_id": us, "branch": a.branch or _branch(),
                    "at": datetime.now().astimezone().isoformat()})
+    _append_uslog(session, us)
     print(json.dumps({"tracking": "ensured", "us_id": us, "session_id": session}))
     return 0
 
@@ -251,6 +276,7 @@ def cmd_set_us(a) -> int:
     cur.update({"session_id": session, "us_id": a.id,
                 "at": datetime.now().astimezone().isoformat()})
     _write_active(cur)
+    _append_uslog(session, a.id)
     print(json.dumps({"tracking": "active-us-set", "us_id": a.id, "session_id": session}))
     return 0
 
@@ -264,44 +290,39 @@ def cmd_collect_run(a) -> int:
                                 "at": datetime.now().astimezone().isoformat()}) + "\n")
     except Exception as e:
         return _skip(f"ledger write failed: {e}")
-    # LIVE per-run attribution: if a US is active for this session, charge THIS run to it now
-    # (precise per-US cost, automatically). Mutually exclusive with whole-session link — once
-    # any run is attributed, finalize's link is refused by the CLI and skipped gracefully.
-    attributed = None
-    dash = _dash_dir()
-    active = _read_active()
-    us = active.get("us_id", "") if active.get("session_id") == a.session else ""
-    if dash and us:
-        res = _cli(dash, "attribute", "--kind", "story", "--id", us, "--run", a.run,
-                   "--note", f"auto: {a.type or 'subagent'} run")
-        if res:
-            attributed = us
-    print(json.dumps({"tracking": "collected", "run": a.run, "session_id": a.session,
-                      "attributed_to": attributed}))
+    # Ledger only. Attribution is done by `finalize` (the single authority): it time-sweeps the
+    # session's runs and attributes each to the US active WHEN IT RAN. Doing a live attribute here
+    # too could pin the same run to a different US than the sweep picks → double-count.
+    print(json.dumps({"tracking": "collected", "run": a.run, "session_id": a.session}))
     return 0
 
 
 def cmd_finalize(a) -> int:
+    """Reconcile REAL cost PER-US (the mandatory, automatic path):
+      • subagents — attribute each of the session's runs to the US active WHEN IT RAN
+        (time-sweep over the set-us ledger; idempotent per run). Robust even if SubagentStop
+        never fired for it.
+      • main thread — attribute the cost accrued since the last reconcile (a watermark delta)
+        to the CURRENTLY active US.
+    main and subagent are disjoint telemetry sources, so there is no double-count. Replaces the
+    old whole-session link (which could only put everything on ONE US)."""
     dash = _dash_dir()
     if not dash:
         return _skip("no dashboard companion app (tracking disabled)")
     session = a.session or _read_active().get("session_id", "")
     if not session:
         return _skip("no session id")
-
-    # make sure a US exists, then charge the session's real cost to it.
-    cmd_ensure_us(a)  # idempotent; prints its own line
-    us = _read_active().get("us_id", "") or _story_for_session(_load_board(dash), session)
-    if not us:
+    cmd_ensure_us(a)  # guarantees an active US (prints its own line)
+    current_us = _read_active().get("us_id", "") or _story_for_session(_load_board(dash), session)
+    if not current_us:
         return _skip("no active US to attribute to")
 
-    # whole-session link (coarse, captures main + subagent), REFRESHED each call so cost stays
-    # current turn-by-turn. If the session was already split per-run by the subagent, the CLI
-    # refuses link → we skip gracefully.
-    res = _cli(dash, "link", "--kind", "story", "--id", us, "--session", session,
-               "--refresh", "--note", "auto-tracked (live)")
-    print(json.dumps({"tracking": "finalized", "us_id": us, "session_id": session,
-                      "link_result": res or "skipped (already attributed / CLI unavailable)"}))
+    # one in-process pass in the CLI (fast for hundreds of runs): subagents → US active when
+    # they ran (time-sweep over the uslog), main-thread → current US as a watermark delta.
+    res = _cli(dash, "reconcile", "--session", session, "--current-us", current_us,
+               "--uslog", _uslog_path(session), "--watermark", _watermark_path(session))
+    print(json.dumps({"tracking": "reconciled", "session_id": session,
+                      "current_us": current_us, "result": res or "skipped (CLI unavailable)"}))
     return 0
 
 

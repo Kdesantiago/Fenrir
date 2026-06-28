@@ -194,6 +194,55 @@ def agents(events: list[dict]) -> dict:
     }
 
 
+def efficiency(events: list[dict]) -> dict:
+    """How hard prompt-caching is working, and what it saves — per model + total.
+
+    `uncached_cost` charges EVERY input-side token (fresh + cache read + cache write) at the
+    full input rate (what it would cost with no caching); `actual_cost` is the real,
+    cache-discounted cost. `savings` = uncached − actual (caching is the efficient path, not
+    waste). `cache_hit_ratio` = cache_read / (fresh_input + cache_read): the share of input
+    served cheap from cache — a LOW ratio with high spend is the real waste to target."""
+    per: dict[str, dict] = defaultdict(
+        lambda: {"fresh_input": 0, "cache_read": 0, "cache_write": 0, "output": 0,
+                 "actual_cost": 0.0, "input_rate": 0.0, "output_rate": 0.0})
+    for e in events:
+        r = pricing.rates_for(e["model"])
+        d = per[e["model"]]
+        d["fresh_input"] += e["input_tokens"]; d["cache_read"] += e["cache_read"]
+        d["cache_write"] += e["cache_creation"]; d["output"] += e["output_tokens"]
+        d["actual_cost"] += e["cost"]
+        d["input_rate"] = r["input"]; d["output_rate"] = r["output"]
+
+    def row(model: str, d: dict) -> dict:
+        uncached = ((d["fresh_input"] + d["cache_read"] + d["cache_write"]) * d["input_rate"]
+                    + d["output"] * d["output_rate"]) / 1_000_000.0
+        cin = d["fresh_input"] + d["cache_read"]
+        return {
+            "model": model, "fresh_input_tokens": d["fresh_input"],
+            "cache_read_tokens": d["cache_read"], "cache_write_tokens": d["cache_write"],
+            "output_tokens": d["output"], "actual_cost": round(d["actual_cost"], 4),
+            "uncached_cost": round(uncached, 4),
+            "savings": round(uncached - d["actual_cost"], 4),
+            "cache_hit_ratio": round(d["cache_read"] / cin, 4) if cin else 0.0,
+        }
+
+    rows = sorted((row(m, d) for m, d in per.items()),
+                  key=lambda x: x["actual_cost"], reverse=True)
+    ta = sum(r["actual_cost"] for r in rows)
+    tu = sum(r["uncached_cost"] for r in rows)
+    tfi = sum(r["fresh_input_tokens"] for r in rows)
+    tcr = sum(r["cache_read_tokens"] for r in rows)
+    return {
+        "by_model": rows,
+        "total": {
+            "actual_cost": round(ta, 4), "uncached_cost": round(tu, 4),
+            "savings": round(tu - ta, 4),
+            "cache_hit_ratio": round(tcr / (tfi + tcr), 4) if (tfi + tcr) else 0.0,
+            "fresh_input_tokens": tfi, "cache_read_tokens": tcr,
+        },
+    }
+
+
 # --- subagent attribution (who/what/when/how-much) ------------------------------------
 # Layout: <session>/subagents/agent-<id>.meta.json {agentType, description, toolUseId}
 # is co-located with agent-<id>.jsonl (the run's transcript). Tokens come ONLY from the
