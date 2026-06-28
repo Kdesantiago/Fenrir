@@ -180,6 +180,14 @@
           </div>
           <div class="toolbar">
             <label class="field-inline">
+              <span class="vh">Granularity</span>
+              <select id="filter-granularity" aria-label="Board granularity">
+                <option value="story">User stories</option>
+                <option value="feature">Features</option>
+                <option value="epic">Epics</option>
+              </select>
+            </label>
+            <label class="field-inline">
               <span class="vh">Filter by epic</span>
               <select id="filter-epic" aria-label="Filter by epic"><option value="">All epics</option></select>
             </label>
@@ -205,15 +213,37 @@
         <header class="view-head">
           <div>
             <h1>Cost trace</h1>
-            <p class="muted">Chronological work-log entries charged against the board</p>
+            <p class="muted">Cost rolled up by level (Epic = Σ Features = Σ US), plus the chronological log</p>
           </div>
           <div class="toolbar">
+            <label class="field-inline">
+              <span class="vh">Group by</span>
+              <select id="cost-groupby" aria-label="Group cost by level">
+                <option value="story">User story</option>
+                <option value="feature">Feature</option>
+                <option value="epic">Epic</option>
+              </select>
+            </label>
+            <span class="field-inline cost-cols" id="cost-cols" aria-label="Columns" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <label><input type="checkbox" data-col="input_tokens" checked> In</label>
+              <label><input type="checkbox" data-col="output_tokens" checked> Out</label>
+              <label><input type="checkbox" data-col="cache_write_tokens"> Cache W</label>
+              <label><input type="checkbox" data-col="cache_read_tokens" checked> Cache R</label>
+              <label><input type="checkbox" data-col="cost_usd" checked> Cost</label>
+            </span>
             <label class="field-inline">
               <span class="vh">Filter by user story</span>
               <select id="trace-us" aria-label="Filter cost trace by user story"><option value="">All stories</option></select>
             </label>
           </div>
         </header>
+
+        <div id="cost-breakdown-body">
+          <section class="panel">
+            <header class="panel-head"><h2>Cost by <span id="cost-level-label">user story</span></h2></header>
+            <div class="table-wrap"><table class="data-table" id="tbl-cost-breakdown"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+          </section>
+        </div>
 
         <div id="trace-body">
           <section class="panel">

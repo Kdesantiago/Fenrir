@@ -102,10 +102,11 @@ let board = null;
 let telemetry = null;
 let bydayMetric = "tokens";
 let selectedProject = "all"; // "all" | "<slug>"; populated from /api/projects on boot
-const filters = { epic: "", assignee: "" };
+const filters = { epic: "", assignee: "", granularity: "story" };
 let costs = null;            // cached /api/board/costs for the selected project's board
 let subagentSortByCost = true; // run table sort: true = cost desc, false = chronological (newest first)
 let traceUs = "";           // cost-trace US filter ("" = all)
+let costGroupBy = "story";  // dynamic cost table: group by story | feature | epic
 
 // readable label from a project slug, e.g. "-Users-kdesantiago-Desktop-Fenrir" -> "Fenrir"
 const projectLabel = (slug) => {
@@ -577,9 +578,14 @@ async function refreshCosts() {
 function populateFilters() {
   const epicSel = $("#filter-epic");
   const asgSel = $("#filter-assignee");
-  epicSel.innerHTML = '<option value="">All epics</option>';
-  board.epics.forEach((ep) => epicSel.append(el("option", { value: ep.id, text: ep.title })));
+  // Active epics only — a closed/done epic drops out of the dropdown (keep the view to live work).
+  epicSel.innerHTML = '<option value="">All active epics</option>';
+  const activeEpics = board.epics.filter((ep) => ep.status !== "done");
+  activeEpics.forEach((ep) => epicSel.append(el("option", { value: ep.id, text: ep.title })));
+  if (filters.epic && !activeEpics.some((ep) => ep.id === filters.epic)) filters.epic = "";
   epicSel.value = filters.epic;
+  const gSel = $("#filter-granularity");
+  if (gSel) gSel.value = filters.granularity;
 
   const assignees = [...new Set(board.stories.map((s) => s.assignee).filter(Boolean))].sort();
   asgSel.innerHTML = '<option value="">All assignees</option>';
@@ -607,12 +613,12 @@ function renderKanban() {
     return;
   }
   const grid = $("#kanban-cols");
-
-  const stories = visibleStories();
+  const level = filters.granularity || "story";
+  const items = boardItems(level);
   COLUMNS.forEach((col) => {
-    const inCol = stories.filter((s) => s.status === col.id);
+    const inCol = items.filter((it) => it.status === col.id);
     const list = el("div", { class: "klist", "data-status": col.id });
-    inCol.forEach((s) => list.append(storyCard(s)));
+    inCol.forEach((it) => list.append(level === "story" ? storyCard(it) : levelCard(it, level)));
     if (!inCol.length) list.append(el("div", { class: "muted", style: "padding:8px;font-size:12px;text-align:center", text: "—" }));
 
     grid.append(el("section", { class: "kcol", "data-status": col.id }, [
@@ -624,7 +630,35 @@ function renderKanban() {
     ]));
   });
 
-  initSortable();
+  if (level === "story") initSortable();  // drag only at US level
+}
+
+// Items shown on the board for the chosen granularity, honoring the epic filter.
+function boardItems(level) {
+  if (level === "epic") return board.epics;
+  if (level === "feature") {
+    return board.features.filter((f) => !filters.epic || f.epic_id === filters.epic);
+  }
+  return visibleStories();
+}
+
+// An epic/feature card: title + cost rollup (from /api/board/costs) + child count. Read-only.
+function levelCard(item, level) {
+  const c = costs && (level === "epic" ? costs.epics : costs.features);
+  const cost = c && c[item.id] ? c[item.id].cost_usd : 0;
+  const kids = level === "epic"
+    ? board.features.filter((f) => f.epic_id === item.id).length
+    : board.stories.filter((s) => s.feature_id === item.id).length;
+  const accent = level === "epic" ? (item.color || "#6366f1") : "#6366f1";
+  const card = el("div", { class: "kcard", style: `border-left:3px solid ${accent}` }, [
+    el("div", { class: "kcard-title", text: item.title }),
+    el("div", { class: "kcard-meta" }, [
+      el("span", { class: "chip", text: `${item.id}` }),
+      el("span", { class: "chip", text: `${kids} ${level === "epic" ? "feat" : "US"}` }),
+      cost ? el("span", { class: "cost", text: fmtUsd(cost) }) : el("span", { class: "muted", text: "$0" }),
+    ]),
+  ]);
+  return card;
 }
 
 function storyCard(s) {
@@ -918,7 +952,63 @@ function populateTraceFilter() {
   traceUs = sel.value;
 }
 
+const COST_LEVELS = { story: ["stories", "user story"], feature: ["features", "feature"], epic: ["epics", "epic"] };
+const COST_COLS = [
+  { col: "input_tokens", label: "In", fmt: fmtTok },
+  { col: "output_tokens", label: "Out", fmt: fmtTok },
+  { col: "cache_write_tokens", label: "Cache W", fmt: fmtTok },
+  { col: "cache_read_tokens", label: "Cache R", fmt: fmtTok },
+  { col: "cost_usd", label: "Cost", fmt: fmtUsd4 },
+];
+function checkedCostCols() {
+  const on = new Set([...document.querySelectorAll("#cost-cols input:checked")].map((i) => i.dataset.col));
+  const sel = COST_COLS.filter((c) => on.has(c.col));
+  return sel.length ? sel : COST_COLS;  // never show zero columns
+}
+
+// Dynamic, customizable cost table: group by US/Feature/Epic, pick columns. Reads the
+// /api/board/costs rollup (Epic = Σ Features = Σ US) — no new endpoint needed.
+async function renderCostBreakdown() {
+  const thead = $("#tbl-cost-breakdown thead");
+  const tbody = $("#tbl-cost-breakdown tbody");
+  const tfoot = $("#tbl-cost-breakdown tfoot");
+  if (!thead || !board) return;
+  try { await ensureCosts(); } catch { return; }
+  const [key, label] = COST_LEVELS[costGroupBy] || COST_LEVELS.story;
+  const lbl = $("#cost-level-label"); if (lbl) lbl.textContent = label;
+  const data = (costs && costs[key]) || {};
+  const titles = {}; (board[key] || []).forEach((it) => { titles[it.id] = it.title; });
+  const cols = checkedCostCols();
+
+  thead.innerHTML = "";
+  thead.append(el("tr", {}, [
+    el("th", { text: label[0].toUpperCase() + label.slice(1) }),
+    ...cols.map((c) => el("th", { class: "num", text: c.label })),
+  ]));
+
+  const rows = Object.entries(data).map(([id, v]) => ({ id, title: titles[id] || id, ...v }))
+    .sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0));
+  tbody.innerHTML = "";
+  tfoot.innerHTML = "";
+  if (!rows.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: String(cols.length + 1), class: "muted", style: "text-align:center;padding:18px", text: "No cost recorded yet" })));
+    return;
+  }
+  const totals = {};
+  rows.forEach((r) => {
+    tbody.append(el("tr", {}, [
+      el("td", {}, [el("span", { class: "k", style: "color:var(--txt-3)", text: r.id + " " }), el("span", { text: r.title })]),
+      ...cols.map((c) => { totals[c.col] = (totals[c.col] || 0) + (r[c.col] || 0); return el("td", { class: c.col === "cost_usd" ? "num cost" : "num", text: c.fmt(r[c.col] || 0) }); }),
+    ]));
+  });
+  tfoot.append(el("tr", {}, [
+    el("td", { text: `${rows.length} ${label}${rows.length > 1 ? "s" : ""}` }),
+    ...cols.map((c) => el("td", { class: c.col === "cost_usd" ? "num cost" : "num", text: c.fmt(totals[c.col] || 0) })),
+  ]));
+}
+
 async function loadTrace() {
+  renderCostBreakdown();  // dynamic rollup table (independent of the chronological log below)
   const tbody = $("#tbl-trace tbody");
   const tfoot = $("#tbl-trace tfoot");
   tbody.innerHTML = "";
@@ -1091,8 +1181,15 @@ function initControls() {
 
   $("#project-select").addEventListener("change", onProjectChange);
 
+  $("#filter-granularity").addEventListener("change", (e) => {
+    filters.granularity = e.target.value;
+    if (filters.granularity !== "story") ensureCosts().then(renderKanban).catch(renderKanban);
+    else renderKanban();
+  });
   $("#filter-epic").addEventListener("change", (e) => { filters.epic = e.target.value; renderKanban(); });
   $("#filter-assignee").addEventListener("change", (e) => { filters.assignee = e.target.value; renderKanban(); });
+  $("#cost-groupby").addEventListener("change", (e) => { costGroupBy = e.target.value; renderCostBreakdown(); });
+  $("#cost-cols").addEventListener("change", () => renderCostBreakdown());
 
   $("#subagent-sort").addEventListener("click", (e) => {
     subagentSortByCost = !subagentSortByCost;

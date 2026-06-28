@@ -29,13 +29,15 @@ This is the automatic LLM review before any PR exists. Runs in the main thread (
 - Open the PR with the platform CLI:
   - GitHub: `gh pr create --title "<conventional title>" --body "<body>"`
   - Azure DevOps: `az repos pr create --title "<conventional title>" --description "<body>"`
-- **PR body must link the artifacts**: the spec (`docs/specs/<slug>.md`), the ADR (`docs/adr/NNNN-*.md`) when present, a changelog reference, and a short summary of the deterministic route taken. These let reviewers and the ADR-required CI check resolve their inputs.
+- **PR body must link the artifacts**: the spec (`docs/specs/<slug>.md`), the ADR (`docs/adr/NNNN-*.md`) when present, a changelog reference, the **US ids this PR delivers** (`us-N` — required so the `delivery-trace` check passes), and a short summary of the deterministic route taken. These let reviewers and the ADR-/delivery-trace CI checks resolve their inputs.
+- **Move the delivered US to `review`** now the PR is open: `python -m backend.cli move --kind story --id <us> --status review` (from `dashboard/`).
 
 ## 6. Surface CI required-check status
 - After the PR exists, poll the required checks and report their status, do not interpret them as your own gate:
   - GitHub: `gh pr checks <pr>` (and `gh pr view <pr> --json mergeStateStatus,reviewDecision`)
   - Azure: `az repos pr show --id <pr>` / pipeline status
 - Report each required check (name → pending/pass/fail) and the branch-protection merge state.
+- **After the PR merges, close its US:** move every US the PR delivered to `done` (`python -m backend.cli move --kind story --id <us> --status done`). A merged PR that leaves its US in `review`/`in_progress` is stale board state — don't.
 
 ## 7. Output — state the boundary explicitly
 Report:

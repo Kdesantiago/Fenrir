@@ -24,8 +24,9 @@ branch = one PR.
 1. **Read the board first.** `cd dashboard && python -m backend.cli list`. Reuse an existing Epic/Feature if the work belongs there; never duplicate.
 2. **Decompose** (delegate to the `delivery-tracker` agent, which owns this): work → ONE Feature (a capability a stakeholder would name) → atomic US. Apply the doctrine — no per-session/umbrella US; if a US would do more than one thing or carry an outsized share of its epic, split it. Give each US `--as-a/--i-want/--so-that` + one `--ac`.
 3. **Check granularity.** `python -m backend.cli audit` — fix any US it flags as an umbrella (decompose it). Atomic-but-expensive US are fine (they show under `expensive_us`).
-4. **Branch.** `git checkout -b feat/<feature-slug>` — one Feature, one branch, one PR.
-5. **Print the plan** — the Feature id + its US ids in build order — and STOP. No code at this stage.
+4. **Commit the planned US to `todo`.** `cli story add` defaults to `backlog` (= a maybe-someday idea); the work you just planned is committed, so move each planned US to **todo**: `python -m backend.cli move --kind story --id <us> --status todo`. Leave only genuine later-ideas in backlog.
+5. **Branch.** `git checkout -b feat/<feature-slug>` — one Feature, one branch, one PR.
+6. **Print the plan** — the Feature id + its US ids in build order — and STOP. No code at this stage.
 
 ## Then
 - `/fenrir:deliver` builds the US **one at a time**: `python3 scripts/track_session.py set-us --id <us>` before each, so its real cost lands on that US (Epic = Σ Features = Σ US).
