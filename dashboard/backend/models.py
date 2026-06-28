@@ -40,6 +40,8 @@ class WorkLogEntry(BaseModel):
     run_id: str = ""  # subagent run id (agent-<id>) for per-run attribution + idempotency
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_write_tokens: int = 0  # cache_creation — usually the bulk of cost on agent runs
+    cache_read_tokens: int = 0   # cache_read
     cost_usd: float = 0.0
     source: str = ""  # manual | telemetry-link | telemetry-run
     note: str = ""

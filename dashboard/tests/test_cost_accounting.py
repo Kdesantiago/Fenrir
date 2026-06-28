@@ -128,3 +128,35 @@ def test_cli_link_idempotent_and_per_source(monkeypatch, tmp_path):
                      "--project=-proj"]) == 0
     wl2 = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log
     assert len(wl2) == 2
+
+
+def test_cli_link_captures_cache_and_refresh_updates(monkeypatch, tmp_path):
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj" / "s"
+    proj.mkdir(parents=True)
+    ev = json.dumps({
+        "timestamp": "2026-06-01T10:00:00Z", "sessionId": "S1", "isSidechain": False,
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": 1000, "output_tokens": 500,
+            "cache_creation_input_tokens": 2000, "cache_read_input_tokens": 40000}}})
+    p = proj / "main.jsonl"
+    p.write_text(ev + "\n")
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F"); st = s.add_story(f.id, "S")
+
+    cli.main(["link", "--kind", "story", "--id", st.id, "--session", "S1", "--project=-proj"])
+    w = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log[0]
+    assert w.cache_write_tokens == 2000 and w.cache_read_tokens == 40000  # cache persisted
+
+    rollup = BoardStore(board).costs()["stories"][st.id]
+    assert rollup["cache_write_tokens"] == 2000 and rollup["cache_read_tokens"] == 40000
+
+    # a second event accrues; --refresh re-links with current totals (still one entry, no dup)
+    p.write_text(ev + "\n" + ev + "\n")
+    cli.main(["link", "--kind", "story", "--id", st.id, "--session", "S1",
+              "--project=-proj", "--refresh"])
+    wl = [x for x in BoardStore(board).load().stories if x.id == st.id][0].work_log
+    assert len(wl) == 1 and wl[0].cache_read_tokens == 80000  # refreshed, not doubled-up

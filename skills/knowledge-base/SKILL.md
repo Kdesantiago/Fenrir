@@ -27,7 +27,7 @@ This skill governs **what enters the corpus and how long it lives** — source i
 
 ## Steps
 1. **Read `org-profile.yaml`** — resolve `llm_provider` and `vector_store`. If either is unset (or `none`), REFUSE: there is no store/embeddings owner to govern. Verify the store's metadata-filter capability against current docs (which fields are filterable/indexable changes per store).
-2. **Ingestion + dedup** — one connector per source; compute a **content hash** (e.g. `sha256` of normalized bytes) per document and skip re-ingest when the hash is unchanged (idempotent — re-running an unchanged source is a no-op). Capture `source`, `owner`, `acl`, and `sensitivity` at ingest; quarantine PII/secrets OUT of the corpus (route detection to the `gitleaks` hook / a PII scrubber, not into the index).
+2. **Ingestion + dedup** — one connector per source; compute a **content hash** (e.g. `sha256` of normalized bytes) per document and skip re-ingest when the hash is unchanged (idempotent — re-running an unchanged source is a no-op). Capture `source`, `owner`, `acl`, and `sensitivity` at ingest; quarantine PII/secrets OUT of the corpus (route detection to a content/PII scrubber on the ingest path, not into the index). NOTE — the `gitleaks` pre-commit hook does NOT apply here: it scans git commits, and ingested feeds never pass through a commit, so corpus-side quarantine is a PII/secret scrubber's job, not gitleaks'.
 3. **Chunk / metadata TAXONOMY** — define the metadata SCHEMA that `retriever`'s filters consume, every chunk carrying at minimum:
    - `source` (system/URI), `version`, `effective_date` (for freshness)
    - `acl` / `sensitivity` (drives pre-filtering by tenant/role)

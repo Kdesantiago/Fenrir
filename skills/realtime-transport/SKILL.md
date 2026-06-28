@@ -1,6 +1,6 @@
 ---
 name: realtime-transport
-description: Use when building a server-push / realtime channel — WebSocket or SSE for live updates, token streaming, or notifications — with the reconnect/backpressure/auth discipline a naive socket lacks. Triggers — "push updates to the client", "WebSocket", "server-sent events / SSE", "stream tokens to the UI", "live notifications feed". NOT for request/response HTTP (use `api-first`), NOT for backend message buses (use `event-driven`), NOT for scheduled push (use `cronjob`). Reads org-profile.yaml `framework`/`front` and refuses on mismatch.
+description: Use when building a server-push / realtime channel — WebSocket or SSE for live updates, token streaming, or notifications — with the reconnect/backpressure/auth discipline a naive socket lacks. Triggers — "push updates to the client", "WebSocket", "SSE", "stream tokens to the UI", "live notifications feed". NOT for request/response HTTP (`api-first`), NOT for the server-side fan-out behind them (`event-driven` owns the bus; this owns the client connection), NOT for scheduled push (`cronjob`). Reads org-profile.yaml `framework`/`front` and refuses on mismatch.
 ---
 
 # Realtime Transport — server push done safely
@@ -18,6 +18,7 @@ infra the skill can only set up, not enforce.
 ## When NOT to use
 - Request/response HTTP endpoints → `api-first` (it scopes out non-HTTP transport)
 - Backend queue/topic/event streams (service-to-service) → `event-driven`
+- The server-side fan-out of those notifications → `event-driven` owns the bus; this skill owns the *client connection* it feeds
 - Scheduled / periodic push → `cronjob`
 - No declared `framework`/`front` → this skill refuses
 
@@ -43,5 +44,7 @@ skill sets these up; the channel is only as reliable as the backplane + metrics 
 
 ## Refuses when
 - `framework` or `front` is unset/unknown in `org-profile.yaml`.
+- `front` is `streamlit` or `none` — no place to host a custom realtime client. Streamlit manages its own server WebSocket (you cannot inject custom WS/SSE reconnect+resume JS into it); `html`/`none` have no client framework to host reconnect code. Use Streamlit's native mechanisms or `frontend-gen`.
 - The request is request/response HTTP (→ `api-first`), a backend bus (→ `event-driven`), or scheduled push (→ `cronjob`).
-- Asked to ship an unauthenticated upgrade or an unbounded send buffer.
+
+It also **flags and will not scaffold** an unauthenticated upgrade path or an unbounded send buffer — but a skill is advisory text, not a runtime gate: it cannot stop a dev from shipping either. The falsifiable check lives in `VERIFY.md` (attempt an unauth upgrade → it must be rejected; bounded-buffer policy present).

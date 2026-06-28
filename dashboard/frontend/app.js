@@ -191,12 +191,15 @@ async function loadOverview() {
 }
 
 function renderKPIs(s) {
+  const b = s.cost_breakdown || {};
+  const cacheCost = (b.cache_read || 0) + (b.cache_write || 0);
+  const cachePct = s.cost_usd ? Math.round((100 * cacheCost) / s.cost_usd) : 0;
   const cards = [
     { label: "Total cost", value: fmtUsd(s.cost_usd), sub: `${fmtInt(s.calls)} model calls` },
-    { label: "Total tokens", value: fmtTok(s.total_tokens), sub: `${fmtTok(s.cache_tokens)} cached` },
-    { label: "Calls", value: fmtInt(s.calls), sub: `${(s.models || []).length} models` },
+    { label: "Cache cost", value: fmtUsd(cacheCost), sub: `${cachePct}% of spend · ${fmtUsd4(b.cache_read || 0)} read · ${fmtUsd4(b.cache_write || 0)} write` },
+    { label: "Fresh cost", value: fmtUsd((b.input || 0) + (b.output || 0)), sub: `${fmtUsd4(b.input || 0)} in · ${fmtUsd4(b.output || 0)} out` },
+    { label: "Total tokens", value: fmtTok(s.total_tokens), sub: `${fmtTok(s.cache_tokens)} cached (${s.total_tokens ? Math.round((100 * s.cache_tokens) / s.total_tokens) : 0}%)` },
     { label: "Sessions", value: fmtInt(s.sessions), sub: `${fmtTok(s.input_tokens)} in · ${fmtTok(s.output_tokens)} out` },
-    { label: "Date range", value: s.first_day ? `${s.last_day || ""}` : "—", sub: s.first_day ? `since ${s.first_day}` : "no data" },
   ];
   $("#kpi-grid").innerHTML = "";
   cards.forEach((c) =>
@@ -367,7 +370,7 @@ function renderSubagentTypeTable(rows) {
   const tbody = $("#tbl-subagent-type tbody");
   tbody.innerHTML = "";
   if (!rows.length) {
-    tbody.append(el("tr", {}, el("td", { colspan: "5", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs" })));
+    tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs" })));
     return;
   }
   rows.forEach((r) => {
@@ -376,6 +379,8 @@ function renderSubagentTypeTable(rows) {
       el("td", { class: "num", text: fmtInt(r.runs) }),
       el("td", { class: "num", text: fmtTok(r.input_tokens) }),
       el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.cache_write_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.cache_read_tokens) }),
       el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
     ]));
   });
@@ -406,7 +411,7 @@ function renderSubagentRuns() {
   const tbody = $("#tbl-subagent-runs tbody");
   tbody.innerHTML = "";
   if (!subagentRuns.length) {
-    tbody.append(el("tr", {}, el("td", { colspan: "8", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs recorded" })));
+    tbody.append(el("tr", {}, el("td", { colspan: "10", class: "muted", style: "text-align:center;padding:24px", text: "No subagent runs recorded" })));
     return;
   }
   const rows = [...subagentRuns].sort((a, b) =>
@@ -419,6 +424,8 @@ function renderSubagentRuns() {
       el("td", { class: "k", text: shortModel(r.model) || "—" }),
       el("td", { class: "num", text: fmtTok(r.input_tokens) }),
       el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.cache_write_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.cache_read_tokens) }),
       el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
       el("td", { class: "num", text: fmtDur(r.duration_ms) }),
       el("td", {}, el("span", { class: "pill " + (ok ? "pill-ok" : "pill-warn"), text: r.status })),
@@ -430,7 +437,7 @@ function fillTable(sel, rows, labelFn) {
   const tbody = $(sel + " tbody");
   tbody.innerHTML = "";
   if (!rows.length) {
-    tbody.append(el("tr", {}, el("td", { colspan: "5", class: "muted", style: "text-align:center;padding:24px", text: "No data" })));
+    tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No data" })));
     return;
   }
   rows.forEach((r) => {
@@ -439,6 +446,8 @@ function fillTable(sel, rows, labelFn) {
       el("td", { class: "num", text: fmtInt(r.calls) }),
       el("td", { class: "num", text: fmtTok(r.input_tokens) }),
       el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num", title: "cache writes (1.25–2× input)", text: fmtTok(r.cache_write_tokens) }),
+      el("td", { class: "num", title: "cache reads (0.1× input — usually the biggest line)", text: fmtTok(r.cache_read_tokens) }),
       el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
     ]));
   });
@@ -828,20 +837,25 @@ function renderStoryCost(target, r) {
     target.append(el("div", { class: "cost-empty", text: "No cost recorded for this story yet." }));
     return;
   }
+  const cacheTok = (r.cache_write_tokens || 0) + (r.cache_read_tokens || 0);
   target.append(el("div", { class: "cost-total" }, [
     el("span", { class: "big", text: fmtUsd(r.cost_usd) }),
-    el("span", { class: "sub", text: `${fmtTok(r.input_tokens)} in · ${fmtTok(r.output_tokens)} out` }),
+    el("span", { class: "sub", text: `${fmtTok(r.input_tokens)} in · ${fmtTok(r.output_tokens)} out · ${fmtTok(cacheTok)} cache (${fmtTok(r.cache_read_tokens)} read)` }),
   ]));
   if ((r.by_agent || []).length) {
     target.append(el("table", { class: "wl-table" }, [
       el("thead", {}, el("tr", {}, [
         el("th", { text: "Agent" }), el("th", { class: "num", text: "In" }),
-        el("th", { class: "num", text: "Out" }), el("th", { class: "num", text: "Cost" }),
+        el("th", { class: "num", text: "Out" }),
+        el("th", { class: "num", text: "Cache W" }), el("th", { class: "num", text: "Cache R" }),
+        el("th", { class: "num", text: "Cost" }),
       ])),
       el("tbody", {}, r.by_agent.map((a) => el("tr", {}, [
         el("td", { text: a.agent || "—" }),
         el("td", { class: "num", text: fmtTok(a.input_tokens) }),
         el("td", { class: "num", text: fmtTok(a.output_tokens) }),
+        el("td", { class: "num", text: fmtTok(a.cache_write_tokens) }),
+        el("td", { class: "num", text: fmtTok(a.cache_read_tokens) }),
         el("td", { class: "num", text: fmtUsd4(a.cost_usd) }),
       ]))),
     ]));
@@ -885,13 +899,15 @@ function renderTrace(rows) {
   tbody.innerHTML = "";
   tfoot.innerHTML = "";
   if (!rows.length) {
-    tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No work-log entries yet." })));
+    tbody.append(el("tr", {}, el("td", { colspan: "9", class: "muted", style: "text-align:center;padding:24px", text: "No work-log entries yet." })));
     return;
   }
-  let tin = 0, tout = 0, tcost = 0;
+  let tin = 0, tout = 0, tcw = 0, tcr = 0, tcost = 0;
   rows.forEach((r) => {
     tin += r.input_tokens || 0;
     tout += r.output_tokens || 0;
+    tcw += r.cache_write_tokens || 0;
+    tcr += r.cache_read_tokens || 0;
     tcost += r.cost_usd || 0;
     const agent = r.subagent_type || r.agent || "—";
     tbody.append(el("tr", { title: r.note || "" }, [
@@ -903,6 +919,8 @@ function renderTrace(rows) {
       el("td", { class: "k", text: agent }),
       el("td", { class: "num", text: fmtTok(r.input_tokens) }),
       el("td", { class: "num", text: fmtTok(r.output_tokens) }),
+      el("td", { class: "num", title: "cache writes", text: fmtTok(r.cache_write_tokens) }),
+      el("td", { class: "num", title: "cache reads (usually the bulk of cost)", text: fmtTok(r.cache_read_tokens) }),
       el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
       el("td", { text: r.source || (r.kind === "task" ? "task" : "story") }),
     ]));
@@ -913,6 +931,8 @@ function renderTrace(rows) {
     el("td", { text: "Total" }),
     el("td", { class: "num", text: fmtTok(tin) }),
     el("td", { class: "num", text: fmtTok(tout) }),
+    el("td", { class: "num", text: fmtTok(tcw) }),
+    el("td", { class: "num", text: fmtTok(tcr) }),
     el("td", { class: "num cost", text: fmtUsd4(tcost) }),
     el("td", { text: "" }),
   ]));

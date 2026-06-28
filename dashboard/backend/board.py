@@ -181,20 +181,26 @@ class BoardStore:
         b = self.load()
 
         def agg(entries: list[WorkLogEntry]) -> dict:
-            inp = out = 0
+            inp = out = cw = cr = 0
             cost = 0.0
             by: dict[str, dict] = defaultdict(
-                lambda: {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+                lambda: {"input_tokens": 0, "output_tokens": 0,
+                         "cache_write_tokens": 0, "cache_read_tokens": 0, "cost_usd": 0.0})
             for e in entries:
                 inp += e.input_tokens
                 out += e.output_tokens
+                cw += e.cache_write_tokens
+                cr += e.cache_read_tokens
                 cost += e.cost_usd
                 key = e.subagent_type or e.agent or "unknown"
                 by[key]["input_tokens"] += e.input_tokens
                 by[key]["output_tokens"] += e.output_tokens
+                by[key]["cache_write_tokens"] += e.cache_write_tokens
+                by[key]["cache_read_tokens"] += e.cache_read_tokens
                 by[key]["cost_usd"] += e.cost_usd
             return {
-                "input_tokens": inp, "output_tokens": out, "cost_usd": round(cost, 4),
+                "input_tokens": inp, "output_tokens": out,
+                "cache_write_tokens": cw, "cache_read_tokens": cr, "cost_usd": round(cost, 4),
                 "by_agent": sorted(
                     ({"agent": k, **v, "cost_usd": round(v["cost_usd"], 4)} for k, v in by.items()),
                     key=lambda r: r["cost_usd"], reverse=True),
