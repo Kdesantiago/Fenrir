@@ -261,6 +261,84 @@ def test_efficiency_negative_savings_when_writes_dominate(tmp_path):
     assert t["savings"] < 0 and t["cache_hit_ratio"] == 0.0
 
 
+# --- efficiency: calls + cache_read_per_call ------------------------------------------
+# `efficiency(events)` consumes the flat load_events shape directly; build those dicts
+# in-line (no transcript needed) so cache_read values are exact and averages deterministic.
+
+
+def _ev(*, model: str, cache_read: int, input_tokens: int = 0, output_tokens: int = 0,
+        cache_creation: int = 0, cost: float = 0.0) -> dict:
+    return {
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_creation": cache_creation,
+        "cache_read": cache_read,
+        "cost": cost,
+    }
+
+
+def test_efficiency_per_model_calls_and_cache_read_per_call():
+    # one model, two calls with known reads (100, 300) -> calls=2, per_call=round(400/2)=200.
+    events = [
+        _ev(model="claude-opus-4-8", cache_read=100, cost=0.10),
+        _ev(model="claude-opus-4-8", cache_read=300, cost=0.30),
+    ]
+    rows = telemetry.efficiency(events)["by_model"]
+    by_model = {r["model"]: r for r in rows}
+    opus = by_model["claude-opus-4-8"]
+    assert opus["calls"] == 2
+    assert opus["cache_read_tokens"] == 400
+    assert opus["cache_read_per_call"] == round(400 / 2) == 200
+
+
+def test_efficiency_calls_counted_per_model():
+    # three opus calls + one sonnet call -> calls split by model, not merged.
+    events = [
+        _ev(model="claude-opus-4-8", cache_read=100, cost=0.1),
+        _ev(model="claude-opus-4-8", cache_read=200, cost=0.1),
+        _ev(model="claude-opus-4-8", cache_read=300, cost=0.1),
+        _ev(model="claude-sonnet-4-5", cache_read=50, cost=0.05),
+    ]
+    by_model = {r["model"]: r for r in telemetry.efficiency(events)["by_model"]}
+    assert by_model["claude-opus-4-8"]["calls"] == 3
+    assert by_model["claude-opus-4-8"]["cache_read_per_call"] == round(600 / 3) == 200
+    assert by_model["claude-sonnet-4-5"]["calls"] == 1
+    assert by_model["claude-sonnet-4-5"]["cache_read_per_call"] == 50
+
+
+def test_efficiency_rounding_is_banker_independent():
+    # 100 + 101 over 2 calls -> 201/2 = 100.5; python round() -> 100 (round-half-to-even).
+    events = [
+        _ev(model="claude-opus-4-8", cache_read=100, cost=0.1),
+        _ev(model="claude-opus-4-8", cache_read=101, cost=0.1),
+    ]
+    opus = telemetry.efficiency(events)["by_model"][0]
+    assert opus["cache_read_per_call"] == round(201 / 2)
+
+
+def test_efficiency_total_calls_and_cache_read_per_call_sum_across_models():
+    events = [
+        _ev(model="claude-opus-4-8", cache_read=100, cost=0.1),
+        _ev(model="claude-opus-4-8", cache_read=300, cost=0.1),
+        _ev(model="claude-sonnet-4-5", cache_read=600, cost=0.05),
+    ]
+    eff = telemetry.efficiency(events)
+    total_calls = sum(r["calls"] for r in eff["by_model"])
+    total_cr = sum(r["cache_read_tokens"] for r in eff["by_model"])
+    t = eff["total"]
+    assert t["calls"] == total_calls == 3
+    assert t["cache_read_tokens"] == total_cr == 1000
+    assert t["cache_read_per_call"] == round(1000 / 3)  # 333
+
+
+def test_efficiency_empty_events_no_division_by_zero():
+    eff = telemetry.efficiency([])
+    assert eff["by_model"] == []
+    assert eff["total"]["calls"] == 0
+    assert eff["total"]["cache_read_per_call"] == 0
+
+
 # --- by_skill -------------------------------------------------------------------------
 
 

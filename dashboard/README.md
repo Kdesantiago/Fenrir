@@ -51,7 +51,8 @@ python -m backend.cli trace --us us-1
 
 - **Per-US / per-agent cost:** `GET /api/board/costs` (or the story modal in the UI) shows
   each US's input/output tokens + USD, broken down by agent, rolled up to Feature and Epic.
-- **Cost trace:** `cli trace` / `GET /api/trace?us=<id>` — every cost event, chronological.
+- **Cost trace:** `cli trace` / `GET /api/trace?us=<id>&feature=<id>&epic=<id>` — every cost event, filterable by US/Feature/Epic, **newest-first** by default (`--oldest-first` / sort-by-cost optional).
+- **Why cache-read looks huge (usually not a leak):** the **Cache efficiency** panel shows a **Re-read / call** figure — cache-read is your *context* (system prompt + every loaded tool/MCP schema + conversation history) re-read on **every** model call at 0.1× input price. Total cache-read ≈ (avg per call) × (number of calls), so it grows with session length and loaded tools, not a bug. Caching saves ~10× **on the read leg only** — cache *writes* cost 1.25–2× input, so a session whose prefix keeps changing (prefix churn) can show **negative savings**, which the panel flags as a warning rather than reassurance. The per-call figure is a blended average over main + subagent calls (cold/first calls pull it below steady-state). To shrink read volume, disconnect MCP servers you aren't using.
 - **Subagent attribution:** `GET /api/telemetry/subagents` (or the **Subagents** panel) —
   which named subagent ran, when, on what model, how long, and how much. It **reconciles**:
   `attributed_tokens + unattributed_tokens == subagent_total_tokens` (no double-count;

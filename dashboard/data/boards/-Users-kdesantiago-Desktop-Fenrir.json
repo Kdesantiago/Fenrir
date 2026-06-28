@@ -176,6 +176,16 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:14:59.909377+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T18:23:11.096863+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:23:30.634592+00:00"
         }
       ]
     }
@@ -487,7 +497,7 @@
       "epic_id": "epic-8",
       "title": "Specialized-agent-by-default delivery + mandatory QA & red-team gate",
       "description": "Fenrir commands route to the pertinent specialist; QA + red-team always validate before ship.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -498,6 +508,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T18:14:59.909377+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T18:23:11.096863+00:00"
         }
       ]
     },
@@ -530,12 +545,17 @@
       "epic_id": "epic-8",
       "title": "Cache-read transparency",
       "description": "Surface why cache-read is large (context re-reads) — confirmed not a bug.",
-      "status": "todo",
+      "status": "in_progress",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:08.080352+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:23:30.634592+00:00"
         }
       ]
     },
@@ -5210,7 +5230,7 @@
       "id": "us-77",
       "feature_id": "feat-27",
       "title": "Fenrir commands route to the relevant specialized agent by default",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "developer",
@@ -5219,7 +5239,36 @@
       "acceptance_criteria": [
         "/deliver + /challenge-me select the pertinent agent (architect/dat-architect/azure-*/iac/coder…) by request type; documented in the commands"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-a8ec594f06ef2df6c",
+          "input_tokens": 5096,
+          "output_tokens": 4620,
+          "cache_write_tokens": 61651,
+          "cache_read_tokens": 151038,
+          "cost_usd": 0.6018,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T18:22:07.796284+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1281,
+          "output_tokens": 49343,
+          "cache_write_tokens": 73130,
+          "cache_read_tokens": 25586374,
+          "cost_usd": 14.764468,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T18:22:07.796284+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5235,6 +5284,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:21:45.165570+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:23:10.810001+00:00"
         }
       ]
     },
@@ -5242,7 +5296,7 @@
       "id": "us-78",
       "feature_id": "feat-27",
       "title": "Always run qa-tester + red-team-destroyer to validate before ship",
-      "status": "review",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5267,6 +5321,11 @@
           "from_status": "in_progress",
           "to_status": "review",
           "at": "2026-06-28T18:21:45.390330+00:00"
+        },
+        {
+          "from_status": "review",
+          "to_status": "done",
+          "at": "2026-06-28T18:23:11.096863+00:00"
         }
       ]
     },
@@ -5335,7 +5394,7 @@
       "id": "us-80",
       "feature_id": "feat-29",
       "title": "Surface cache-read as context re-reads so spend is intelligible",
-      "status": "todo",
+      "status": "review",
       "assignee": "coder",
       "points": 0,
       "as_a": "tech lead",
@@ -5350,6 +5409,16 @@
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:08.080352+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T18:23:30.634592+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "review",
+          "at": "2026-06-28T18:29:14.726523+00:00"
         }
       ]
     },

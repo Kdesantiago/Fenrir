@@ -405,12 +405,26 @@ function renderEfficiency(eff) {
     { label: "If uncached", value: fmtUsd(t.uncached_cost || 0), sub: "every input token at full price" },
     { label: "Saved by cache", value: fmtUsd(t.savings || 0), sub: (t.savings || 0) >= 0 ? "caching is paying off" : "cache-warming — writes amortize over later reads" },
     { label: "Cache hit ratio", value: pct + "%", sub: "input served cheap from cache" },
+    { label: "Re-read / call", value: fmtTok(t.cache_read_per_call || 0), sub: `avg cache-read/call · ${fmtInt(t.calls || 0)} calls (main+subagent)` },
   ];
   cards.forEach((c) => sumEl.append(el("div", { class: "kpi" }, [
     el("div", { class: "kpi-label", text: c.label }),
     el("div", { class: "kpi-value", text: c.value }),
     el("div", { class: "kpi-sub", text: c.sub }),
   ])));
+  // Explain cache-read so the number is legible — but the message FLIPS on the savings/hit-ratio
+  // signal: reassure only when caching pays off; warn (don't falsely comfort) when writes dominate.
+  const healthy = (t.savings || 0) >= 0 && (t.cache_hit_ratio || 0) >= 0.5;
+  const common = `It's the cached prefix — system prompt + every loaded tool/MCP schema + history — re-read on every call at 0.1× input (writes cost 1.25–2×). ${fmtTok(t.cache_read_tokens || 0)} ≈ ${fmtTok(t.cache_read_per_call || 0)}/call × ${fmtInt(t.calls || 0)} calls, blended across main + subagents (an average — cold/first calls pull it below steady-state). It scales with calls + loaded tools.`;
+  const note = el("p", { class: "muted", id: "efficiency-note", style: "margin:10px 2px 0;font-size:12px;line-height:1.5" }, [
+    el("strong", { text: healthy ? "Why cache-read is large (not a leak): " : "⚠ Cache writes are outpacing read savings: " }),
+    document.createTextNode(common + " "),
+    el("strong", { text: healthy
+      ? `Caching is paying off on reads (${Math.round((t.cache_hit_ratio || 0) * 100)}% hit-ratio, positive savings) — shrink it by disconnecting unused MCP servers.`
+      : `Savings are negative — your cached prefix keeps changing (prefix churn), so you pay the write premium without enough cheap re-reads. Stabilize the prefix: avoid editing early context / swapping the tool set mid-session.` }),
+  ]);
+  const old = $("#efficiency-note"); if (old) old.remove();
+  sumEl.insertAdjacentElement("afterend", note);
   const rows = (eff && eff.by_model) || [];
   if (!rows.length) {
     tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No data" })));
