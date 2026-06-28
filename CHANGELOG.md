@@ -4,6 +4,9 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Fenrir dogfoods its own PR gate (couche 0) on this repo** — `branch-protection.tf` at the root (Terraform `github` provider) requiring a PR + the real CI status checks (`dashboard (lint + type + test)`, `lint + type + test hooks`, `validate manifests`, `delivery-trace`), no direct/force push, linear history; solo-tuned (0 approvals — a lone maintainer can't self-approve). A `delivery-trace` CI workflow (`.github/workflows/delivery-trace.yml`) makes every PR reference a User Story on the board — fixed to glob the **per-project** `data/boards/*.json` (the legacy single-file `board.json` path never matched). PUBLISHING.md documents arming via `terraform apply` or one `gh api` call. The local gate (`pre-commit` install + in-session `.claude` guards) was already armed; branch-protection (the only true server-side block) needs the repo public/Pro — now satisfied.
+
 ## [1.4.0] — 2026-06-28
 
 ### Added
