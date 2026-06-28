@@ -157,43 +157,48 @@ def _cmd_reconcile(s: BoardStore, a) -> None:
         existing[r["run_id"]] = entry
         n_sub += 1
 
-    # main-thread delta → current US (vs the stored watermark)
-    wm: dict = {}
-    try:
-        with open(a.watermark) as f:
-            wm = json.load(f)
-    except (OSError, ValueError):
-        pass
+    # main-thread cost → TIME-SWEEP per the set-us timeline: each main event is attributed to the
+    # US that was active WHEN IT RAN (the same `us_at` sweep used for subagents), so cost SPLITS
+    # across every US worked in the session instead of lumping on one. Full-recompute + idempotent:
+    # drop this session's prior telemetry-main entries board-wide, then re-bucket from scratch.
+    for coll in (b.stories, b.tasks):
+        for it in coll:
+            it.work_log = [w for w in it.work_log
+                           if not (w.session_id == a.session and w.source == "telemetry-main")]
     main = [e for e in telemetry.load_events(cd, project)
             if e["session_id"] == a.session and e["source"] == "main"]
-    mt = {"input_tokens": sum(e["input_tokens"] for e in main),
-          "output_tokens": sum(e["output_tokens"] for e in main),
-          "cache_write_tokens": sum(e["cache_creation"] for e in main),
-          "cache_read_tokens": sum(e["cache_read"] for e in main),
-          "cost_usd": round(sum(e["cost"] for e in main), 6)}
-    d_cost = round(mt["cost_usd"] - float(wm.get("cost_usd", 0)), 6)
-    cur = story_by.get(a.current_us)
-    main_logged = False
-    if cur is not None and d_cost > 1e-6:
-        cur.work_log.append(WorkLogEntry(
+    expected = round(sum(e["cost"] for e in main), 6)  # conservation target: Σ buckets must == this
+    buckets: dict[str, dict] = {}
+    for e in main:
+        b_ = buckets.setdefault(us_at(e["ts"]), {"in": 0, "out": 0, "cw": 0, "cr": 0, "cost": 0.0})
+        b_["in"] += e["input_tokens"]; b_["out"] += e["output_tokens"]
+        b_["cw"] += e["cache_creation"]; b_["cr"] += e["cache_read"]; b_["cost"] += e["cost"]
+    # CONSERVE: a bucket whose US isn't on the board (deleted/renamed story, or a task id) must NOT
+    # silently vanish — fold it into the current US (guaranteed on the board). Only a missing
+    # current US can leak (surfaced as main_leaked_usd). Skip only exactly-zero buckets.
+    cur_st = story_by.get(a.current_us)
+    main_total = 0.0
+    n_main = 0
+    leaked = 0.0
+    for uid, bk in buckets.items():
+        if bk["cost"] <= 0:
+            continue
+        st = story_by.get(uid) or cur_st
+        if st is None:
+            leaked += bk["cost"]
+            continue
+        st.work_log.append(WorkLogEntry(
             agent="main", session_id=a.session, source="telemetry-main",
-            input_tokens=max(0, mt["input_tokens"] - int(wm.get("input_tokens", 0))),
-            output_tokens=max(0, mt["output_tokens"] - int(wm.get("output_tokens", 0))),
-            cache_write_tokens=max(0, mt["cache_write_tokens"] - int(wm.get("cache_write_tokens", 0))),
-            cache_read_tokens=max(0, mt["cache_read_tokens"] - int(wm.get("cache_read_tokens", 0))),
-            cost_usd=d_cost, note="main-thread delta", at=now))
-        main_logged = True
+            input_tokens=bk["in"], output_tokens=bk["out"], cache_write_tokens=bk["cw"],
+            cache_read_tokens=bk["cr"], cost_usd=round(bk["cost"], 6),
+            note="main-thread (time-swept)", at=now))
+        main_total += bk["cost"]; n_main += 1
 
     s.save(b)
-    if main_logged and a.watermark:
-        try:
-            with open(a.watermark, "w") as f:
-                json.dump(mt, f)
-        except OSError:
-            pass
     _emit({"reconciled": True, "session": a.session, "current_us": a.current_us,
+           "main_expected_usd": expected, "main_leaked_usd": round(leaked, 4),
            "subagent_runs_attributed": n_sub, "subagent_runs_topped_up": n_topped,
-           "main_delta_usd": d_cost if main_logged else 0.0})
+           "main_us_buckets": n_main, "main_cost_usd": round(main_total, 4)})
 
 
 def _cmd_session_cost(s: BoardStore, a) -> None:

@@ -224,8 +224,10 @@ def test_reconcile_attributes_per_us_by_time_and_rolls_up(monkeypatch, tmp_path)
 
     c = BoardStore(board).costs()
     ca, cb = c["stories"][a_us.id]["cost_usd"], c["stories"][b_us.id]["cost_usd"]
-    assert ca > 0 and cb > 0                       # r1 → A (before noon), r2 + main → B
-    assert cb > ca                                  # B has the bigger run + main delta
+    assert ca > 0 and cb > 0
+    # TIME-SWEPT main: the main event (default _ev ts 10:00) is < the us-B boundary (12:00),
+    # so it buckets to us-A — NOT lumped on --current-us (us-B). So A = r1 + main, B = r2.
+    assert ca > cb                                  # A now carries the main-thread bucket
     # rollup: feature = ΣUS, epic = Σfeatures
     assert c["features"][f.id]["cost_usd"] == pytest.approx(ca + cb, abs=0.001)
     assert c["epics"][e.id]["cost_usd"] == pytest.approx(c["features"][f.id]["cost_usd"], abs=0.001)
@@ -235,6 +237,141 @@ def test_reconcile_attributes_per_us_by_time_and_rolls_up(monkeypatch, tmp_path)
     c2 = BoardStore(board).costs()
     assert c2["stories"][a_us.id]["cost_usd"] == pytest.approx(ca, abs=0.001)
     assert c2["stories"][b_us.id]["cost_usd"] == pytest.approx(cb, abs=0.001)
+
+
+# --- reconcile: TIME-SWEPT main-thread attribution (each main event → US active when it ran) ---
+def _main_ev(session: str, ts: str, inp: int = 1000, out: int = 500) -> str:
+    """A single main-thread (not sidechain) usage event at an explicit timestamp."""
+    return json.dumps({
+        "timestamp": ts, "sessionId": session, "isSidechain": False,
+        "message": {"model": "claude-opus-4-8", "usage": {
+            "input_tokens": inp, "output_tokens": out,
+            "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}})
+
+
+def _main_entries(board_path, us_id, session):
+    return [w for x in BoardStore(board_path).load().stories if x.id == us_id
+            for w in x.work_log
+            if w.session_id == session and w.source == "telemetry-main"]
+
+
+def test_reconcile_main_split_across_us_by_timeline(monkeypatch, tmp_path):
+    # >=3 main events at T1<T2<T3; uslog: us-A@T0, us-B@(between T2,T3).
+    # Events <= the us-B boundary land on us-A; the later one on us-B. Cost SPLITS,
+    # it is NOT all lumped on --current-us (us-B).
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    (proj / "main.jsonl").write_text(
+        _main_ev("S1", "2026-06-01T09:00:00Z", inp=1000, out=100) + "\n"   # T1 -> us-A
+        + _main_ev("S1", "2026-06-01T10:00:00Z", inp=1000, out=100) + "\n"  # T2 -> us-A
+        + _main_ev("S1", "2026-06-01T14:00:00Z", inp=5000, out=500) + "\n")  # T3 -> us-B
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a_us = s.add_story(f.id, "A"); b_us = s.add_story(f.id, "B")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T00:00:00+00:00","us":"{a_us.id}"}}\n'      # T0
+                     f'{{"at":"2026-06-01T12:00:00+00:00","us":"{b_us.id}"}}\n')     # between T2,T3
+    args = ["reconcile", "--session", "S1", "--current-us", b_us.id,
+            "--uslog", str(uslog), "--watermark", str(tmp_path / "wm.json"),
+            "--project=-proj"]
+    assert cli.main(args) == 0
+
+    a_main = _main_entries(board, a_us.id, "S1")
+    b_main = _main_entries(board, b_us.id, "S1")
+    assert len(a_main) == 1 and len(b_main) == 1               # one bucketed entry per US
+    # us-A got the two early events (2000 in, 200 out); us-B got the one late event (5000/500)
+    assert a_main[0].input_tokens == 2000 and a_main[0].output_tokens == 200
+    assert b_main[0].input_tokens == 5000 and b_main[0].output_tokens == 500
+    # cost genuinely split (NOT all on current-us)
+    assert a_main[0].cost_usd > 0 and b_main[0].cost_usd > 0
+    assert b_main[0].cost_usd > a_main[0].cost_usd            # bigger late event
+
+
+def test_reconcile_main_idempotent_full_recompute(monkeypatch, tmp_path):
+    # Run reconcile twice: each US keeps exactly ONE telemetry-main entry and totals are
+    # identical (full-recompute drops prior entries, no doubling).
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    (proj / "main.jsonl").write_text(
+        _main_ev("S1", "2026-06-01T09:00:00Z", inp=1000, out=100) + "\n"
+        + _main_ev("S1", "2026-06-01T14:00:00Z", inp=5000, out=500) + "\n")
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a_us = s.add_story(f.id, "A"); b_us = s.add_story(f.id, "B")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T00:00:00+00:00","us":"{a_us.id}"}}\n'
+                     f'{{"at":"2026-06-01T12:00:00+00:00","us":"{b_us.id}"}}\n')
+    args = ["reconcile", "--session", "S1", "--current-us", b_us.id,
+            "--uslog", str(uslog), "--project=-proj"]
+    assert cli.main(args) == 0
+    c1 = BoardStore(board).costs()
+    a1, b1 = c1["stories"][a_us.id]["cost_usd"], c1["stories"][b_us.id]["cost_usd"]
+
+    assert cli.main(args) == 0  # second run
+    assert len(_main_entries(board, a_us.id, "S1")) == 1   # exactly one each, not doubled
+    assert len(_main_entries(board, b_us.id, "S1")) == 1
+    c2 = BoardStore(board).costs()
+    assert c2["stories"][a_us.id]["cost_usd"] == pytest.approx(a1, abs=1e-9)
+    assert c2["stories"][b_us.id]["cost_usd"] == pytest.approx(b1, abs=1e-9)
+
+
+def test_reconcile_main_recompute_preserves_subagent_entries(monkeypatch, tmp_path):
+    # A telemetry-run (subagent) entry for the session must survive the main re-compute.
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    (proj / "main.jsonl").write_text(_main_ev("S1", "2026-06-01T14:00:00Z", inp=2000, out=200) + "\n")
+    _subrun(proj, "agent-r1", "2026-06-01T14:30:00Z", 3000, 300)  # subagent run -> us-B
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a_us = s.add_story(f.id, "A"); b_us = s.add_story(f.id, "B")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T00:00:00+00:00","us":"{a_us.id}"}}\n'
+                     f'{{"at":"2026-06-01T12:00:00+00:00","us":"{b_us.id}"}}\n')
+    args = ["reconcile", "--session", "S1", "--current-us", b_us.id,
+            "--uslog", str(uslog), "--project=-proj"]
+    assert cli.main(args) == 0
+    assert cli.main(args) == 0  # re-run: main is full-recomputed, subagent must persist
+
+    runs = [w for x in BoardStore(board).load().stories
+            for w in x.work_log if w.source == "telemetry-run" and w.run_id == "agent-r1"]
+    assert len(runs) == 1                                    # subagent entry survived, once
+    assert runs[0].input_tokens == 3000 and runs[0].output_tokens == 300
+
+
+def test_reconcile_main_fallback_to_current_us_before_first_uslog(monkeypatch, tmp_path):
+    # An event BEFORE the first uslog boundary falls back to --current-us.
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    # event at 06:00 is before the first uslog entry (08:00) -> fallback to current-us (us-B)
+    (proj / "main.jsonl").write_text(_main_ev("S1", "2026-06-01T06:00:00Z", inp=1500, out=150) + "\n")
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F")
+    a_us = s.add_story(f.id, "A"); b_us = s.add_story(f.id, "B")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T08:00:00+00:00","us":"{a_us.id}"}}\n')  # first @08:00
+    args = ["reconcile", "--session", "S1", "--current-us", b_us.id,
+            "--uslog", str(uslog), "--project=-proj"]
+    assert cli.main(args) == 0
+
+    assert _main_entries(board, a_us.id, "S1") == []          # nothing on us-A
+    fb = _main_entries(board, b_us.id, "S1")                  # all on current-us (us-B)
+    assert len(fb) == 1 and fb[0].input_tokens == 1500
 
 
 def test_reconcile_tops_up_a_run_that_grew(monkeypatch, tmp_path):
