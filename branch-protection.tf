@@ -59,3 +59,18 @@ resource "github_branch_protection" "main" {
   allows_force_pushes             = false
   allows_deletions                = false
 }
+
+# Auto-delete the head branch on merge, so merged branches don't pile up on the remote.
+# Set as a repo setting (the `github_branch_protection` resource above can't carry it, and
+# managing a full `github_repository` resource here would over-claim ownership of the repo).
+# This setting lives OUTSIDE terraform state (imperative), so `terraform plan` won't reconcile
+# it — treat it as known out-of-state config:
+#
+#   gh api -X PATCH repos/<owner>/<repo> -f delete_branch_on_merge=true
+#
+# `repo-bootstrap` runs this when arming the gate. NOTE: it deletes the REMOTE branch only (and
+# GitHub skips a branch that another open PR still targets), so `/fenrir:ship` also deletes the
+# LOCAL branch after merge (a squash-merge isn't detected by `git branch --merged`). Sweep stale
+# locals (anchored to the REAL default branch, whole-name match, safe `-d` only):
+#   DEF=$(git symbolic-ref --short refs/remotes/origin/HEAD | cut -d/ -f2)
+#   git fetch --prune && git branch --merged "$DEF" | grep -vE "^[* ]+($DEF|HEAD)$" | xargs -r git branch -d

@@ -146,6 +146,16 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:35:30.892774+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "todo",
+          "at": "2026-06-28T17:37:57.286890+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:38:32.110407+00:00"
         }
       ]
     }
@@ -461,12 +471,17 @@
       "epic_id": "epic-8",
       "title": "Merged branches are deleted",
       "description": "No stale branches: remote auto-delete + local cleanup on merge + remove the current leftovers.",
-      "status": "todo",
+      "status": "in_progress",
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.916512+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:38:32.110407+00:00"
         }
       ]
     },
@@ -489,7 +504,7 @@
       "epic_id": "epic-8",
       "title": "Close the epic-7 loop",
       "description": "Refine + commit the epic-7 retro and sync the dogfood board.",
-      "status": "in_progress",
+      "status": "done",
       "transitions": [
         {
           "from_status": "backlog",
@@ -500,6 +515,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:35:30.892774+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:37:57.286890+00:00"
         }
       ]
     }
@@ -5121,7 +5141,7 @@
       "id": "us-79",
       "feature_id": "feat-28",
       "title": "Delete merged branches automatically (remote + local) and clean leftovers",
-      "status": "todo",
+      "status": "in_progress",
       "assignee": "coder",
       "points": 0,
       "as_a": "maintainer",
@@ -5130,12 +5150,32 @@
       "acceptance_criteria": [
         "GH auto-delete-head-branches enabled; /ship (or merge step) deletes the LOCAL branch too; existing stale local branches removed; doctrine documented"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "fenrir:red-team-destroyer",
+          "subagent_type": "fenrir:red-team-destroyer",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "agent-ab6d52aa200d73433",
+          "input_tokens": 22318,
+          "output_tokens": 1963,
+          "cache_write_tokens": 86163,
+          "cache_read_tokens": 115917,
+          "cost_usd": 0.7571,
+          "source": "telemetry-run",
+          "note": "auto per-US (reconcile)",
+          "at": "2026-06-28T17:54:05.062035+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
           "to_status": "todo",
           "at": "2026-06-28T17:32:07.916512+00:00"
+        },
+        {
+          "from_status": "todo",
+          "to_status": "in_progress",
+          "at": "2026-06-28T17:38:32.110407+00:00"
         }
       ]
     },
@@ -5165,7 +5205,7 @@
       "id": "us-81",
       "feature_id": "feat-30",
       "title": "Refine + commit the epic-7 retrospective and sync the board",
-      "status": "in_progress",
+      "status": "done",
       "assignee": "coder",
       "points": 0,
       "as_a": "maintainer",
@@ -5174,7 +5214,36 @@
       "acceptance_criteria": [
         "retro qualitative sections refined from what actually happened; retro doc + board JSON committed via a docs PR; README touched if needed"
       ],
-      "work_log": [],
+      "work_log": [
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 1163,
+          "output_tokens": 32355,
+          "cache_write_tokens": 50531,
+          "cache_read_tokens": 3309619,
+          "cost_usd": 2.97481,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:36:30.432418+00:00"
+        },
+        {
+          "agent": "main",
+          "subagent_type": "",
+          "session_id": "507b9e77-ed22-43fa-901d-62d5fe45da69",
+          "run_id": "",
+          "input_tokens": 570,
+          "output_tokens": 23239,
+          "cache_write_tokens": 28043,
+          "cache_read_tokens": 9394961,
+          "cost_usd": 5.561736,
+          "source": "telemetry-main",
+          "note": "main-thread delta",
+          "at": "2026-06-28T17:54:05.062035+00:00"
+        }
+      ],
       "transitions": [
         {
           "from_status": "backlog",
@@ -5185,6 +5254,11 @@
           "from_status": "todo",
           "to_status": "in_progress",
           "at": "2026-06-28T17:35:30.892774+00:00"
+        },
+        {
+          "from_status": "in_progress",
+          "to_status": "done",
+          "at": "2026-06-28T17:37:57.286890+00:00"
         }
       ]
     }

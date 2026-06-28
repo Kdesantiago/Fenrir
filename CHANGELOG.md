@@ -4,6 +4,9 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Merged branches are auto-deleted** (epic-8) — no more stale-branch pile-up. The repo's `delete_branch_on_merge` is enabled (and documented in `branch-protection.tf` + armed by `repo-bootstrap`) so the **remote** head branch is removed on merge; `/fenrir:ship` now also deletes the **local** branch after merge (a squash-merge isn't detected by `git branch --merged`, so locals otherwise accumulate) and prunes stragglers. The 6 leftover local branches from the v1.5 cycle were removed.
+
 ## [1.5.0] — 2026-06-28
 
 > **Epic 7 — Board automation, governance & process.** Minor bump per the new cadence: an epic finished. Per-US cost is now automatic + mandatory (commit-time attribution), the board auto-rolls status + writes an epic-close retrospective, compaction is subject-focused, the DAT agent landed, and the release cadence is encoded. See `docs/delivery-memory/retros/epic-7-*.md`.

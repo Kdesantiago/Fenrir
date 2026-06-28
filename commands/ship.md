@@ -38,6 +38,10 @@ This is the automatic LLM review before any PR exists. Runs in the main thread (
   - Azure: `az repos pr show --id <pr>` / pipeline status
 - Report each required check (name → pending/pass/fail) and the branch-protection merge state.
 - **After the PR merges, close its US:** move every US the PR delivered to `done` (`python -m backend.cli move --kind story --id <us> --status done`). A merged PR that leaves its US in `review`/`in_progress` is stale board state — don't.
+- **After the PR merges, delete the branch — remote AND local, SAFELY.**
+  - **Stacked PRs first:** if other open PRs target this branch (`gh pr list --base <branch> --state open`), retarget them to the default branch (`gh pr edit <child> --base <default>`) BEFORE deleting — `gh ... --delete-branch` *closes* dependent PRs rather than retargeting them ([cli#1168](https://github.com/cli/cli/issues/1168)).
+  - **Merge + remote delete:** `gh pr merge <pr> --squash --delete-branch` (the repo's `delete_branch_on_merge` setting is the backstop for the remote).
+  - **Local delete, guarded:** `git switch <default> && git pull --ff-only`, then `git branch -d <branch>`. A squash-merge isn't recognized by `git branch --merged`, so `-d` will refuse; only then force — but FIRST confirm there's no unpushed work: `git log @{u}.. --oneline` (or `git cherry`) must be empty before `git branch -D <branch>`. **Never blind force-delete** — `-D` discards unmerged local commits. Sweep stragglers: `git fetch --prune`.
 
 ## 7. Output — state the boundary explicitly
 Report:

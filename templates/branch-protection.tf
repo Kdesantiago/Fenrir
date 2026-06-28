@@ -45,3 +45,9 @@ resource "github_branch_protection" "main" {
   allows_force_pushes             = false
   allows_deletions                = false
 }
+
+# Auto-delete merged branches so they don't pile up. Out-of-state repo setting (the resource
+# above can't carry it); `repo-bootstrap` runs this when arming the gate:
+#   gh api -X PATCH repos/<owner>/<repo> -f delete_branch_on_merge=true
+# Deletes the REMOTE branch only — `/fenrir:ship` deletes the LOCAL branch after merge too
+# (a squash-merge isn't detected by `git branch --merged`).
