@@ -319,12 +319,14 @@ async function loadAgents() {
   const body = $("#agents-body");
   try {
     const q = projParam();
-    const [bymodel, byskill, agents, subagents] = await Promise.all([
+    const [bymodel, byskill, agents, subagents, eff] = await Promise.all([
       apiGet("/api/telemetry/by-model" + q),
       apiGet("/api/telemetry/by-skill" + q),
       apiGet("/api/telemetry/agents" + q),
       apiGet("/api/telemetry/subagents" + q),
+      apiGet("/api/telemetry/efficiency" + q),
     ]);
+    renderEfficiency(eff);
     fillTable("#tbl-model", bymodel, (r) => shortModel(r.key));
     fillTable("#tbl-skill", byskill, (r) => r.key);
     fillTable("#tbl-source", agents.by_source, (r) => r.key === "main" ? "Main thread" : "Subagent");
@@ -382,6 +384,44 @@ function renderSubagentTypeTable(rows) {
       el("td", { class: "num", text: fmtTok(r.cache_write_tokens) }),
       el("td", { class: "num", text: fmtTok(r.cache_read_tokens) }),
       el("td", { class: "num cost", text: fmtUsd4(r.cost_usd) }),
+    ]));
+  });
+}
+
+function renderEfficiency(eff) {
+  const sumEl = $("#efficiency-summary");
+  const tbody = $("#tbl-efficiency tbody");
+  if (!sumEl || !tbody) return;
+  sumEl.innerHTML = "";
+  tbody.innerHTML = "";
+  const t = (eff && eff.total) || {};
+  const pct = Math.round((t.cache_hit_ratio || 0) * 100);
+  const cards = [
+    { label: "Actual cost", value: fmtUsd(t.actual_cost || 0), sub: "with prompt caching" },
+    { label: "If uncached", value: fmtUsd(t.uncached_cost || 0), sub: "every input token at full price" },
+    { label: "Saved by cache", value: fmtUsd(t.savings || 0), sub: (t.savings || 0) >= 0 ? "caching is paying off" : "writes exceed reads — waste" },
+    { label: "Cache hit ratio", value: pct + "%", sub: "input served cheap from cache" },
+  ];
+  cards.forEach((c) => sumEl.append(el("div", { class: "kpi" }, [
+    el("div", { class: "kpi-label", text: c.label }),
+    el("div", { class: "kpi-value", text: c.value }),
+    el("div", { class: "kpi-sub", text: c.sub }),
+  ])));
+  const rows = (eff && eff.by_model) || [];
+  if (!rows.length) {
+    tbody.append(el("tr", {}, el("td", { colspan: "7", class: "muted", style: "text-align:center;padding:24px", text: "No data" })));
+    return;
+  }
+  rows.forEach((r) => {
+    const hp = Math.round((r.cache_hit_ratio || 0) * 100);
+    tbody.append(el("tr", {}, [
+      el("td", { class: "k", text: shortModel(r.model) }),
+      el("td", { class: "num", text: hp + "%" }),
+      el("td", { class: "num", text: fmtTok(r.cache_read_tokens) }),
+      el("td", { class: "num", text: fmtTok(r.fresh_input_tokens) }),
+      el("td", { class: "num cost", text: fmtUsd4(r.actual_cost) }),
+      el("td", { class: "num", text: fmtUsd4(r.uncached_cost) }),
+      el("td", { class: "num", style: (r.savings || 0) >= 0 ? "color:var(--ok,#34d399)" : "color:var(--warn,#f59e0b)", text: fmtUsd4(r.savings) }),
     ]));
   });
 }

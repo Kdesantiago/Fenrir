@@ -4,6 +4,11 @@ All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Added
+- **Multi-agent cost/speed/quality efficiency** ([ADR 0001](docs/adr/0001-multi-agent-cost-efficiency.md)) — reframes the cost: cache-read is 0.1× input, so caching already saves ~10× (measured: actual ~$677 vs ~$3.5k uncached = **$2.9k saved**, 98% hit-ratio). The bill is **context volume × model tier**, not the cache.
+  - **Dashboard cache-efficiency view** — `telemetry.efficiency()` + `GET /api/telemetry/efficiency` + an "Cache efficiency" panel: per model the cache hit-ratio, actual vs **uncached-equivalent** cost, and savings. A high-spend / low-hit-ratio model is the real waste to target. **Savings can go NEGATIVE** when cache writes (1.25× premium) exceed reads — surfaced as the waste signal.
+  - **`workflow-efficiency` skill** (45 skills) — the authoring rubric for multi-agent workflows: tier the model per stage (mechanical → Haiku/Sonnet, judgment → Opus — the #1 overspend), budget prompts (pass file refs not inlined blobs), keep prefixes cache-stable, cap fan-out, tier effort. Advisory; the cache-efficiency view measures the result. Carves vs `context-engineering` (product context) and `llm-cost-monitor` (runtime spend).
+
 ### Fixed
 - **Dashboard cost ~3× too high for Opus** — the price book keyed all `opus` models at the legacy Opus 4.1 rate ($15/$75). Now version-aware: Opus 4.5–4.8 = $5/$25, Opus 4.1 = $15/$75, Fable/Mythos 5 = $10/$50, Sonnet = $3/$15, Haiku 4.5 = $1/$5, Haiku 3.5 = $0.80/$4 (cache rates still derived 1.25×/2×/0.1× input, matching the published table). Version keys match before the generic family key. Historical `work_log` entries keep the cost computed at log time — re-`link --refresh` a session to recost it.
 

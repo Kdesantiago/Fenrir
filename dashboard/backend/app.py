@@ -222,6 +222,12 @@ def telemetry_agents(project: str | None = None) -> dict:
     return telemetry.agents(_events(project))
 
 
+@app.get("/api/telemetry/efficiency")
+def telemetry_efficiency(project: str | None = None) -> dict:
+    """Cache efficiency: actual vs uncached-equivalent cost, savings, hit-ratio per model."""
+    return telemetry.efficiency(_events(project))
+
+
 @app.get("/api/telemetry/subagents")
 def telemetry_subagents(project: str | None = None) -> dict:
     return telemetry.subagent_runs(_claude_dir(), _resolve_project(project))
