@@ -50,9 +50,30 @@ const fmtDur = (ms) => {
 const fmtWhen = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
-  if (isNaN(d)) return iso;
+  if (isNaN(d)) return "—";
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 };
+// ISO timestamp -> relative ("just now","2m ago","3h ago","5d ago"); older/invalid fall back
+// to the absolute compact form. Graceful on empty/bad input (never "NaN ago"/"Invalid Date").
+const fmtRel = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (s < 0) return fmtWhen(iso);            // future/clock-skew -> show absolute
+  if (s < 45) return "just now";
+  if (s < 90) return "1m ago";
+  const m = s / 60;
+  if (m < 60) return Math.round(m) + "m ago";
+  const h = m / 60;
+  if (h < 24) return Math.round(h) + "h ago";
+  const days = h / 24;
+  if (days < 7) return Math.round(days) + "d ago";
+  return fmtWhen(iso);                        // older than a week -> absolute date
+};
+// Build a timestamp cell span: relative text + absolute datetime on `title` hover.
+// Single render path for every timestamp in the UI (US-106 / spec dashboard-ux-evolve US-3).
+const whenEl = (iso) => el("span", { class: "when", title: iso ? fmtWhen(iso) : null, text: fmtRel(iso) });
 
 const PALETTE = ["#6366f1", "#22d3ee", "#34d399", "#fbbf24", "#f87171", "#c084fc", "#f472b6", "#38bdf8", "#a3e635", "#fb923c"];
 const colorFor = (str) => {
@@ -506,7 +527,7 @@ function renderSubagentRuns() {
     const ok = r.status === "completed" && r.attributed;
     tbody.append(el("tr", { title: r.description || "" }, [
       el("td", { class: "k", text: r.agent_type }),
-      el("td", {}, el("span", { class: "when", text: fmtWhen(r.when) })),
+      el("td", {}, whenEl(r.when)),
       el("td", { class: "k", text: shortModel(r.model) || "—" }),
       el("td", { class: "num", text: fmtTok(r.input_tokens) }),
       el("td", { class: "num", text: fmtTok(r.output_tokens) }),
@@ -1206,7 +1227,7 @@ function renderTrace(rows) {
     tcost += r.cost_usd || 0;
     const agent = r.subagent_type || r.agent || "—";
     tbody.append(el("tr", { title: r.note || "" }, [
-      el("td", {}, el("span", { class: "when", text: fmtWhen(r.at) })),
+      el("td", {}, whenEl(r.at)),
       el("td", {}, [
         el("span", { class: "k", style: "color:var(--txt-3)", text: r.us_id + " " }),
         el("span", { text: r.title || "" }),
