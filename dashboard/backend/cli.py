@@ -121,25 +121,40 @@ def _cmd_reconcile(s: BoardStore, a) -> None:
 
     b = s.load()
     story_by = {st.id: st for st in b.stories}
-    seen = {w.run_id for coll in (b.stories, b.tasks) for it in coll
-            for w in it.work_log if w.run_id}
+    # existing per-run entries (across the whole board) so we can TOP UP a run that was
+    # reconciled while still streaming (partial tokens) once its transcript completes —
+    # keyed by run_id, so it stays on its first-assigned US and is never double-counted.
+    existing = {w.run_id: w for coll in (b.stories, b.tasks) for it in coll
+                for w in it.work_log if w.run_id}
     now = datetime.now(UTC).isoformat()
 
-    n_sub = 0
+    n_sub = n_topped = 0
     for r in telemetry.subagent_runs(cd, project)["runs"]:
-        if r["session_id"] != a.session or not r["run_id"] or r["run_id"] in seen:
+        if r["session_id"] != a.session or not r["run_id"]:
+            continue
+        prev = existing.get(r["run_id"])
+        if prev is not None:
+            # a later reconcile sees a run that finished growing → update in place (no move)
+            if r["cost_usd"] > prev.cost_usd + 1e-9 or r["total_tokens"] > (
+                    prev.input_tokens + prev.output_tokens):
+                prev.input_tokens = r["input_tokens"]; prev.output_tokens = r["output_tokens"]
+                prev.cache_write_tokens = r.get("cache_write_tokens", 0)
+                prev.cache_read_tokens = r.get("cache_read_tokens", 0)
+                prev.cost_usd = r["cost_usd"]; n_topped += 1
             continue
         st = story_by.get(us_at(r["when"]))
         if not st:
             continue
-        st.work_log.append(WorkLogEntry(
+        entry = WorkLogEntry(
             agent=r["agent_type"], subagent_type=r["agent_type"], session_id=a.session,
             run_id=r["run_id"], source="telemetry-run",
             input_tokens=r["input_tokens"], output_tokens=r["output_tokens"],
             cache_write_tokens=r.get("cache_write_tokens", 0),
             cache_read_tokens=r.get("cache_read_tokens", 0),
-            cost_usd=r["cost_usd"], note="auto per-US (reconcile)", at=now))
-        seen.add(r["run_id"]); n_sub += 1
+            cost_usd=r["cost_usd"], note="auto per-US (reconcile)", at=now)
+        st.work_log.append(entry)
+        existing[r["run_id"]] = entry
+        n_sub += 1
 
     # main-thread delta → current US (vs the stored watermark)
     wm: dict = {}
@@ -176,13 +191,13 @@ def _cmd_reconcile(s: BoardStore, a) -> None:
         except OSError:
             pass
     _emit({"reconciled": True, "session": a.session, "current_us": a.current_us,
-           "subagent_runs_attributed": n_sub,
+           "subagent_runs_attributed": n_sub, "subagent_runs_topped_up": n_topped,
            "main_delta_usd": d_cost if main_logged else 0.0})
 
 
 def _cmd_session_cost(s: BoardStore, a) -> None:
     """Read-only: a session's REAL telemetry totals, optionally one source (main|subagent).
-    Used by the tracking engine's `tick` to compute the main-thread delta to attribute."""
+    Companion to `reconcile` for inspecting/debugging a session's main-thread spend."""
     cd = config.claude_dir()
     project = a.project or telemetry.current_project_slug(cd)
     ev = [e for e in telemetry.load_events(cd, project)

@@ -164,16 +164,29 @@ def test_cli_link_captures_cache_and_refresh_updates(monkeypatch, tmp_path):
     assert len(wl) == 1 and wl[0].cache_read_tokens == 80000  # refreshed, not doubled-up
 
 
-def test_audit_flags_non_atomic_us(tmp_path):
+def test_audit_flags_umbrella_but_not_expensive_atomic(tmp_path):
     s = BoardStore(tmp_path / "b.json")
+    # epic with 3 US, one dominating → umbrella (the real non-atomic anti-pattern)
     e = s.add_epic("E"); f = s.add_feature(e.id, "F")
-    big = s.add_story(f.id, "umbrella"); small = s.add_story(f.id, "atomic")
+    big = s.add_story(f.id, "umbrella")
+    a1 = s.add_story(f.id, "atomic1"); a2 = s.add_story(f.id, "atomic2")
     s.log_work("story", big.id, WorkLogEntry(agent="x", cost_usd=300.0))
-    s.log_work("story", small.id, WorkLogEntry(agent="x", cost_usd=2.0))
-    a = s.audit(coarse_usd=50.0, dominance=0.4)
-    flagged = {u["id"] for u in a["coarse_us"]}
-    assert big.id in flagged and small.id not in flagged  # only the umbrella is coarse
-    assert a["ok"] is False
+    s.log_work("story", a1.id, WorkLogEntry(agent="x", cost_usd=2.0))
+    s.log_work("story", a2.id, WorkLogEntry(agent="x", cost_usd=2.0))
+    au = s.audit(coarse_usd=50.0, dominance=0.4)
+    coarse = {u["id"] for u in au["coarse_us"]}
+    assert big.id in coarse  # dominates a 3-US epic
+    assert a1.id not in coarse and a2.id not in coarse
+    assert au["ok"] is False
+
+    # a lone expensive US in its own epic is ATOMIC-but-costly → expensive_us, NOT coarse
+    e2 = s.add_epic("E2"); f2 = s.add_feature(e2.id, "F2")
+    exp = s.add_story(f2.id, "expensive-atomic")
+    s.log_work("story", exp.id, WorkLogEntry(agent="x", cost_usd=80.0))
+    au2 = s.audit()
+    assert exp.id not in {u["id"] for u in au2["coarse_us"]}      # 1-US epic ≠ umbrella
+    assert exp.id in {u["id"] for u in au2["expensive_us"]}        # but surfaced as expensive
+
     s.add_feature(e.id, "empty")  # a feature with no US is a structural smell
     assert any(x["id"] for x in s.audit()["empty_features"])
 
@@ -221,3 +234,30 @@ def test_reconcile_attributes_per_us_by_time_and_rolls_up(monkeypatch, tmp_path)
     c2 = BoardStore(board).costs()
     assert c2["stories"][a_us.id]["cost_usd"] == pytest.approx(ca, abs=0.001)
     assert c2["stories"][b_us.id]["cost_usd"] == pytest.approx(cb, abs=0.001)
+
+
+def test_reconcile_tops_up_a_run_that_grew(monkeypatch, tmp_path):
+    # a run reconciled while still streaming (partial tokens) must be TOPPED UP later,
+    # not frozen at the partial count (the critical mid-stream-freeze fix), and never duplicated.
+    cd = tmp_path / "claude"
+    proj = cd / "projects" / "-proj"
+    proj.mkdir(parents=True)
+    _subrun(proj, "agent-r1", "2026-06-01T08:00:00Z", 1000, 100)  # partial
+    board = tmp_path / "board.json"
+    monkeypatch.setenv("FENRIR_DASH_CLAUDE_DIR", str(cd))
+    monkeypatch.setenv("FENRIR_DASH_BOARD", str(board))
+    s = BoardStore(board)
+    e = s.add_epic("E"); f = s.add_feature(e.id, "F"); us = s.add_story(f.id, "A")
+    uslog = tmp_path / "uslog.jsonl"
+    uslog.write_text(f'{{"at":"2026-06-01T00:00:00+00:00","us":"{us.id}"}}\n')
+    args = ["reconcile", "--session", "S1", "--current-us", us.id,
+            "--uslog", str(uslog), "--project=-proj"]
+    assert cli.main(args) == 0
+    c1 = BoardStore(board).costs()["stories"][us.id]["cost_usd"]
+
+    _subrun(proj, "agent-r1", "2026-06-01T08:00:00Z", 5000, 500)  # the run finished growing
+    assert cli.main(args) == 0
+    rows = [w for x in BoardStore(board).load().stories if x.id == us.id
+            for w in x.work_log if w.run_id == "agent-r1"]
+    assert len(rows) == 1  # topped up in place, not duplicated
+    assert BoardStore(board).costs()["stories"][us.id]["cost_usd"] > c1  # cost grew
