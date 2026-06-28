@@ -77,8 +77,11 @@ template_version: "1.0.0"
 
 ## 4. Daily use
 
+### Plan first (the work starts on the board)
+> "/fenrir:plan — add endpoint X" → decomposes it into one **Feature** + **atomic User Stories** on the board (one thing each), creates the `feat/<feature>` branch — **no code yet**. Development then proceeds one US at a time. `/fenrir:deliver` and `/fenrir:challenge-me` check for this plan and create it if missing, so you can also jump straight to deliver. **One Feature = one branch = one PR**; the PR delivers that Feature's US (the `delivery-trace` check enforces a US reference).
+
 ### Orchestrated delivery (the common path)
-> "/fenrir:deliver — add endpoint X" → routes **light** (hotfix: coder → gates → ship) or **full** (feature: architect → coder → qa-tester → review → gates → ship) by a deterministic git diff measure. Writes a spec artifact to `docs/specs/` that every subagent reads. Stops before PR on any hard failure.
+> "/fenrir:deliver — add endpoint X" → ensures a board plan exists (creates it if not), then routes **light** (hotfix: coder → gates → ship) or **full** (feature: architect → coder → qa-tester → review → gates → ship) by a deterministic git diff measure, building the US one at a time (cost lands per-US). Writes a spec artifact to `docs/specs/` that every subagent reads. Stops before PR on any hard failure.
 
 > "/fenrir:ship" → opens a conventional-commit PR, links the ADR + spec, runs gates for local feedback, surfaces CI status. It does **not** claim to enforce — branch-protection does.
 
