@@ -1,9 +1,18 @@
 """FastAPI app: serves the SPA, the Agile board CRUD API, and telemetry aggregations.
 
-Run:  uvicorn backend.app:app --reload   (from dashboard/)
-Env:  FENRIR_DASH_BOARD       path to board.json (default data/board.json)
+Run:  uvicorn backend.app:app --port 8765 --reload   (from dashboard/)
+      or, from any repo:  /fenrir:dashboard  (the plugin launcher, no copy needed)
+Env:  FENRIR_DASH_PORT        bind port for the launcher / docs (default 8765; uvicorn's
+                              own default is still 8000 if you omit --port)
+      FENRIR_DASH_BOARD       path to a board JSON file (pins it outright; overrides the
+                              per-project default)
       FENRIR_DASH_CLAUDE_DIR  ~/.claude override
       FENRIR_DASH_PROJECT     restrict telemetry to one projects/<name> dir (default: all)
+      CLAUDE_PROJECT_DIR      the in-session repo root. When set, project/board auto-detection
+                              keys off THIS path (its git root) instead of the process cwd — so
+                              the bundled-backend launcher, which runs with cwd=<plugin>/dashboard,
+                              still resolves the USER repo's board/telemetry. See config.board_path
+                              + telemetry.resolution_base.
 """
 from __future__ import annotations
 
@@ -33,8 +42,10 @@ def _claude_dir() -> Path:
 
 
 def _resolve_project(q: str | None) -> str | None:
-    """Which project to scope telemetry to. Query param wins; then env; then auto-detect
-    the current repo's project; `""`/`"all"` means every project."""
+    """Which project to scope telemetry to. Query param wins; then the FENRIR_DASH_PROJECT env;
+    then auto-detect the current repo's project (via `current_project_slug`, which keys off
+    CLAUDE_PROJECT_DIR when the launcher set it, else the cwd — so the bundled backend scopes to
+    the USER's repo). `""`/`"all"` means every project."""
     if q is None:
         env = os.environ.get("FENRIR_DASH_PROJECT")
         if env is not None:
@@ -207,6 +218,7 @@ def projects() -> dict:
 def telemetry_summary(project: str | None = None) -> dict:
     out = telemetry.summary(_events(project))
     out["scope"] = _resolve_project(project) or "all projects"
+    out["since"] = os.environ.get("FENRIR_DASH_SINCE") or None
     return out
 
 
