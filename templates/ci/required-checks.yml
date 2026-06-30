@@ -1,8 +1,20 @@
 # Couche 0 — CI required status checks (GitHub Actions).
 # Job `name:` values MUST equal branch-protection.tf required_checks (test/sast/build).
-# WORKSPACE-CORRECT: a uv workspace has ONE root uv.lock, so install + test run ONCE at the
-# repo root (uv sync --all-packages installs every member editable). No per-service matrix.
-# Works for a uv workspace, a single-package uv repo, or a pip repo (fallback).
+#
+# LAYOUT-CORRECT (ADR 0005): /fenrir:init emits a FLAT, self-contained-per-module repo. There is
+# NO root uv.lock and NO shared venv — each src/<module>/ is its own uv project with its own
+# pyproject.toml, .venv and lockfile, and its imports are module-local top-level
+# (`from core.settings import settings`). So install/lint/type/test run PER MODULE, from inside
+# each module dir, NOT once at the repo root. Running `pip install -e ".[dev]"` at a root with no
+# [project], or `pytest --cov=src` at root, is wrong here — root pytest collects
+# src/<module>/tests and the module-local `import core` raises ModuleNotFoundError ("red forever").
+#
+# The `test` job stays a SINGLE stable status context (== branch-protection required_check "test")
+# and fans out over modules INTERNALLY: a discovery step lists every src/*/pyproject.toml and the
+# loop runs `cd src/<module> && uv sync && uv run ruff check . && uv run mypy . && uv run pytest`
+# for each, failing the job on the first module that fails. A GitHub matrix was avoided on purpose
+# here: a matrix renames the check context to `test (app)` per leg, which would no longer match the
+# bare `test` required_check — the in-job loop keeps the context name stable.
 name: required-checks
 
 on:
@@ -10,34 +22,56 @@ on:
     branches: [main, dev, "release/**"]
 
 env:
-  PY: "3.12"   # the Fenrir baseline; align with your services' requires-python.
+  PY: "3.12"   # the Fenrir baseline; align with your modules' requires-python.
 
 jobs:
   test:
-    name: test          # == required_checks context; tests + coverage gate
+    name: test          # == required_checks context; per-module lint + type + test gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-python@v5
         with: { python-version: "${{ env.PY }}" }
-      - name: install (uv workspace at root, else pip)
+      - name: install uv
+        run: pip install uv
+      - name: discover modules (each src/<module>/ with a pyproject.toml)
+        id: modules
         run: |
-          if [ -f uv.lock ]; then
-            pip install uv && uv sync --all-packages --dev
-          else
-            pip install -e ".[dev]" || pip install -r requirements-dev.txt || pip install -r requirements.txt
+          # Flat-per-module layout: a module is any dir directly under src/ that has its own
+          # pyproject.toml. -maxdepth 2 keeps it to src/<module>/pyproject.toml (not nested).
+          mods="$(find src -maxdepth 2 -mindepth 2 -name pyproject.toml -printf '%h\n' | sort)"
+          if [ -z "$mods" ]; then
+            echo "no src/<module>/pyproject.toml found — nothing to gate" >&2
+            exit 1
           fi
-      - name: pytest + coverage (whole workspace, scoped to src/)
+          echo "discovered modules:" && echo "$mods"
+          # Persist the newline-separated list for the next step.
+          { echo 'dirs<<EOF'; echo "$mods"; echo 'EOF'; } >> "$GITHUB_OUTPUT"
+      - name: per-module sync + lint + type + test
         run: |
-          if [ -f uv.lock ]; then
-            uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
-          else
-            pytest --cov=src --cov-report=term-missing --cov-fail-under=80
+          set -euo pipefail
+          failed=0
+          while IFS= read -r mod; do
+            [ -n "$mod" ] || continue
+            echo "::group::$mod"
+            (
+              cd "$mod"
+              # Each module is self-contained: its own lockfile + .venv. uv sync installs deps
+              # AND the dev group (ruff/mypy/pytest). Lint/type config is inherited from the
+              # repo-root pyproject (dev-tooling-only); pytest/imports resolve because we are
+              # INSIDE the module dir, which is both project root and import root.
+              uv sync
+              uv run ruff check .
+              uv run mypy .
+              uv run pytest
+            ) || failed=1
+            echo "::endgroup::"
+          done <<< "${{ steps.modules.outputs.dirs }}"
+          if [ "$failed" -ne 0 ]; then
+            echo "one or more modules failed lint/type/test" >&2
+            exit 1
           fi
-      - name: type + lint (advisory in CI; the gate is the test/coverage above)
-        run: |
-          if [ -f uv.lock ]; then uv run ruff check src && uv run mypy src || true; fi
 
   sast:
     name: sast          # == required_checks context; Semgrep + SBOM + dependency audit
@@ -51,12 +85,20 @@ jobs:
         run: pipx run cyclonedx-bom -o sbom.json
       - uses: actions/upload-artifact@v4
         with: { name: sbom, path: sbom.json }
-      - name: dependency audit (root uv.lock)
+      - name: dependency audit (per-module lockfiles)
         run: |
-          if [ -f uv.lock ]; then
-            pip install uv && uv export --format requirements-txt --no-emit-workspace --no-dev | pipx run pip-audit -r /dev/stdin
-          else
-            echo "no uv.lock — skipping uv dependency audit"
+          # No root uv.lock in the flat-per-module layout — audit each module's own lockfile.
+          pip install uv
+          audited=0
+          while IFS= read -r lock; do
+            mod="$(dirname "$lock")"
+            echo "::group::pip-audit $mod"
+            ( cd "$mod" && uv export --format requirements-txt --no-dev | pipx run pip-audit -r /dev/stdin )
+            echo "::endgroup::"
+            audited=1
+          done < <(find src -maxdepth 2 -mindepth 2 -name uv.lock | sort)
+          if [ "$audited" -eq 0 ]; then
+            echo "no per-module uv.lock found — skipping dependency audit (run 'uv lock' in each module)"
           fi
 
   build:

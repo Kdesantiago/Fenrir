@@ -1,0 +1,39 @@
+# Self-contained MODULE — one shippable project. THIS dir (src/{{MODULE}}/) is the project
+# root AND the import root: packages are flat (core/ api/ services/ schemas/) and imports are
+# module-local top-level (`from core.settings import settings`). It has its OWN .venv and its
+# OWN lockfile — it is NOT a uv-workspace member. Dev loop: `uv sync && cp .env.example .env`.
+[project]
+name = "{{MODULE}}"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi>=0.115",
+  "pydantic-settings>=2.5",
+  "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.15",
+  "mypy>=1.14",
+  "pytest>=8",
+  "pytest-cov>=5",
+  "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The wheel ships the FLAT top-level packages of this module plus the top-level modules.
+# Because the layout is flat (no src/{{MODULE}}/{{MODULE}}/ package dir), each of these is a
+# distinct wheel-root package. This list is load-bearing: drop one and `uv build` produces a
+# wheel WITHOUT that package (e.g. an empty/partial wheel) with NO error. Keep it in sync with
+# the dirs that actually exist.
+[tool.hatch.build.targets.wheel]
+packages = ["core", "api", "services", "schemas"]
+# main.py and __init__.py are top-level single-file modules, not packages — ship them too.
+force-include = { "main.py" = "main.py", "__init__.py" = "__init__.py" }
+
+[tool.hatch.build.targets.sdist]
+include = ["/core", "/api", "/services", "/schemas", "/main.py", "/__init__.py", "/tests", "/README.md", "/.env.example"]
