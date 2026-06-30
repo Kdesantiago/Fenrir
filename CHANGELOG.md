@@ -2,6 +2,14 @@
 
 All notable changes to `fenrir`. Format: [Keep a Changelog](https://keepachangelog.com/), [SemVer](https://semver.org/).
 
+## [1.7.2] — 2026-06-30
+
+### Added
+- **Skill & agent catalog** in `DELIVERY-SKILLSET.md` (+ a "What's in the box" pointer in the README) — a grouped reference of every skill + agent the plugin ships, including the 8 new specialist skills (`app-config`, `dto-schemas`, `domain-services`, `resilience`, `concurrency`, `integration-client`, `file-storage`, `cli`), the §2c deterministic specialist router, and the `/fenrir:dashboard` command, so the docs match what is actually available.
+
+### Changed
+- **Dashboard is now truly zero-install.** `scripts/dashboard.py` (`/fenrir:dashboard`) auto-runs `uv sync` to build the dashboard venv on first launch when FastAPI/uvicorn are missing — idempotent (no re-sync when deps are present), graceful when `uv` is absent — so the bundled dashboard runs on any project with just the plugin installed, no manual dependency step.
+
 ## [1.7.1] — 2026-06-30
 
 > **Epic 10 — usability + specialist-router + dashboard refonte.** Cross-OS one-command install, a deterministic specialist auto-router (token-lean delegation to one specialist per change), 8 new specialist skills, a one-command dashboard on port 8765, a violent challenge-me gate, and the restored feat-40 UX. Merged via PR #29.
