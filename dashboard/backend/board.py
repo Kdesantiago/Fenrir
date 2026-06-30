@@ -33,7 +33,7 @@ class BoardStore:
         if not self.path.exists():
             return Board()
         try:
-            return Board.model_validate_json(self.path.read_text())
+            return Board.model_validate_json(self.path.read_text(encoding="utf-8"))
         except Exception:
             return Board()
 
@@ -42,7 +42,7 @@ class BoardStore:
         # corrupt board — we write a temp file and os.replace (atomic on POSIX).
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(self.path.suffix + f".tmp.{os.getpid()}")
-        tmp.write_text(board.model_dump_json(indent=2) + "\n")
+        tmp.write_text(board.model_dump_json(indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, self.path)
 
     # --- id generation (collision-safe: max numeric suffix + 1) ------------------------
@@ -441,7 +441,7 @@ class BoardStore:
         if out.exists() and not force:
             return out
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(self.epic_retro_doc(epic_id))
+        out.write_text(self.epic_retro_doc(epic_id), encoding="utf-8")
         return out
 
     def audit(self, coarse_usd: float = 50.0, dominance: float = 0.4) -> dict:

@@ -1,4 +1,4 @@
-# 0003 — Dashboard UX PR1: additive frontend + isolated Playwright harness
+# 0007 — Dashboard UX PR1: additive frontend + isolated Playwright harness
 
 - Status: Accepted
 - Date: 2026-06-28

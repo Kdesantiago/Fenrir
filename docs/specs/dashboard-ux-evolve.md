@@ -85,12 +85,12 @@ PR1: US-1..4 criteria pass a manual verify run + smoke suite green; `delivery-ga
 PR2: US-5..6 criteria pass; new backend params unit-tested green; own ADR linked.
 
 ## Stage ledger (PR1 — feat-40, route=full)
-Route numbers: RISK=0, FILES≈6, LOC>80 → full. ADR reused: docs/adr/0003-dashboard-ux-frontend.md.
+Route numbers: RISK=0, FILES≈6, LOC>80 → full. ADR reused: docs/adr/0007-dashboard-ux-frontend.md.
 
 | Stage | Status | Notes |
 |---|---|---|
 | plan | done | feat-40; us-104/105/106/107; branch feat/dashboard-ux-frontend |
-| architect/ADR | done | 0003 reused (no second ADR) |
+| architect/ADR | done | 0007 reused (no second ADR) |
 | coder us-104 (search) | pending | |
 | coder us-105 (top-spenders) | pending | |
 | coder us-106 (relative time) | pending | |

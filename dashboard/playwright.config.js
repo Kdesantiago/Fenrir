@@ -1,7 +1,7 @@
 // @ts-check
 const { defineConfig, devices } = require("@playwright/test");
 
-// ISOLATED, local-only Playwright harness for the dashboard SPA (ADR 0003).
+// ISOLATED, local-only Playwright harness for the dashboard SPA (ADR 0007).
 // Boots the FastAPI app on a FIXED test port against a DETERMINISTIC fixture board
 // (tests/e2e/fixture-board.json) so every assertion is stable. NOT wired into ci.yml /
 // .pre-commit-config.yaml — the Python `dashboard` gate stays byte-unaffected.

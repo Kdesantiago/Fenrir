@@ -20,31 +20,45 @@ def _ev(session: str, model: str = "claude-opus-4-8", inp: int = 1000, out: int 
     })
 
 
+# The fake claude tree mirrors REAL slugs, which differ per OS (Windows lowercases the drive
+# and turns `\` `:` into `-`). Derive them from encode_project so the asserts are OS-independent
+# instead of hard-coding the POSIX form (which would not match on Windows).
+PROJ_A = telemetry.encode_project(Path("/proj/a"))
+PROJ_B = telemetry.encode_project(Path("/proj/b"))
+
+
 def _fake_claude(tmp: Path) -> Path:
     cd = tmp / "claude"
-    (cd / "projects" / "-proj-a").mkdir(parents=True)
-    (cd / "projects" / "-proj-b").mkdir(parents=True)
-    (cd / "projects" / "-proj-a" / "s1.jsonl").write_text(_ev("S1") + "\n" + _ev("S1") + "\n")
-    (cd / "projects" / "-proj-b" / "s2.jsonl").write_text(_ev("S2") + "\n")
+    (cd / "projects" / PROJ_A).mkdir(parents=True)
+    (cd / "projects" / PROJ_B).mkdir(parents=True)
+    (cd / "projects" / PROJ_A / "s1.jsonl").write_text(_ev("S1") + "\n" + _ev("S1") + "\n")
+    (cd / "projects" / PROJ_B / "s2.jsonl").write_text(_ev("S2") + "\n")
     return cd
 
 
 # --- telemetry helpers ---
 def test_encode_project():
-    assert telemetry.encode_project(Path("/a/b.c")) == "-a-b-c"
+    # POSIX path: no drive/backslash/colon -> only `/` and `.` collapse to `-` (byte-identical
+    # to the historical behavior, so Linux CI is unchanged).
+    assert telemetry.encode_project(Path("/a/b.c")).endswith("-a-b-c")
+    # Windows convention: drive letter lowercased, `\` and `:` -> `-`. Apply the same rule the
+    # function uses so the expectation holds on whatever OS resolves the path.
+    win = telemetry.encode_project(Path(r"C:\Users\me\repo"))
+    assert "Users-me-repo" in win
+    assert ":" not in win and "\\" not in win and "/" not in win
 
 
 def test_list_projects(tmp_path):
     cd = _fake_claude(tmp_path)
-    assert telemetry.list_projects(cd) == ["-proj-a", "-proj-b"]
+    assert telemetry.list_projects(cd) == sorted([PROJ_A, PROJ_B])
 
 
 def test_current_project_slug_prefix_match(tmp_path):
     cd = _fake_claude(tmp_path)
-    # a cwd inside "-proj-a" (its encoding has the slug as a prefix) resolves to -proj-a
-    enc_sub = Path("/proj/a/sub")  # encodes to -proj-a-sub
-    assert telemetry.encode_project(enc_sub) == "-proj-a-sub"
-    assert telemetry.current_project_slug(cd, Path("/proj/a/sub")) == "-proj-a"
+    # a cwd inside proj/a (its encoding has PROJ_A as a prefix) resolves to PROJ_A
+    sub = Path("/proj/a/sub")
+    assert telemetry.encode_project(sub).startswith(PROJ_A)
+    assert telemetry.current_project_slug(cd, sub) == PROJ_A
     assert telemetry.current_project_slug(cd, Path("/nowhere")) is None
 
 
@@ -61,16 +75,16 @@ def _client(monkeypatch, tmp_path):
 def test_api_projects_lists_slugs(monkeypatch, tmp_path):
     c = _client(monkeypatch, tmp_path)
     body = c.get("/api/projects").json()
-    assert set(body["projects"]) == {"-proj-a", "-proj-b"}
+    assert set(body["projects"]) == {PROJ_A, PROJ_B}
 
 
 def test_api_telemetry_scoped_by_project(monkeypatch, tmp_path):
     c = _client(monkeypatch, tmp_path)
-    a = c.get("/api/telemetry/summary", params={"project": "-proj-a"}).json()
+    a = c.get("/api/telemetry/summary", params={"project": PROJ_A}).json()
     allp = c.get("/api/telemetry/summary", params={"project": "all"}).json()
     assert a["calls"] == 2
     assert allp["calls"] == 3
-    assert a["scope"] == "-proj-a"
+    assert a["scope"] == PROJ_A
     assert allp["scope"] == "all projects"
 
 
@@ -91,9 +105,9 @@ def test_cli_link_pulls_real_telemetry(monkeypatch, tmp_path):
     s = BoardStore(board)
     e = s.add_epic("E"); f = s.add_feature(e.id, "F"); st = s.add_story(f.id, "S")
 
-    # NOTE: project slugs start with "-", so argparse needs the --opt=value form.
+    # NOTE: POSIX project slugs start with "-", so argparse needs the --opt=value form.
     rc = cli.main(["link", "--kind", "story", "--id", st.id,
-                   "--session", "S1", "--project=-proj-a"])
+                   "--session", "S1", f"--project={PROJ_A}"])
     assert rc == 0
     reloaded = [x for x in BoardStore(board).load().stories if x.id == st.id][0]
     assert len(reloaded.work_log) == 1
@@ -111,6 +125,6 @@ def test_cli_link_no_match_errors(monkeypatch, tmp_path, capsys):
     s = BoardStore(board)
     e = s.add_epic("E"); f = s.add_feature(e.id, "F"); st = s.add_story(f.id, "S")
     rc = cli.main(["link", "--kind", "story", "--id", st.id, "--session", "NOPE",
-                   "--project=-proj-a"])
+                   f"--project={PROJ_A}"])
     assert rc == 1
     assert "no telemetry matched" in capsys.readouterr().err

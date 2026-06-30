@@ -72,3 +72,30 @@ def test_retro_written_once_not_on_every_subsequent_change(tmp_path):
     s.set_status("story", b.id, Status.in_progress, at="2026-01-03T00:00:00+00:00")
     s.set_status("story", b.id, Status.done, at="2026-01-04T00:00:00+00:00")
     assert p.read_text() == "REFINED"
+
+
+# --- non-ASCII round-trip (utf-8 I/O; was crashing under cp1252 on Windows) ------------
+
+
+def test_board_non_ascii_title_roundtrip(tmp_path):
+    # Accented FR text + an em-dash + the `→` char must save and load intact. Before the utf-8
+    # encoding fix, write_text/read_text used cp1252 on Windows and raised UnicodeEncodeError.
+    s = BoardStore(tmp_path / "board.json")
+    title = "Refonte paiements — étape clé → succès café"
+    e = s.add_epic(title)
+    reloaded = next(x for x in BoardStore(tmp_path / "board.json").load().epics if x.id == e.id)
+    assert reloaded.title == title
+    # the raw file is utf-8 and round-trips the non-ASCII bytes
+    assert title in (tmp_path / "board.json").read_text(encoding="utf-8")
+
+
+def test_epic_retro_non_ascii_writes_utf8(tmp_path):
+    # The retro doc itself contains `→`/`Σ`; writing it must not crash on cp1252 and must read back.
+    retro = tmp_path / "retros"
+    s = BoardStore(tmp_path / "board.json", retro_dir=retro)
+    e = s.add_epic("Paiements café")
+    f = s.add_feature(e.id, "Caisse — façade")
+    s.add_story(f.id, "Ajout reçu détaillé")
+    out = s.write_epic_retro(e.id)
+    text = out.read_text(encoding="utf-8")
+    assert "Σ" in text and "café" in text
