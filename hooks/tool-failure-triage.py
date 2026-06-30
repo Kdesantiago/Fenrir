@@ -9,7 +9,7 @@ Contract (PostToolUseFailure): non-blocking — exit 0. Side effects only.
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 HINTS = {
     "Bash": "check the command's exit output; a gate hook may have denied it (see security-events.jsonl).",
@@ -34,7 +34,7 @@ def main():
         root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
         d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "tool-failures.jsonl"), "a") as f:
-            f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
+            f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
                     "tool": tool, "error": err}) + "\n")
     except Exception:
         pass

@@ -7,7 +7,7 @@
 name = "fenrir-hooks"
 version = "0"
 description = "First-party Claude Code hooks shipped by the Fenrir plugin (couche-0 in-session gate)."
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = []
 
 [project.optional-dependencies]
@@ -17,8 +17,13 @@ dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
 [tool.uv]
 package = false
 
+# target-version is py39: the plugin's hooks/scripts run on a 3.9-floored host
+# (3.9.6 system Python per ADR 0004), so ruff must NOT suggest 3.11-only rewrites
+# like UP017's `datetime.UTC` alias — the 3.9-safe `datetime.now(timezone.utc)`
+# form is deliberate and must stay lint-clean. The dashboard has its OWN pyproject
+# (requires-python >=3.11) and is unaffected by this floor.
 [tool.ruff]
-target-version = "py311"
+target-version = "py39"
 line-length = 100
 src = ["hooks", "scripts"]
 
@@ -33,7 +38,9 @@ select = ["F", "B", "C4", "I", "UP"]
 "hooks/tests/*" = ["S101", "E501"]
 
 [tool.mypy]
-python_version = "3.11"
+# mypy's minimum analysis target is 3.10; ruff (target-version py39) enforces the
+# true 3.9 runtime floor (requires-python >=3.9), so 3.9-incompat syntax is still caught.
+python_version = "3.10"
 files = ["hooks", "scripts"]
 ignore_missing_imports = true
 check_untyped_defs = true

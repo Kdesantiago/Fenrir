@@ -1,5 +1,5 @@
 {
-  "//": "fenrir couche-0 in-session enforcement + security layer. repo-bootstrap MERGES this into the consuming repo's .claude/settings.json and copies hooks/*.py to .claude/hooks/. Project-scoped so it travels with the repo. All hooks are pure Python stdlib \u2014 no bun/node/daemon.",
+  "//": "fenrir couche-0 in-session enforcement + security layer. repo-bootstrap MERGES this into the consuming repo's .claude/settings.json and copies hooks/*.py to .claude/hooks/. Project-scoped so it travels with the repo. All hooks are pure Python stdlib — no bun/node/daemon. EXEC form (command + args) is used so there is NO shell: ${PYTHON} is a placeholder that repo-bootstrap replaces with the ABSOLUTE path of a detected Python >=3.9 interpreter at install time, and ${CLAUDE_PROJECT_DIR} is left verbatim for Claude Code to substitute at runtime. Exec form removes the PowerShell/Git-Bash and bare-`python3`-token dependencies, so the enforcement gate fires identically on macOS/Linux/Windows. Bootstrap refuses to bake a <3.9 interpreter rather than ship a crashing gate.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/delivery-guard.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/delivery-guard.py"]
           }
         ]
       },
@@ -16,7 +17,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-guard.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/tracking-guard.py"]
           }
         ]
       }
@@ -26,11 +28,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-guard.py\""
-          },
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-open.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/prompt-guard.py"]
           }
         ]
       }
@@ -41,7 +40,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/content-scanner.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/content-scanner.py"]
           }
         ]
       },
@@ -50,7 +50,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/config-audit.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/config-audit.py"]
           }
         ]
       },
@@ -59,11 +60,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-attribute.py\""
-          },
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/branch-plan-check.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/branch-plan-check.py"]
           }
         ]
       }
@@ -73,7 +71,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-context.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session-context.py"]
           }
         ]
       }
@@ -83,11 +82,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/doc-staleness.py\""
-          },
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-finalize.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/doc-staleness.py"]
           }
         ]
       }
@@ -97,7 +93,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tool-failure-triage.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/tool-failure-triage.py"]
           }
         ]
       }
@@ -107,21 +104,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-end.py\""
-          },
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-finalize.py\""
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracking-collect.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session-end.py"]
           }
         ]
       }
@@ -132,17 +116,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/iac-watch.py\""
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/precompact-focus.py\""
+            "command": "${PYTHON}",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/iac-watch.py"]
           }
         ]
       }

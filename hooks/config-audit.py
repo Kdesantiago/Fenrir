@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 SENSITIVE = {"permissions", "hooks", "env", "mcpServers", "allowedHttpHookUrls"}
 
@@ -37,7 +37,7 @@ def main():
         if changed:
             with open(os.path.join(audit, "config-changes.jsonl"), "a") as f:
                 f.write(json.dumps({
-                    "ts": datetime.now(UTC).isoformat(),
+                    "ts": datetime.now(timezone.utc).isoformat(),
                     "session": data.get("session_id", ""),
                     "file": fp, "changed_keys": changed,
                     "sensitive": sorted(set(changed) & SENSITIVE),
