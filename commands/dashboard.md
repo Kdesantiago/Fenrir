@@ -29,6 +29,15 @@ is pure stdlib and re-resolves a working interpreter (the dashboard's `.venv`, e
 `python3 → python → py -3`) for the uvicorn child, so a host without `python3` on `PATH`
 still works.
 
+**Zero-install — no manual `uv sync` needed.** The dashboard's `.venv` is gitignored, so a
+fresh checkout has no FastAPI/uvicorn. On the **first** launch the launcher detects that and
+auto-runs `uv sync` in the dashboard dir to build the venv (printing
+`first run: installing dashboard deps via uv sync…` so you know why it's slower that once),
+then serves on the freshly-built venv. Subsequent launches reuse the venv and start instantly —
+the sync is gated behind a fast import probe, so a warm launch never re-syncs. The only
+prerequisite is `uv` on `PATH`; if it's missing the launcher prints a clear "install uv OR run
+the manual step" message and exits non-zero (it never crashes).
+
 ## Behavior
 - **No code copied.** The backend runs from `${CLAUDE_PLUGIN_ROOT}/dashboard`; the repo path
   is passed in via `CLAUDE_PROJECT_DIR` (and the resolved board via `FENRIR_DASH_BOARD`), so the
@@ -40,8 +49,11 @@ still works.
   (`window.location` → relative `/api/*` fetches), so it works on whatever port bound — no
   configuration, no hardcoded host.
 - **Fail-open.** If the bundled dashboard is absent (plugin not fully installed), it prints
-  a skip line and exits cleanly. If the dashboard deps are missing on a fresh checkout, it
-  hints `uv sync --extra dev`.
+  a skip line and exits cleanly.
+- **First-launch auto-install.** On a fresh checkout (no `.venv`) the launcher auto-runs
+  `uv sync` once to install FastAPI/uvicorn, then serves — no manual step. If `uv` itself is
+  absent it prints how to install it (or the manual `cd dashboard && uv sync`) and exits
+  non-zero instead of crashing.
 
 ## Environment
 | Variable | Default | Purpose |
@@ -50,7 +62,8 @@ still works.
 | `FENRIR_DASH_BOARD` | *(per-project)* | Explicit board JSON path (`--board` sets this). |
 | `FENRIR_DASH_CLAUDE_DIR` | `~/.claude` | Telemetry source dir (`--claude-dir` sets this). |
 
-Manual fallback (from a checkout that has the dashboard source):
+Manual fallback (optional — the launcher already auto-installs deps on first run; this is
+for running the backend directly from a checkout that has the dashboard source):
 ```sh
 cd dashboard && uv run uvicorn backend.app:app --port 8765 --reload
 # then open http://127.0.0.1:8765

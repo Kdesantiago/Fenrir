@@ -22,10 +22,16 @@ Port (highest wins): --port flag → FENRIR_DASH_PORT env → 8765. If the chose
 busy, probe upward (+1..+20) and print the real bound URL. 8765 is off the common dev
 defaults (8000/8080/3000/5000/8888/9000), so it rarely collides.
 
+TRULY zero-install: on the first launch from a fresh checkout the dashboard's `.venv` is
+gitignored (never shipped), so FastAPI/uvicorn are absent. Rather than print a hint and bail,
+the launcher AUTO-RUNS `uv sync` in the dashboard dir to build+populate the venv, then
+re-resolves the interpreter to that fresh `.venv` and proceeds. This is idempotent: a normal
+launch with deps already present does NOT re-sync (a fast import probe gates it), so warm
+launches stay fast. If `uv` itself is absent from PATH we fall back to the old behavior (a
+clear "install uv OR run the documented manual step" message) and exit non-zero — never crash.
+
 FAIL-OPEN by contract: if the bundled dashboard/backend is absent, print a clear skip
-line and exit 0 (mirrors the fail-open hooks) — never crash a /command. The one hard
-failure is missing FastAPI/uvicorn in the venv (the API genuinely needs them): we print
-a one-line `uv sync` hint and exit non-zero.
+line and exit 0 (mirrors the fail-open hooks) — never crash a /command.
 
 Flags:  --repo PATH   --port N   --board PATH   --claude-dir PATH   --no-browser
 
@@ -68,14 +74,24 @@ def _dash_dir() -> Path | None:
     return cand if (cand / "backend").is_dir() else None
 
 
-def _dash_python(dash: Path) -> str:
-    """Prefer the dashboard's own venv (POSIX `.venv/bin/python` or Windows
-    `.venv/Scripts/python.exe`); else probe python3 → python → py -3 on PATH; else the
-    current interpreter. Mirrors track_session._dash_python + hooks/run-python.sh."""
+def _dash_venv_python(dash: Path) -> str | None:
+    """The dashboard's OWN venv interpreter if it exists (POSIX `.venv/bin/python` or Windows
+    `.venv/Scripts/python.exe`), else None. The `.venv` is gitignored, so on a fresh checkout
+    this is None — the signal that `uv sync` hasn't run here yet."""
     for parts in (("bin", "python"), ("Scripts", "python.exe")):
         venv = dash / ".venv" / Path(*parts)
         if venv.is_file():  # isfile, not exists: a dir named `python` must not be returned
             return str(venv)
+    return None
+
+
+def _dash_python(dash: Path) -> str:
+    """Prefer the dashboard's own venv (POSIX `.venv/bin/python` or Windows
+    `.venv/Scripts/python.exe`); else probe python3 → python → py -3 on PATH; else the
+    current interpreter. Mirrors track_session._dash_python + hooks/run-python.sh."""
+    venv = _dash_venv_python(dash)
+    if venv is not None:
+        return venv
     for cand in ("python3", "python"):
         found = shutil.which(cand)
         if found:
@@ -83,6 +99,62 @@ def _dash_python(dash: Path) -> str:
     if shutil.which("py"):  # Windows python.org launcher
         return "py"
     return sys.executable
+
+
+def _deps_present(interp: str) -> bool:
+    """True iff `interp` can import BOTH fastapi and uvicorn — the two libs the API genuinely
+    needs. A quiet, fast subprocess probe (the import-or-die idiom): this is the idempotency
+    guard, so a warm venv answers True in milliseconds and we skip the (slow) `uv sync`."""
+    try:
+        r = subprocess.run(
+            [interp, "-c", "import fastapi, uvicorn"],
+            capture_output=True, text=True, timeout=30)
+    except Exception:
+        return False
+    return r.returncode == 0
+
+
+def _uv_sync(dash: Path) -> bool:
+    """Build/populate the dashboard's `.venv` by running `uv sync` (the project standard) with
+    cwd=dash, so it resolves dashboard/pyproject.toml + uv.lock into dashboard/.venv. Returns
+    True on success. Graceful: if `uv` is absent from PATH we return False WITHOUT raising, so
+    the caller can fall back to the documented manual step instead of crashing. Cross-OS — no
+    shell, just subprocess; uv itself picks the right `.venv/bin` vs `.venv/Scripts` layout."""
+    if not shutil.which("uv"):
+        return False
+    print("[fenrir:dashboard] first run: installing dashboard deps via uv sync… "
+          "(one-time; subsequent launches are fast)")
+    try:
+        r = subprocess.run(["uv", "sync"], cwd=str(dash))
+    except Exception as exc:  # pragma: no cover — uv vanished between which() and spawn
+        print(f"[fenrir:dashboard] uv sync could not run: {exc}", file=sys.stderr)
+        return False
+    return r.returncode == 0
+
+
+def _ensure_deps(dash: Path, interp: str) -> tuple[str, bool]:
+    """Idempotently guarantee the dashboard runs on an interpreter that can import fastapi+uvicorn.
+
+    The dashboard pins `requires-python >=3.11` and uses 3.11+ stdlib (e.g. datetime.UTC), so the
+    ONLY interpreter we trust is the dashboard's OWN `.venv` that `uv sync` builds from its
+    pyproject + uv.lock — never a stray PATH python that merely happens to carry an (old) fastapi.
+
+    Fast path (warm): the `.venv` exists AND imports the deps → use it, NO `uv sync`. This is the
+    idempotency guard, so a normal launch stays fast.
+
+    Cold path: the `.venv` is absent (fresh checkout — it's gitignored) OR present-but-broken →
+    run `uv sync` to (re)build it, then resolve to that venv and re-probe.
+
+    Returns (interpreter, ok). ok=False means we still don't have a working venv AND couldn't make
+    one (uv absent, or sync failed) — the caller prints the manual fallback and exits non-zero."""
+    venv = _dash_venv_python(dash)
+    if venv is not None and _deps_present(venv):
+        return venv, True  # warm: trusted venv with deps — skip uv sync entirely
+    if not _uv_sync(dash):
+        return interp, False
+    # uv sync just (re)built dashboard/.venv — prefer it explicitly and verify the deps landed.
+    fresh = _dash_venv_python(dash) or _dash_python(dash)
+    return fresh, _deps_present(fresh)
 
 
 def _resolve_board(dash: Path, interp: str, repo: str) -> str | None:
@@ -184,6 +256,23 @@ def main(argv: list[str] | None = None) -> int:
 
     interp = _dash_python(dash)
 
+    # Zero-install: ensure the API's deps (fastapi+uvicorn) are importable. If they're missing
+    # (fresh checkout → no `.venv` shipped), auto-build it with `uv sync` and re-resolve the
+    # interpreter to the fresh venv. Idempotent: a warm venv skips the sync. If we still can't
+    # (no `uv` on PATH, or sync failed), fall back to a clear message and exit non-zero.
+    interp, deps_ok = _ensure_deps(dash, interp)
+    if not deps_ok:
+        print("[fenrir:dashboard] the dashboard needs FastAPI + uvicorn and they're not "
+              "installed.", file=sys.stderr)
+        if not shutil.which("uv"):
+            print("    `uv` is not on PATH. Install it (https://docs.astral.sh/uv/) so the "
+                  "first launch can auto-install deps, OR install them manually:", file=sys.stderr)
+        else:
+            print("    `uv sync` did not produce a working venv. Try it manually to see why:",
+                  file=sys.stderr)
+        print(f"    cd \"{dash}\" && uv sync", file=sys.stderr)
+        return 1
+
     # Child env: the backend runs with cwd=dash but must resolve the USER's project, so we
     # pass the repo through CLAUDE_PROJECT_DIR. --board / --claude-dir pin the existing envs
     # the backend already honors (and which always win over the cwd-derived defaults).
@@ -226,10 +315,12 @@ def main(argv: list[str] | None = None) -> int:
 
     rc = proc.returncode
     if rc != 0:
-        # The most common real failure: FastAPI/uvicorn not installed in the dashboard venv.
-        print("[fenrir:dashboard] backend exited non-zero. If this is a fresh checkout, the "
-              "dashboard deps may be missing — install them once with:", file=sys.stderr)
-        print(f"    cd \"{dash}\" && uv sync --extra dev", file=sys.stderr)
+        # Deps were verified importable before serving (we'd have auto-synced otherwise), so a
+        # non-zero here is a genuine runtime/bind error, not a missing-dependency one. Surface
+        # the manual run that streams the backend's own traceback.
+        print("[fenrir:dashboard] backend exited non-zero. To see the full traceback, run it "
+              "directly:", file=sys.stderr)
+        print(f"    cd \"{dash}\" && uv run uvicorn backend.app:app --port {port}", file=sys.stderr)
     return rc
 
 
