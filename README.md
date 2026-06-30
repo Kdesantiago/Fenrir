@@ -2,7 +2,7 @@
 
 > **The wolf that guards your delivery.** A Claude Code plugin that turns "ship some code" into a standardized, gated, repeatable lifecycle — the same way, in every repo.
 
-Fenrir gives Claude Code a coordinated **pack** of 47 skills, 14 subagents, 7 commands, and 16 hooks (safety + delivery-tracking). You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
+Fenrir gives Claude Code a coordinated **pack** of 55 skills, 14 subagents, 8 commands, and 16 hooks (safety + delivery-tracking). You go from a raw idea to a reviewed, gated pull request — with the boring-but-critical parts (security, tests, docs, CI, branch protection, releases) done consistently instead of "however we felt like it this time."
 
 ---
 
@@ -75,6 +75,15 @@ New here? Read **[GETTING-STARTED.md](GETTING-STARTED.md)** — a 10-minute, end
 | **Delivery-tracking hooks** | attribute each commit's real cost to the US it delivers (`tracking-attribute`, on every `git commit`), make tracing a commit obligatory (`tracking-guard`), ledger subagent runs + backstop the session tail (`tracking-collect`/`tracking-finalize`) — so **every US carries its real per-US cost automatically**; plus **subject-focused compaction** (`precompact-focus` snapshots the active-US dev subject before a compaction; `session-context` re-injects it after, so the summary serves the work in progress), an **auto-retrospective** written to `docs/delivery-memory/retros/` when an epic closes, and a **branch→plan nudge** (`branch-plan-check` reminds you to `/fenrir:plan` when you create a feature branch with no board plan); driven by the `delivery-tracker` agent |
 
 Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub), Python (uv / FastAPI / Streamlit), and LLM/RAG apps — but read your declared profile and refuse on mismatch rather than guessing.
+
+### What's in the box
+
+The pack ships **55 skills** and **14 agents**, plus two pieces of delivery machinery worth calling out:
+
+- The **§2c deterministic specialist router** inside `/fenrir:deliver` — a glob + change-kind dispatch that routes each build to the *pertinent* specialist (e.g. `api/`→`api-first`, `schemas/`→`dto-schemas`, `services/`→`domain-services`, `core/settings`→`app-config`, `resilience/`→`resilience`) with **zero LLM tokens** on the common path, falling back to a single cheap classify and then generic `coder` only when needed.
+- The **`/fenrir:dashboard`** command — one-command launch of the bundled telemetry + Agile-board dashboard for THIS repo on **http://127.0.0.1:8765** (nothing copied into your repo).
+
+For the full grouped inventory — every skill and agent with its one-line purpose, the eight newest layer skills (`app-config`, `dto-schemas`, `domain-services`, `resilience`, `concurrency`, `integration-client`, `file-storage`, `cli`), the router tiers, and the dashboard command — see the **[Skill & agent catalog in DELIVERY-SKILLSET.md](DELIVERY-SKILLSET.md#skill--agent-catalog)**.
 
 ---
 
