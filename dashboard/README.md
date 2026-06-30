@@ -3,44 +3,40 @@
 A local monitoring web app for Fenrir. It does two things:
 
 1. **Telemetry** — parses your real Claude Code transcripts under `~/.claude` and aggregates agent / token / cost activity (by model, skill, day, and source: main thread vs subagent). **Scoped to the current repo's project by default** (a header selector / `?project=` switches between projects, or `all`). Read-only; it never mutates the logs.
-2. **Agile board** — an `Epic → Feature → User Story → Task` kanban that the agents drive themselves via a CLI. The board is plain, git-trackable JSON (`data/board.json`), and stories/tasks cross-link to real telemetry through their `work_log`. A toolbar **search box** filters cards by title/id (composes with the epic/assignee filters); the Overview shows a **Top-spenders** panel — the 10 costliest user stories (click a row to open its detail); and timestamps render **relative** ("2m ago", "3h ago") with the absolute datetime on hover.
+2. **Agile board** — an `Epic → Feature → User Story → Task` kanban that the agents drive themselves via a CLI. The board is plain, git-trackable JSON (`data/board.json`), and stories/tasks cross-link to real telemetry through their `work_log`.
 3. **Cost accounting** — answer *"what did this User Story cost?"*: per-US (and Feature/Epic) input/output tokens + USD, broken down **per agent**, a chronological **cost trace**, and **subagent attribution** (which named subagent ran, when, on what, how much — reconciled, no double-count). See [Track the cost of a User Story](#track-the-cost-of-a-user-story).
 
 > This is a **companion app**, not a plugin component. It has its own dependencies, its own CI job, and runs standalone. **Cost is a derived estimate** (token×price-book), not billed dollars.
 
 ## Run
 
+**One command, no copy** — from any repo where the Fenrir plugin is installed:
+
+```sh
+/fenrir:dashboard
+# or directly:  python3 "$CLAUDE_PLUGIN_ROOT/scripts/dashboard.py" --repo "$CLAUDE_PROJECT_DIR"
+```
+
+This serves the **bundled** dashboard from the plugin, scoped to the current repo's board
+and telemetry, on <http://127.0.0.1:8765> — **without copying the `dashboard/` tree into
+your repo**. A busy port auto-increments (8765 → 8766 → …) and the launcher prints the real
+URL; pass `--port` / `FENRIR_DASH_PORT` to choose one, `--no-browser` to skip opening a tab.
+
+**Manual fallback** (from a checkout that has this `dashboard/` source):
+
 ```bash
 cd dashboard
 uv sync --extra dev
-uv run uvicorn backend.app:app --reload
+uv run uvicorn backend.app:app --port 8765 --reload
 ```
 
-Then open <http://127.0.0.1:8000>. The JSON API lives under `/api/*`; a static SPA is served from `frontend/` if that directory exists (the API always takes precedence over the static mount).
-
-## End-to-end smoke tests (local)
-
-A Playwright smoke suite (`tests/e2e/`) guards the SPA — app loads, board search filters
-cards, the detail modal opens / Escape-closes, Top-spenders sorts and a row opens its US, and
-timestamps render relative. It boots the app against a deterministic fixture board, so it
-needs no live `~/.claude` data.
-
-```bash
-cd dashboard
-npm install
-npx playwright install chromium
-npx playwright test
-```
-
-> **Isolated and local-only** (per [ADR 0003](../docs/adr/0003-dashboard-ux-frontend.md)). The
-> Node tooling (`package.json`, `node_modules/`) lives entirely under `dashboard/` and is **NOT
-> wired into `ci.yml` or `.pre-commit-config.yaml`** — the Python `dashboard` gate is unchanged.
-> Run it by hand; a Node CI job is deferred until a Node runner is justified.
+Then open <http://127.0.0.1:8765>. The JSON API lives under `/api/*`; a static SPA is served from `frontend/` if that directory exists (the API always takes precedence over the static mount). The SPA reaches the API over the **served origin** (`window.location` → relative `/api/*`), so it works on whatever port bound — no hardcoded host.
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `FENRIR_DASH_PORT` | `8765` | Bind port used by `/fenrir:dashboard` (the `--port` flag overrides it; a busy port auto-increments). |
 | `FENRIR_DASH_BOARD` | `data/board.json` | Path to the board JSON store. |
 | `FENRIR_DASH_CLAUDE_DIR` | `~/.claude` | Override the Claude Code directory scanned for telemetry. |
 | `FENRIR_DASH_PROJECT` | *(auto: current repo)* | Pin telemetry to one `~/.claude/projects/<name>`. Unset → the dashboard auto-detects the current repo's project; the UI selector / `?project=<slug>` overrides per request (`all` = every project). |

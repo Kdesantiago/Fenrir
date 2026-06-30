@@ -6,6 +6,7 @@ Self-contained (no conftest / __init__). Writes crafted *.jsonl under a tmp fake
 from __future__ import annotations
 
 import json
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -105,6 +106,169 @@ def _build_tree(tmp_path):
     )
 
     return claude_dir
+
+
+# --- encode_project (cross-platform) --------------------------------------------------
+
+
+def test_encode_project_posix_byte_identical():
+    # POSIX path: no drive/backslash/colon -> historical `/` `.` -> `-` only. The leading char is
+    # the drive-induced separator on Windows, so assert the stable suffix (Linux CI sees `-a-b-c`).
+    assert telemetry.encode_project(Path("/a/b.c")).endswith("-a-b-c")
+
+
+def test_encode_project_windows_path_lowercases_drive_and_replaces_seps(monkeypatch):
+    # `C:\Users\me\repo` -> `c--Users-me-repo`: drive lowercased, `:` and `\` -> `-`.
+    # encode_project() calls path.resolve(), so a *literal* Windows path on a POSIX host never
+    # yields a drive letter (resolve() prepends the POSIX cwd) and the drive-lowercasing branch
+    # would not run. Mock .resolve() to return a real drive-bearing PureWindowsPath so that branch
+    # is exercised cross-platform — the product code is correct; we drive it to the Windows case.
+    win = PureWindowsPath(r"C:\Users\me\repo")
+    assert win.drive == "C:"  # carries a drive letter regardless of host OS
+    monkeypatch.setattr(Path, "resolve", lambda self, *a, **k: win)
+    enc = telemetry.encode_project(Path(r"C:\Users\me\repo"))
+    assert enc == "c--Users-me-repo"
+    assert enc.startswith("c-")  # drive letter lowercased, colon -> "-"
+    assert enc.endswith("Users-me-repo")
+    assert ":" not in enc and "\\" not in enc and "/" not in enc
+
+
+# --- encode_project: edge paths (UNC / no-drive / trailing separator) ------------------
+# Universal post-condition of encode_project, OS-independent: it never raises and NO raw
+# separator (`\` `/` `:` `.`) survives in the slug. The drive-lowercasing is asserted only
+# when the resolved path actually has a drive letter (Windows), so these pass on Linux CI too.
+
+
+def _assert_clean_slug(enc: str) -> None:
+    assert isinstance(enc, str) and enc  # no crash, non-empty
+    for sep in ("\\", "/", ":", "."):
+        assert sep not in enc, f"separator {sep!r} survived in {enc!r}"
+
+
+def test_encode_project_unc_path_no_crash_and_dash_joined():
+    # UNC `\\server\share\repo`: on Windows .resolve() keeps the UNC root (drive == r"\\server\share",
+    # no drive *letter* to lowercase); on POSIX it is just a backslash-laden relative name. Either way
+    # the slug must be dash-joined with no surviving separators and the function must not raise.
+    enc = telemetry.encode_project(Path(r"\\server\share\repo"))
+    _assert_clean_slug(enc)
+    assert "server" in enc and "share" in enc and enc.endswith("repo")
+
+
+def test_encode_project_no_drive_path_no_crash():
+    # A path with no drive letter. On POSIX it stays drive-less (drive == ""), exercising the
+    # `if drive and ...` false branch; on Windows .resolve() prepends the cwd drive. Either way:
+    # no crash, dash-joined, no surviving separators.
+    enc = telemetry.encode_project(Path("relative/sub/dir"))
+    _assert_clean_slug(enc)
+    assert enc.endswith("dir")
+
+
+def test_encode_project_trailing_separator_is_normalized():
+    # A trailing separator must not produce a dangling `-` or a different slug than the
+    # separator-free form: .resolve() strips it, so both encode identically.
+    with_sep = telemetry.encode_project(Path("C:/Users/me/repo/"))
+    without_sep = telemetry.encode_project(Path("C:/Users/me/repo"))
+    _assert_clean_slug(with_sep)
+    assert with_sep == without_sep
+    assert not with_sep.endswith("-")  # no dangling trailing dash from the stripped separator
+
+
+def test_encode_project_lowercases_drive_letter_when_present():
+    # When the resolved path carries a single-letter drive (always true on Windows), that letter
+    # is lowercased per Claude's convention. Skips on POSIX where there is no drive letter.
+    resolved = Path("C:/Users/me/repo").resolve()
+    drive = resolved.drive  # "C:" on Windows, "" on POSIX
+    if not (len(drive) == 2 and drive[0].isalpha() and drive[1] == ":"):
+        pytest.skip("no single-letter drive on this platform")
+    enc = telemetry.encode_project(Path("C:/Users/me/repo"))
+    assert enc[0] == drive[0].lower()  # leading drive letter lowercased
+    assert enc[0].islower()
+
+
+# --- consumption floor (FENRIR_DASH_SINCE) --------------------------------------------
+
+
+def test_load_events_floors_by_since(tmp_path, monkeypatch):
+    claude_dir = _build_tree(tmp_path)
+    # day 06-01 events (e1, e2) are before the floor; 06-02 onward (e3, e4) survive.
+    monkeypatch.setenv("FENRIR_DASH_SINCE", "2026-06-02")
+    events = telemetry.load_events(claude_dir, PROJECT)
+    assert {e["day"] for e in events} == {"2026-06-02"}
+    assert len(events) == 2  # e3 + e4
+
+
+def test_load_events_no_floor_when_unset(tmp_path, monkeypatch):
+    claude_dir = _build_tree(tmp_path)
+    monkeypatch.delenv("FENRIR_DASH_SINCE", raising=False)
+    assert len(telemetry.load_events(claude_dir, PROJECT)) == 4
+
+
+# --- consumption floor: lexicographic boundary (==, just-before, empty ts) -------------
+# The floor is a lexicographic `ev["ts"] < since` drop. The boundary cases the coder deferred:
+#   ts == since (date-only)            -> KEPT  (>= floor)
+#   ts strictly before (date or full)  -> DROPPED
+#   an ISO ts on the floor date        -> KEPT  ("2026-06-02T..." is NOT < "2026-06-02")
+#   empty/missing ts                   -> KEPT  (no ts to compare; `since and ev["ts"]` short-circuits)
+
+
+def _floor_tree(tmp_path, lines: list[str]):
+    claude_dir = tmp_path / "fake_claude"
+    proj = claude_dir / "projects" / PROJECT
+    proj.mkdir(parents=True)
+    (proj / "main.jsonl").write_text("\n".join(lines) + "\n")
+    return claude_dir
+
+
+def test_floor_keeps_ts_equal_to_since_drops_strictly_before(tmp_path, monkeypatch):
+    monkeypatch.setenv("FENRIR_DASH_SINCE", "2026-06-02")
+    cd = _floor_tree(tmp_path, [
+        _line(_msg(ts="2026-06-02", session_id="eq", input_tokens=1)),            # == floor -> KEPT
+        _line(_msg(ts="2026-06-02T09:00:00Z", session_id="same-day", input_tokens=1)),  # same day, later -> KEPT
+        _line(_msg(ts="2026-06-01", session_id="before-date", input_tokens=1)),   # date < floor -> DROPPED
+        _line(_msg(ts="2026-06-01T23:59:59Z", session_id="before-full", input_tokens=1)),  # full < floor -> DROPPED
+    ])
+    events = telemetry.load_events(cd, PROJECT)
+    kept = {e["session_id"] for e in events}
+    assert kept == {"eq", "same-day"}
+    # the exact-equal event is retained (>= floor), the strictly-earlier ones excluded
+    assert "eq" in kept
+    assert "before-date" not in kept and "before-full" not in kept
+
+
+def test_floor_keeps_event_with_empty_timestamp(tmp_path, monkeypatch):
+    monkeypatch.setenv("FENRIR_DASH_SINCE", "2026-06-02")
+    cd = _floor_tree(tmp_path, [
+        _line(_msg(ts="", session_id="no-ts", input_tokens=1)),          # empty ts -> KEPT (uncomparable)
+        _line(_msg(ts="2026-06-01", session_id="before", input_tokens=1)),  # before floor -> DROPPED
+    ])
+    events = telemetry.load_events(cd, PROJECT)
+    kept = {e["session_id"] for e in events}
+    assert "no-ts" in kept           # empty ts is never floored out
+    assert "before" not in kept
+    # the empty-ts event still parsed as a real event (just with no day)
+    no_ts = next(e for e in events if e["session_id"] == "no-ts")
+    assert no_ts["ts"] == "" and no_ts["day"] == ""
+
+
+# --- consumption floor: tz-correctness (epoch compare, not raw lexicographic) ----------
+
+
+def test_before_floor_is_tz_correct_not_lexicographic():
+    # 2026-06-01T23:00:00-05:00 == 2026-06-02T04:00:00Z. A raw `ts < since` would WRONGLY drop it
+    # ("...06-01..." < "2026-06-02"); the epoch compare keeps it (it is AFTER the UTC floor).
+    assert telemetry._before_floor("2026-06-01T23:00:00-05:00", "2026-06-02") is False
+    # a genuinely earlier instant is dropped
+    assert telemetry._before_floor("2026-06-01T10:00:00Z", "2026-06-02") is True
+    # equal instant is a tie -> kept (not strictly before)
+    assert telemetry._before_floor("2026-06-02T00:00:00Z", "2026-06-02") is False
+    # a Z timestamp earlier than a full-ISO floor with offset, compared correctly across offsets
+    assert telemetry._before_floor("2026-06-02T04:59:00Z", "2026-06-02T00:00:00-05:00") is True
+
+
+def test_before_floor_string_fallback_on_unparseable():
+    # unparseable side -> best-effort string compare; empty ts is never floored.
+    assert telemetry._before_floor("", "2026-06-02") is False
+    assert telemetry._before_floor("2026-06-01T10:00:00Z", "") is False
 
 
 # --- find_transcripts -----------------------------------------------------------------

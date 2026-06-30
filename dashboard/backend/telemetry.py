@@ -9,6 +9,7 @@ session — deriving USD cost from the price book. Read-only; never mutates the 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections import defaultdict
 from collections.abc import Iterable
@@ -23,9 +24,55 @@ def default_claude_dir() -> Path:
     return Path.home() / ".claude"
 
 
+def _since() -> str:
+    """Optional consumption floor: events/runs before `FENRIR_DASH_SINCE` are ignored, so the
+    dashboard tracks only from a chosen date forward (transcripts stay intact). Accepts a date
+    (`2026-06-29`) or a full ISO timestamp. Empty/unset → no floor."""
+    return (os.environ.get("FENRIR_DASH_SINCE") or "").strip()
+
+
+def _floor_ms(value: str) -> float | None:
+    """Parse a floor/timestamp value to an epoch (ms) in a host-tz-independent way: a bare date
+    (`2026-06-29`) → that day's 00:00 **UTC**; a `T` value with no offset → UTC (not local), so a
+    naive datetime never silently picks up the host's timezone. None if unparseable."""
+    if "T" not in value:
+        value = f"{value}T00:00:00+00:00"
+    elif not (value.endswith("Z") or "+" in value[10:] or "-" in value[10:]):
+        value = f"{value}+00:00"  # naive -> treat as UTC
+    return _iso_ms(value)
+
+
+def _before_floor(ts: str, since: str) -> bool:
+    """True if event timestamp `ts` falls strictly before the floor `since` (so it is dropped).
+
+    Compares on the epoch (tz-correct across mixed offsets/`Z`) — a plain lexicographic compare is
+    only safe for same-offset strings. If either side can't be parsed, fall back to a string
+    compare. A tie (equal instant) is KEPT (not before the floor)."""
+    if not ts or not since:
+        return False
+    a, b = _floor_ms(ts), _floor_ms(since)
+    if a is None or b is None:
+        return ts < since  # best-effort string fallback
+    return a < b
+
+
 def encode_project(path: Path) -> str:
-    """Claude Code encodes a project dir as its absolute path with `/` and `.` -> `-`."""
-    return str(path.resolve()).replace("/", "-").replace(".", "-")
+    """Claude Code encodes a project dir as its absolute path with the separators replaced by `-`.
+
+    On POSIX that means `/` and `.`; on Windows the drive colon and backslashes too, and the
+    drive letter is lowercased (Claude's convention), so `C:\\Users\\me\\repo` -> `c--Users-me-repo`,
+    matching the real `~/.claude/projects/<slug>` dir. On a POSIX host the output is byte-identical
+    to the historical `/` `.` -> `-` (no drive/backslash/colon to touch); without the Windows
+    separators and the lowercase drive the slug never matches and telemetry can't scope to the repo.
+
+    The drive is lowercased to a CANONICAL form; `current_project_slug` matches case-insensitively
+    so a project dir created with either drive casing still resolves."""
+    resolved = path.resolve()
+    s = str(resolved)
+    drive = resolved.drive  # e.g. "C:" on Windows, "" on POSIX
+    if drive and s[: len(drive)] == drive:
+        s = drive.lower() + s[len(drive) :]
+    return s.replace("\\", "-").replace("/", "-").replace(":", "-").replace(".", "-")
 
 
 def list_projects(claude_dir: Path) -> list[str]:
@@ -50,19 +97,38 @@ def _git_root(cwd: Path) -> Path | None:
     return None
 
 
+def resolution_base(cwd: Path | None = None) -> Path:
+    """The directory project/board resolution should key off when no explicit `cwd` is given.
+
+    Order: an explicit `cwd` arg (tests pass one) > the **in-session repo root**
+    `CLAUDE_PROJECT_DIR` env (set+non-empty) > the real `Path.cwd()`. The env branch is what
+    lets the bundled-backend launcher (which must run with cwd=<plugin>/dashboard so
+    `backend.app` imports) still resolve the USER's repo: the launcher exports
+    CLAUDE_PROJECT_DIR=<user repo>, and reader+writer then agree on the same project. Gated on
+    the var being non-empty so run-from-repo dev mode (and the cwd-based tests) are unchanged
+    when it is absent."""
+    if cwd is not None:
+        return cwd
+    env = (os.environ.get("CLAUDE_PROJECT_DIR") or "").strip()
+    return Path(env) if env else Path.cwd()
+
+
 def current_project_slug(claude_dir: Path, cwd: Path | None = None) -> str | None:
-    """Best-match the project for `cwd` (default: real cwd). When `cwd` is inside a git repo it
-    resolves to the **repo root** first, so running from a subdir (e.g. `dashboard/`) maps to the
-    repo's project rather than a phantom `<repo>-dashboard` project an accidental subdir
-    invocation may have created in ~/.claude/projects (that bug once mis-resolved the board).
-    Then picks the longest available slug that prefixes the (root-resolved) encoding. NOTE: only
-    holds when `git` is available; otherwise it falls back to longest-prefix on the raw cwd. If
-    you genuinely run a subdir AS its own project, pin it with the `project=` param / the
-    `FENRIR_DASH_BOARD` env. None if nothing matches."""
-    base = cwd or Path.cwd()
+    """Best-match the project for `cwd` (default: `CLAUDE_PROJECT_DIR` if set, else the real cwd —
+    see `resolution_base`). When the base is inside a git repo it resolves to the **repo root**
+    first, so running from a subdir (e.g. `dashboard/`) maps to the repo's project rather than a
+    phantom `<repo>-dashboard` project an accidental subdir invocation may have created in
+    ~/.claude/projects (that bug once mis-resolved the board). Then picks the longest available
+    slug that prefixes the (root-resolved) encoding. NOTE: only holds when `git` is available;
+    otherwise it falls back to longest-prefix on the raw base. If you genuinely run a subdir AS its
+    own project, pin it with the `project=` param / the `FENRIR_DASH_BOARD` env. None if nothing
+    matches."""
+    base = resolution_base(cwd)
     root = _git_root(base) or base
-    enc = encode_project(root)
-    candidates = [p for p in list_projects(claude_dir) if enc == p or enc.startswith(p)]
+    enc = encode_project(root).lower()
+    # Match case-INSENSITIVELY (a machine can hold both `C--…` and `c--…` project dirs depending on
+    # the drive casing Claude saw); return the REAL dir name `p` so find_transcripts scans it.
+    candidates = [p for p in list_projects(claude_dir) if enc == p.lower() or enc.startswith(p.lower())]
     return max(candidates, key=len) if candidates else None
 
 
@@ -108,10 +174,11 @@ def _event(obj: dict) -> dict | None:
 
 
 def load_events(claude_dir: Path, project: str | None = None) -> list[dict]:
+    since = _since()
     events: list[dict] = []
     for path in find_transcripts(claude_dir, project):
         try:
-            text = path.read_text()
+            text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
         for line in text.splitlines():
@@ -123,8 +190,11 @@ def load_events(claude_dir: Path, project: str | None = None) -> list[dict]:
             except ValueError:
                 continue
             ev = _event(obj)
-            if ev:
-                events.append(ev)
+            if not ev:
+                continue
+            if since and _before_floor(ev["ts"], since):  # consumption floor
+                continue
+            events.append(ev)
     return events
 
 
@@ -299,7 +369,7 @@ def _run_tokens(path: Path) -> dict:
                 "cache_read_tokens": 0, "cost_usd": 0.0, "model": "",
                 "when": "", "duration_ms": 0, "session_id": "", "found": False}
     model = session = ""
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         line = line.strip()
         if not line:
             continue
@@ -334,18 +404,21 @@ def _run_tokens(path: Path) -> dict:
 def subagent_runs(claude_dir: Path, project: str | None = None) -> dict:
     """One record per subagent run: identity from agent-*.meta.json, tokens from the
     co-located agent-*.jsonl. Reconciles: attributed + unattributed == subagent total."""
+    since = _since()
     base = claude_dir / "projects"
     root = (base / project) if project else base
     runs: list[dict] = []
     if root.exists():
         for meta_path in sorted(root.rglob("agent-*.meta.json")):
             try:
-                meta = json.loads(meta_path.read_text())
+                meta = json.loads(meta_path.read_text(encoding="utf-8", errors="replace"))
             except (OSError, ValueError):
                 continue
             if not isinstance(meta, dict):
                 continue
             tok = _run_tokens(meta_path.with_suffix("").with_suffix(".jsonl"))
+            if since and _before_floor(tok["when"], since):  # consumption floor
+                continue
             runs.append({
                 "run_id": meta_path.name.replace(".meta.json", ""),  # stable: "agent-<id>"
                 "agent_type": meta.get("agentType", "?"),

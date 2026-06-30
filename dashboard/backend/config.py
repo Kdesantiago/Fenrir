@@ -7,12 +7,24 @@ one source of truth (and tests can redirect both safely).
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from . import telemetry
 from .board import BoardStore
 
 _DATA = Path(__file__).resolve().parent.parent / "data"
+
+# Load dashboard/.env if present so env knobs (FENRIR_DASH_SINCE, _PROJECT, …) persist across
+# restarts for both the web app and the CLI without exporting them by hand. Skipped under pytest
+# so a developer's local floor never leaks into the test fixtures' dated events. Best-effort.
+if "pytest" not in sys.modules:
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_DATA.parent / ".env")
+    except Exception:  # python-dotenv absent → env-only, no crash
+        pass
 
 
 def claude_dir() -> Path:
@@ -22,7 +34,13 @@ def claude_dir() -> Path:
 
 def board_path(project: str | None = None) -> Path:
     """The board is per-project: data/boards/<slug>.json. `project` wins; else the current
-    repo's project is auto-detected; else 'default'. So the kanban is scoped to a project."""
+    repo's project is auto-detected; else 'default'. So the kanban is scoped to a project.
+
+    Auto-detection goes through `telemetry.current_project_slug`, which keys off
+    `CLAUDE_PROJECT_DIR` (the in-session / launcher-exported repo root) when set, else the real
+    cwd — so the bundled-backend launcher (cwd=<plugin>/dashboard) still resolves the USER's repo
+    board, matching what scripts/track_session.py (the writer) computes. `FENRIR_DASH_BOARD` in
+    `store()` overrides this outright when an exact file is pinned."""
     slug = project or telemetry.current_project_slug(claude_dir()) or "default"
     return _DATA / "boards" / f"{slug}.json"
 
