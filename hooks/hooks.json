@@ -1,0 +1,71 @@
+{
+  "//": "Plugin-level auto-registration of the fail-open delivery-TRACKING hooks. Auto-discovered when the fenrir plugin is enabled and MERGED into the consuming repo's settings (it does not replace them), so tracking works out-of-the-box on every OS with no repo-bootstrap and no hand-edited settings.json. SHELL form (a single `command` string, no `args`) is used so each entry runs through hooks/run-python.sh -- a committed POSIX launcher that probes python3 -> python -> py -3 and exec's the first real interpreter found. This is needed because no bare interpreter token resolves on all three OSes by default (`python` is absent on modern macOS/Linux and is a Store stub on clean Windows). Shell form runs under sh -c on macOS/Linux and under Git Bash on Windows (bundled with Git for Windows); a Windows user with no Git Bash silently loses tracking only -- the shim and these hooks are fail-open by contract (no interpreter / no dashboard -> exit 0, never a block). ${CLAUDE_PLUGIN_ROOT} is substituted by Claude Code into the command string on every OS. The enforcement/guard hooks are intentionally NOT here -- they stay opt-in via repo-bootstrap, which bakes an absolute interpreter into exec-form entries.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/tracking-open.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/tracking-collect.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/tracking-attribute.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/tracking-finalize.py\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/tracking-finalize.py\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": null,
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-python.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/precompact-focus.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

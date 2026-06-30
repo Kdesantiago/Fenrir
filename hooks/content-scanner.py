@@ -14,7 +14,7 @@ import os
 import re
 import sys
 import unicodedata
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 I = re.IGNORECASE
 WEB_TOOL = re.compile(r"(webfetch|websearch|fetch|browser|navigate|web_|get_page|http)", I)
@@ -50,7 +50,7 @@ def main():
             root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
             d = os.path.join(root, ".claude", "audit"); os.makedirs(d, exist_ok=True)
             with open(os.path.join(d, "security-events.jsonl"), "a") as f:
-                f.write(json.dumps({"ts": datetime.now(UTC).isoformat(),
+                f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(),
                         "hook": "content-scanner", "decision": "warn", "reason": hits[:3]}) + "\n")
         except Exception:
             pass
