@@ -22,7 +22,17 @@ and telemetry, on <http://127.0.0.1:8765> — **without copying the `dashboard/`
 your repo**. A busy port auto-increments (8765 → 8766 → …) and the launcher prints the real
 URL; pass `--port` / `FENRIR_DASH_PORT` to choose one, `--no-browser` to skip opening a tab.
 
-**Manual fallback** (from a checkout that has this `dashboard/` source):
+**Zero-install — first launch auto-installs deps.** This `.venv` is gitignored, so a fresh
+checkout has no FastAPI/uvicorn. You do **not** need to run `uv sync` yourself: the launcher
+detects the missing venv on the first run, prints
+`first run: installing dashboard deps via uv sync…`, runs `uv sync` to build the venv, then
+serves on it. The sync is gated behind a fast import probe, so it happens **once** — warm
+launches reuse the venv and start instantly, never re-syncing. The one prerequisite is `uv`
+on `PATH`; if it's missing the launcher tells you to install `uv` (or run the manual step
+below) and exits non-zero rather than crashing.
+
+**Manual fallback** (optional — only if you want to run the backend directly, e.g. with
+`--reload` for development; the `/fenrir:dashboard` launcher already auto-syncs):
 
 ```bash
 cd dashboard
