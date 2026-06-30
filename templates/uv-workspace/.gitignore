@@ -5,8 +5,11 @@ __pycache__/
 dist/
 build/
 
-# uv / venv  (NB: commit uv.lock — it is the lockfile, not ignored)
+# uv / venv  (one per module under src/<module>/.venv; NB: commit each module's uv.lock)
 .venv/
+
+# per-module local env (the committed file is .env.example, not .env)
+.env
 
 # tool caches
 .ruff_cache/
