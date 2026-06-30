@@ -13,7 +13,9 @@
     "gates",
     "red-team",
     "iac",
-    "observability"
+    "observability",
+    "local-first",
+    "cloud-optional"
   ],
   "license": "MIT",
   "experimental": {

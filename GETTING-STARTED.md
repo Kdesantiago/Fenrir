@@ -10,12 +10,15 @@ This is everything you need to use the plugin **alone**, end to end. No external
 
 | Tool | Why | Required |
 |---|---|---|
-| `git` | repo + hooks | yes |
-| `python3` | the in-session guard hook (stdlib only) | yes |
+| `git` | repo + hooks + push (the only tool a PR needs) | yes |
+| `python3` (≥3.9) | bootstrap + the in-session guard hook (stdlib only) | yes |
 | `pre-commit` | local lint/type/secret gate | yes (`pipx install pre-commit`) |
-| `terraform` | applies branch-protection (the real merge block) | for enforcement |
-| `gh` or `az` CLI | opens PRs (`/fenrir:ship`) | for PR flow |
+| `GITHUB_TOKEN` | arms branch-protection via REST (or use the printed web-UI steps) | for enforcement |
+| `gh` or `az` CLI | optional PR accelerator — not required (`git push` + the Compare URL is the default) | optional |
+| `terraform` | optional — the pure-Python `set_branch_protection.py` replaces it | optional |
 | `pipx` | runs `semgrep` / `cyclonedx-bom` in CI | CI only |
+
+> **Local-first:** the one cross-platform entrypoint is `python scripts/bootstrap.py` (Windows/macOS/Linux). The whole golden path — bootstrap, arm the gate, ship a PR — works with **zero** `az` / `terraform` / `gh` / `kubectl`. The Azure/IaC/cloud skills are an optional layer (plugin keyword `local-first`).
 
 ---
 
@@ -26,36 +29,46 @@ This is everything you need to use the plugin **alone**, end to end. No external
 /plugin marketplace add <git-url-of-this-repo>
 /plugin install fenrir@fenrir-marketplace
 
-# B. local dev (symlink)
-ln -s "$(pwd)" ~/.claude/plugins/fenrir
+# B. local dev (test uncommitted changes — cross-platform, no symlink)
+claude --plugin-dir /absolute/path/to/fenrir   # then /reload-plugins after edits
 ```
 
 Never copy individual files into per-repo `~/.claude` — that drifts. Consume the pinned plugin.
+
+> **Windows note:** use Git for Windows and the `py` launcher (`python --version` ≥ 3.9). The `bash` blocks in this guide assume a POSIX shell; the one cross-platform entrypoint that works the same on every OS is `python scripts/bootstrap.py`.
 
 ---
 
 ## 2. Bootstrap a repo (installs the gate)
 
-In the target repo, ask Claude Code:
+Run the one-command bootstrap (cross-OS, idempotent), then ask Claude Code to fill the stack-aware pieces:
 
-> "bootstrap this repo to the delivery standard"
+```bash
+python scripts/bootstrap.py [REPO_ROOT]   # defaults to the current repo
+```
 
-`repo-bootstrap` then, idempotently:
+It detects a working Python (≥3.9), **bakes that interpreter's absolute path** into the enforcement hooks (so they run on this machine without a PATH `python`), JSON-merges `.claude/settings.json` **per event without clobbering your own hooks** (de-duped, so a re-run is a no-op), copies the enforcement hooks, runs the migrate de-dupe, and finishes with the smoke test. This replaces the old manual "hand-merge `templates/.claude/settings.json`" step.
+
+Then ask Claude Code "bootstrap this repo to the delivery standard" so `repo-bootstrap` writes the stack-aware artifacts, idempotently:
 
 1. Writes/confirms `org-profile.yaml` (declares your stack — see step 3).
 2. Installs **pre-commit** hooks (all three types): `pre-commit install && pre-commit install --hook-type pre-push && pre-commit install --hook-type commit-msg`.
-3. Installs the **in-session guard**: copies `hooks/delivery-guard.py` → `.claude/hooks/` and merges `.claude/settings.json`. Now an agent can't `git --no-verify`, force-push to `main`, or quietly edit gate files from inside a session.
+3. Confirms the **in-session guard** wired by `bootstrap.py` (an agent can't `git --no-verify`, force-push to `main`, or quietly edit gate files from inside a session).
 4. Drops the **CI required-checks** workflow — GitHub (`required-checks.yml`) or Azure (`azure-pipelines.yml`) by your provider.
-5. Drops **branch-protection-as-code** — `branch-protection.tf` (GitHub) or `azure-branch-policy.tf` (Azure). **`terraform apply` this — it is the only thing that truly blocks a non-conforming merge.**
+5. Drops **branch-protection-as-code** and arms it. The pure-Python path needs no terraform/gh:
+   ```bash
+   python scripts/set_branch_protection.py --repo OWNER/REPO [--check NAME ...]
+   ```
+   It PUTs the rule via the GitHub REST API when `GITHUB_TOKEN` is set, else prints the exact Settings → Branches web-UI steps + the equivalent REST payload. **Arming this is the only thing that truly blocks a non-conforming merge.**
 6. Repo hygiene: `.gitignore`, `renovate.json`, `CODEOWNERS`, conventional-commits.
 
-Then prove the gate is wired:
+`bootstrap.py` already runs the smoke test; re-run it any time to prove the gate is wired:
 
 ```bash
-bash scripts/bootstrap-smoke-test.sh
+python scripts/bootstrap_smoke_test.py
 ```
 
-It checks: all 3 hook types installed, `pre-commit run --all-files` clean, CI job names == branch-protection required checks, terraform valid. Non-zero exit = a hole.
+It checks (cross-platform): all 3 hook types installed, `pre-commit run --all-files` clean, CI job names == branch-protection required checks, enforcement hooks wired into `.claude/settings.json`. Non-zero exit = a hole. (Supersedes the old `bootstrap-smoke-test.sh`.)
 
 ---
 
@@ -81,9 +94,15 @@ template_version: "1.0.0"
 > "/fenrir:plan — add endpoint X" → decomposes it into one **Feature** + **atomic User Stories** on the board (one thing each), creates the `feat/<feature>` branch — **no code yet**. Development then proceeds one US at a time. `/fenrir:deliver` and `/fenrir:challenge-me` check for this plan and create it if missing, so you can also jump straight to deliver. **One Feature = one branch = one PR**; the PR delivers that Feature's US (the `delivery-trace` check enforces a US reference).
 
 ### Orchestrated delivery (the common path)
-> "/fenrir:deliver — add endpoint X" → ensures a board plan exists (creates it if not), then routes **light** (hotfix: coder → gates → ship) or **full** (feature: architect → coder → qa-tester → review → gates → ship) by a deterministic git diff measure, building the US one at a time (cost lands per-US). Writes a spec artifact to `docs/specs/` that every subagent reads. Stops before PR on any hard failure.
+> "/fenrir:deliver — add endpoint X" → ensures a board plan exists (creates it if not), then builds the US one at a time (cost lands per-US). **`light` is the default route** — an inline edit or one specialist subagent (→ gates → ship) — keeping token cost low. The **full** multi-agent pipeline (architect → coder → qa-tester → review → gates → ship) is **opt-in via `--full`**, or auto-triggered only for **risky/large diffs** (auth / iac / migrations / security path hits, or over the file/LOC size threshold). Either route writes a spec artifact to `docs/specs/` that every subagent reads, and **both** end with the mandatory qa-tester + red-team validation gate. Stops before PR on any hard failure.
 
 > "/fenrir:ship" → opens a conventional-commit PR, links the ADR + spec, runs gates for local feedback, surfaces CI status. It does **not** claim to enforce — branch-protection does.
+
+**Shipping a PR needs only `git`.** The No-CLI path is the default: `git push -u origin <branch>`, then open the Compare & pull-request URL derived from `git remote get-url origin`:
+- GitHub: `…/compare/<default>...<branch>?expand=1`
+- Azure DevOps: `…/pullrequestcreate?sourceRef=<branch>&targetRef=<default>`
+
+CI status is viewable in the browser PR checks panel; branch-protection is armed via the platform REST API with a token (`python scripts/set_branch_protection.py` — no terraform, no `gh`/`az`). `gh`/`az` are optional accelerators, not requirements.
 
 ### Skills (trigger by asking)
 | Want | Say |
@@ -122,7 +141,7 @@ merge       reviewer subagent      →   CI required-checks (incl. delivery-trac
 
 Security layer (ported from PAI, pure Python): `prompt-guard` (input), `delivery-guard` (tool calls), `content-scanner` (fetched content), `config-audit` (settings changes), `session-context` (injects the live contract). All log to `.claude/audit/security-events.jsonl`.
 
-If you only adopt one thing: run `repo-bootstrap` and `terraform apply` the branch-protection. That alone makes delivery non-optional.
+If you only adopt one thing: run `python scripts/bootstrap.py` and `python scripts/set_branch_protection.py` to arm branch-protection. That alone makes delivery non-optional — no terraform, no `gh`/`az`.
 
 ---
 

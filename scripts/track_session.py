@@ -57,9 +57,13 @@ def _dash_dir() -> str | None:
 
 
 def _dash_python(dash: str) -> str:
-    """Prefer the dashboard's own venv; fall back to the current interpreter."""
-    venv = os.path.join(dash, ".venv", "bin", "python")
-    return venv if os.path.exists(venv) else sys.executable
+    """Prefer the dashboard's own venv (POSIX `.venv/bin/python` or Windows
+    `.venv/Scripts/python.exe`); fall back to the current interpreter."""
+    for parts in (("bin", "python"), ("Scripts", "python.exe")):
+        venv = os.path.join(dash, ".venv", *parts)
+        if os.path.isfile(venv):  # isfile, not exists: a dir named `python` must not be returned
+            return venv
+    return sys.executable
 
 
 def _board_path(dash: str) -> str:

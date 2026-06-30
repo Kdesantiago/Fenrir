@@ -14,7 +14,7 @@ Self-contained guide: how to put this plugin on a Claude Code marketplace, distr
 | Claude Code (CLI or app) | installing/using the plugin |
 | `node`/`npx` | the bundled MCP servers (Azure, Langfuse) |
 | `pip install pyright` (or `npm i -g pyright`) | the bundled Python LSP (optional) |
-| `python3`, `pre-commit`, `terraform`, `gh`/`az` | when a consumer runs the gate (per-repo, not for publishing) |
+| `python3` (≥3.9), `pre-commit` | when a consumer runs the gate (per-repo, not for publishing). Branch-protection arms via `python scripts/set_branch_protection.py` (a `GITHUB_TOKEN`, or the printed web-UI steps) — **no `terraform`, no `gh`/`az` required**. |
 
 Plugin identity (do not rename casually — install commands depend on it):
 - **Marketplace name:** `fenrir-marketplace` (from `.claude-plugin/marketplace.json`)
@@ -118,14 +118,16 @@ The `repo-bootstrap` skill then installs **couche 0 — the real gate** (idempot
 3. Drops the CI required-checks workflow (GitHub `required-checks.yml` or Azure `azure-pipelines.yml`) and `.semgrep.yml`.
 4. Drops branch-protection-as-code (`branch-protection.tf` / `azure-branch-policy.tf`).
 
-Then **arm the gate and verify it**:
+Then **arm the gate and verify it** (cross-OS, no terraform/gh needed):
 
 ```bash
-terraform apply              # branch-protection — the ONLY thing that truly blocks a non-conforming merge
-bash scripts/bootstrap-smoke-test.sh   # proves hooks installed, CI job names == required checks, .semgrep.yml present
+python scripts/set_branch_protection.py --repo OWNER/REPO   # branch-protection — the ONLY thing that truly blocks a non-conforming merge
+python scripts/bootstrap_smoke_test.py                      # proves hooks installed, CI job names == required checks, .semgrep.yml present
 ```
 
-> **Mental model:** *skills advise, infra enforces.* A skill is text the agent can skip; the block is pre-commit + the in-session `delivery-guard` hook + CI required-checks + branch-protection. Bootstrap + `terraform apply` is what makes delivery non-optional.
+`set_branch_protection.py` is pure stdlib `urllib`: it PUTs the rule via the GitHub REST API when `GITHUB_TOKEN` + the repo slug are present, else prints the exact Settings → Branches web-UI steps + the equivalent REST payload (no terraform, no `gh`). `bootstrap_smoke_test.py` supersedes the old `.sh`.
+
+> **Mental model:** *skills advise, infra enforces.* A skill is text the agent can skip; the block is pre-commit + the in-session `delivery-guard` hook + CI required-checks + branch-protection. `python scripts/bootstrap.py` + arming branch-protection is what makes delivery non-optional.
 
 ---
 
@@ -213,7 +215,7 @@ Consumers move up by re-pointing the marketplace at the new tag and updating:
 |---|---|
 | `/plugin install` can't find the plugin | The marketplace `source` is resolved relative to the **marketplace root** (the dir containing `.claude-plugin/`), not relative to `marketplace.json`. Since the plugin IS the repo root, this repo uses `source: "./"`. Re-run `claude plugin validate .`. |
 | Teammates not auto-prompted | `.claude/settings.json` must be committed and the folder trusted; check `extraKnownMarketplaces` repo/owner and that `enabledPlugins` uses `plugin@marketplace`. |
-| "A skill said it would block but didn't" | Skills can't block by design. The block is couche-0 infra — run `scripts/bootstrap-smoke-test.sh` and confirm `terraform apply` ran. |
+| "A skill said it would block but didn't" | Skills can't block by design. The block is couche-0 infra — run `python scripts/bootstrap_smoke_test.py` and confirm branch-protection is armed (`python scripts/set_branch_protection.py`). |
 | Generator refused | It read `org-profile.yaml` and your stack doesn't match. Fix the profile or pick the right generator. |
 | MCP server errors on start | Missing env (`AZURE_SUBSCRIPTION_ID` / `LANGFUSE_*`). Set it, or ignore — the server just won't connect. |
 | LSP does nothing | `pyright` not installed: `pip install pyright`. |
@@ -231,33 +233,20 @@ returns `403` — branch-protection simply can't be set). Fenrir arms it on its 
 **Required status checks** (the job `name:` / status contexts in `.github/workflows/`):
 `dashboard (lint + type + test)`, `lint + type + test hooks`, `validate manifests`, `delivery-trace`.
 
-**Option A — IaC (reproducible):** `branch-protection.tf` at the repo root.
+**Arm it — `set_branch_protection.py` (no `gh`, no terraform):**
 ```bash
-terraform init
-terraform apply -var="repository=Fenrir"   # needs a GitHub token with repo admin (GITHUB_TOKEN)
+python scripts/set_branch_protection.py --repo OWNER/Fenrir \
+    --check "dashboard (lint + type + test)" --check "lint + type + test hooks" \
+    --check "validate manifests" --check "delivery-trace"
 ```
+Pure-stdlib `urllib`. With `GITHUB_TOKEN` (repo-admin scope) + the repo slug it **PUTs** the rule via the GitHub REST API; without them it **prints** the exact Settings → Branches web-UI steps and the equivalent REST payload so you can apply it by hand. The rule it sets mirrors the solo-maintainer tuning below: PRs required, CI strict-green required, `enforce_admins` on, linear history, no force-push, no deletions. (Run with no `--check` flags to use the four default contexts above.)
 
-**Option B — one-shot `gh api`:**
-```bash
-gh api -X PUT repos/<owner>/Fenrir/branches/main/protection --input - <<'JSON'
-{
-  "required_status_checks": { "strict": true,
-    "contexts": ["dashboard (lint + type + test)", "lint + type + test hooks", "validate manifests", "delivery-trace"] },
-  "enforce_admins": true,
-  "required_pull_request_reviews": { "required_approving_review_count": 0, "dismiss_stale_reviews": true },
-  "required_linear_history": true,
-  "allow_force_pushes": false,
-  "allow_deletions": false,
-  "restrictions": null
-}
-JSON
-```
 Solo maintainer → `required_approving_review_count: 0` (you can't self-approve); a team raises it
 to ≥1 and turns on code-owner reviews (add a root `CODEOWNERS`). Verify with
 `python3 scripts/techlead_report.py --root .` → "branch-protection: ARMED".
 
 > `delivery-trace` makes every PR reference a User Story on the dashboard board — drop it from
-> the contexts (and the `.tf`) if you don't run the companion board.
+> the `--check` contexts if you don't run the companion board.
 
 ---
 

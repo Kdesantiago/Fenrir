@@ -26,7 +26,7 @@ This is where "standardize delivery" has teeth. Deterministic, outside the model
 |---|---|---|
 | `pre-commit` / `pre-push` hooks | git hooks (installed by `repo-bootstrap`) | lint, type, secret-scan, format — local, before push |
 | CI required status checks | pipeline (Azure/GH Actions) | test, coverage, SAST, build — blocks merge |
-| branch-protection-as-code | Terraform/GH API/Azure policy | PR required, required checks, CODEOWNERS review |
+| branch-protection-as-code | REST API via `set_branch_protection.py` (no gh/terraform); Terraform/Azure policy optional | PR required, required checks, CODEOWNERS review |
 | versioned repo-template | template repo / cookiecutter | org structure, version assertion |
 
 **Protocol**: `repo-bootstrap` generates these files + applies branch-protection via IaC. The skill installs; the INFRA enforces.
@@ -89,7 +89,7 @@ Trimmed vs v1 (fix §7 — native overlap).
 | `/fenrir:deliver` | Pipeline: architect→coder→qa→reviewer→gates→PR | (a) **on-disk spec-artifact** = source of truth that each subagent re-reads (anti context-loss). (b) **deterministic routing by script** (LOC, risk files via globs), not LLM judgment. (c) **git checkpoint per stage** + resume. (d) real gates = CI, not the command. |
 | `/fenrir:ship` | Opens PR + shows CI status | **Does NOT claim to enforce** — branch-protection (infra) blocks the merge, not `/fenrir:ship` (fix #1) |
 
-**Adaptive resolved**: script computes size/risk → routes `light` (hotfix) vs `full` (feature). Deterministic, reproducible.
+**Adaptive resolved**: `light` is the **default** (inline edit or one specialist subagent); the **full** multi-agent pipeline is opt-in via `--full` or auto-triggered only for risky/large diffs (auth/iac/migrations/security path hits, or over the file/LOC threshold) — computed deterministically by script. Routing changes only design/review overhead; the qa-tester + red-team validation gate runs on **both** routes.
 
 ---
 

@@ -2,7 +2,7 @@
   "name": "fenrir-dashboard-e2e",
   "version": "1.0.0",
   "private": true,
-  "description": "ISOLATED local-only Playwright smoke suite for the Fenrir dashboard SPA (ADR 0003). NOT wired into ci.yml or .pre-commit-config.yaml; the Python `dashboard` gate is byte-unaffected.",
+  "description": "ISOLATED local-only Playwright smoke suite for the Fenrir dashboard SPA (ADR 0007). NOT wired into ci.yml or .pre-commit-config.yaml; the Python `dashboard` gate is byte-unaffected.",
   "scripts": {
     "test:e2e": "playwright test"
   },

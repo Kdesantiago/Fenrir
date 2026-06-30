@@ -1,0 +1,25 @@
+{
+  "//": "OPTIONAL cloud MCP layer — local-first by default, so the shipped .mcp.json is empty and NOTHING here auto-starts. To enable: copy the server block(s) you want into .mcp.json, set the env vars, and restart Claude Code. Leave .mcp.json empty to run fully local (no az / terraform / gh / kubectl). The context7 docs MCP is provided by the plugin and is always active — it does NOT belong here.",
+  "mcpServers": {
+    "azure": {
+      "//": "Requires the Azure layer. Set AZURE_SUBSCRIPTION_ID before copying this in; without a live subscription it only fails/noises.",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"],
+      "env": {
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}"
+      },
+      "timeout": 60000
+    },
+    "langfuse": {
+      "//": "Requires a Langfuse project. Set LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY (and optionally LANGFUSE_HOST) before copying this in.",
+      "command": "npx",
+      "args": ["-y", "langfuse-mcp"],
+      "env": {
+        "LANGFUSE_HOST": "${LANGFUSE_HOST:-https://cloud.langfuse.com}",
+        "LANGFUSE_PUBLIC_KEY": "${LANGFUSE_PUBLIC_KEY}",
+        "LANGFUSE_SECRET_KEY": "${LANGFUSE_SECRET_KEY}"
+      },
+      "timeout": 60000
+    }
+  }
+}

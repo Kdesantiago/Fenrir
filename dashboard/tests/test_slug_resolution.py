@@ -23,7 +23,9 @@ from backend import telemetry
 def _mk_project(claude_dir, slug: str):
     """Create projects/<slug>/ under a fake claude_dir."""
     p = claude_dir / "projects" / slug
-    p.mkdir(parents=True)
+    # exist_ok: on Windows the Windows-encoded slug can coincide with an intermediate dir name
+    # already created for the repo/subdir tree, so a parents=True mkdir would raise FileExistsError.
+    p.mkdir(parents=True, exist_ok=True)
     return p
 
 
@@ -142,3 +144,40 @@ def test_no_projects_dir_returns_none(tmp_path, monkeypatch):
     # claude_dir has no projects/ at all.
     monkeypatch.setattr(telemetry, "_git_root", lambda cwd: None)
     assert telemetry.current_project_slug(tmp_path / "empty", tmp_path / "x") is None
+
+
+# --- 5. drive-casing: match case-insensitively, return the REAL dir name ----------------
+# encode_project lowercases the drive (canonical), but ~/.claude can hold a project dir created
+# with EITHER drive casing. The slug must still resolve, and the value returned must be the dir
+# name as it really exists on disk (so find_transcripts scans the right dir).
+
+
+def test_slug_matches_uppercase_drive_dir_when_cwd_encodes_lowercase(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    canonical = telemetry.encode_project(repo)  # lowercased drive
+    if canonical[:1].isalpha() and canonical[1:2] == "-" and canonical[0].islower():
+        upper_dir = canonical[0].upper() + canonical[1:]  # real dir created with UPPERCASE drive
+    else:
+        pytest.skip("no drive-letter slug on this platform (POSIX)")
+
+    claude_dir = tmp_path / "fake_claude"
+    _mk_project(claude_dir, upper_dir)
+    monkeypatch.setattr(telemetry, "_git_root", lambda cwd: repo)
+
+    got = telemetry.current_project_slug(claude_dir, repo)
+    assert got == upper_dir  # returns the REAL (uppercase-drive) dir name, not the lowercased enc
+
+
+def test_slug_matches_lowercase_drive_dir_when_cwd_encodes_lowercase(tmp_path, monkeypatch):
+    # The canonical (lowercase-drive) dir also resolves and is returned verbatim.
+    repo = tmp_path / "repo2"
+    repo.mkdir()
+    canonical = telemetry.encode_project(repo)
+    if not (canonical[:1].isalpha() and canonical[1:2] == "-" and canonical[0].islower()):
+        pytest.skip("no drive-letter slug on this platform (POSIX)")
+
+    claude_dir = tmp_path / "fake_claude2"
+    _mk_project(claude_dir, canonical)
+    monkeypatch.setattr(telemetry, "_git_root", lambda cwd: repo)
+    assert telemetry.current_project_slug(claude_dir, repo) == canonical

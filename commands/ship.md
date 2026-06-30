@@ -25,15 +25,30 @@ This is the automatic LLM review before any PR exists. Runs in the main thread (
 
 ## 5. Build the conventional-commit PR
 - Derive a **conventional-commit title**: `type(scope): subject` (feat|fix|chore|docs|refactor|test|perf|build|ci), inferred from the diff's intent.
+
+### 5a. No-CLI path (FIRST-class — no `gh`, no `az` required)
+This is the default, zero-cloud-dependency way to open a PR. It needs only `git`.
+1. Push and set upstream: `git push -u origin <branch>`.
+2. Derive the PR-create URL from the remote so you can open it in the browser:
+   - Get the remote: `git remote get-url origin`.
+   - GitHub: an `ssh` remote `git@github.com:ORG/REPO.git` or `https` remote `https://github.com/ORG/REPO.git` → open `https://github.com/ORG/REPO/compare/<default>...<branch>?expand=1`. (After the first `git push -u`, GitHub also prints this "Create a pull request" URL directly in the push output — use that line if present.)
+   - Azure DevOps: remote `https://dev.azure.com/ORG/PROJECT/_git/REPO` → open `https://dev.azure.com/ORG/PROJECT/_git/REPO/pullrequestcreate?sourceRef=<branch>&targetRef=<default>`.
+3. In the browser "Compare & pull request" page, paste the conventional-commit **title** and the **body** (artifacts + US ids, per below). Submit to open the PR.
+4. **Arming branch-protection without terraform:** the merge gate is normally armed by `terraform apply` on `templates/branch-protection.tf` (see the `repo-bootstrap` skill). To arm it without terraform and without `gh`/`az`, call the platform REST API with a token directly — GitHub: `PUT /repos/{owner}/{repo}/branches/{branch}/protection` with the CI required-check names (an `Authorization: Bearer $GITHUB_TOKEN` curl); Azure DevOps: the branch-policy REST API. The required-check names MUST equal the CI job names. This is how the gate gets armed on a fresh clone with only a token.
+
+### 5b. CLI accelerators (OPTIONAL — only if `gh`/`az` are installed and authed)
+If you have the platform CLI it's faster, but it is **not required** — 5a is the supported path.
 - Push the branch.
 - Open the PR with the platform CLI:
   - GitHub: `gh pr create --title "<conventional title>" --body "<body>"`
   - Azure DevOps: `az repos pr create --title "<conventional title>" --description "<body>"`
-- **PR body must link the artifacts**: the spec (`docs/specs/<slug>.md`), the ADR (`docs/adr/NNNN-*.md`) when present, a changelog reference, the **US ids this PR delivers** (`us-N` — required so the `delivery-trace` check passes), and a short summary of the deterministic route taken. These let reviewers and the ADR-/delivery-trace CI checks resolve their inputs.
+
+- **PR body must link the artifacts** (both paths): the spec (`docs/specs/<slug>.md`), the ADR (`docs/adr/NNNN-*.md`) when present, a changelog reference, the **US ids this PR delivers** (`us-N` — required so the `delivery-trace` check passes), and a short summary of the deterministic route taken. These let reviewers and the ADR-/delivery-trace CI checks resolve their inputs.
 - **Move the delivered US to `review`** now the PR is open: `python -m backend.cli move --kind story --id <us> --status review` (from `dashboard/`).
 
 ## 6. Surface CI required-check status
-- After the PR exists, poll the required checks and report their status, do not interpret them as your own gate:
+- **No-CLI path (FIRST-class):** CI status is visible **in the browser** — open the PR page (the URL from step 5a) and read the checks panel / "Checks" tab; the merge button reflects the branch-protection state. No `gh`/`az` needed to *see* status; the merge decision is enforced by branch-protection regardless of how you view it.
+- **CLI accelerators (optional):** if `gh`/`az` are installed, poll the required checks from the terminal and report their status, do not interpret them as your own gate:
   - GitHub: `gh pr checks <pr>` (and `gh pr view <pr> --json mergeStateStatus,reviewDecision`)
   - Azure: `az repos pr show --id <pr>` / pipeline status
 - Report each required check (name → pending/pass/fail) and the branch-protection merge state.

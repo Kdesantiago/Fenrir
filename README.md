@@ -37,11 +37,14 @@ In any Claude Code session (CLI or app):
 
    The gate (couche 0) = pre-commit hooks, in-session safety hooks, the CI required-checks workflow, branch-protection-as-code, and an `org-profile.yaml`.
 
-2. **Arm the gate** (the part that actually blocks bad merges):
+2. **Bootstrap + arm the gate** (one cross-OS command, no terraform/gh needed):
    ```bash
-   terraform apply                      # branch-protection
-   bash scripts/bootstrap-smoke-test.sh # prove the gate is wired
+   python scripts/bootstrap.py          # detects Python, bakes the abs interpreter into the
+                                        # enforcement hooks, merges settings.json (de-duped),
+                                        # copies hooks, and runs the smoke test — idempotent, all OSes
+   python scripts/set_branch_protection.py --repo OWNER/REPO   # arm branch-protection (the real merge block)
    ```
+   `set_branch_protection.py` is pure stdlib: it PUTs the rule via the GitHub REST API when `GITHUB_TOKEN` + a repo slug are present, else prints the exact Settings → Branches web-UI steps + REST payload (no terraform, no `gh`). The smoke test is now `python scripts/bootstrap_smoke_test.py` (Windows/macOS/Linux), superseding the old `.sh`.
 
 3. **Declare your stack** in `org-profile.yaml` (platform, framework, auth, observability, LLM provider…). Generators read it and refuse to emit wrong-stack code.
 
@@ -75,11 +78,19 @@ Stack-aware generators target **Azure / AKS / Azure DevOps** first (and GitHub),
 
 ---
 
+## Local-first by default
+
+Fenrir installs and runs with **zero cloud CLIs** — no `az`, `terraform`, `gh`, or `kubectl` needed to bootstrap a repo, arm the gate, or ship a PR. The plugin ships an **empty `.mcp.json`**, so the cloud MCP servers (`azure`, `langfuse`) do **not** auto-start.
+
+To enable the **optional** Azure / observability layer: copy the desired server block(s) from `.mcp.json.example` into `.mcp.json`, set the env vars (`AZURE_SUBSCRIPTION_ID` for azure; `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` [/ `LANGFUSE_HOST`] for langfuse), and restart Claude Code. `gh` / `az` / `terraform` are optional accelerators, and the Azure / IaC / cloud skills are an opt-in layer (plugin keyword `local-first`).
+
+---
+
 ## Requirements
 
 - **Claude Code** (CLI or app) — to install and use the plugin.
-- Per consuming repo, when you run the gate: `git`, `python3`, `pre-commit`, and (to arm branch-protection) `terraform`, plus `gh` or `az`.
-- Optional bundled extras activate when present: Azure/Langfuse **MCP** servers (need their env vars), a Python **LSP** (`pip install pyright`), and AKS deploy-watch **monitors**.
+- Per consuming repo, when you run the gate: `git`, `python3` (≥3.9), and `pre-commit`. That's it — `python scripts/bootstrap.py` wires everything and `python scripts/set_branch_protection.py` arms branch-protection with just a `GITHUB_TOKEN` (or the printed web-UI steps). **No `terraform`, no `gh`/`az` required.**
+- Optional bundled extras activate only when you opt in: Azure/Langfuse **MCP** servers (copy into `.mcp.json` + set env vars), a Python **LSP** (`pip install pyright`), and AKS deploy-watch **monitors**.
 
 ---
 
